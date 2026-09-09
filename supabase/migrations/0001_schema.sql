@@ -146,33 +146,51 @@ create table public.product_images (
 -- ---------------------------------------------------------------------
 -- Conversations et messages
 -- ---------------------------------------------------------------------
--- Une conversation est rattachée à UN produit : le commerçant sait toujours
--- de quoi on lui parle. `unique (product_id, client_id)` empêche un même
--- client d'ouvrir dix fils sur le même produit.
+-- UN SEUL FIL PAR COUPLE (client, boutique) — voir `unique` ci-dessous.
+-- Le commerçant retrouve donc une personne, pas une liste de demandes
+-- éparpillées. C'est le modèle mental de WhatsApp, et c'est ce qui rend une
+-- boîte de réception lisible quand le même client revient plusieurs fois.
+--
+-- Le prix de ce choix : la conversation ne porte plus de produit. C'est
+-- chaque MESSAGE qui référence le produit dont il parle (voir plus bas).
+-- Sans cette référence, le commerçant lit « bonjour, c'est combien ? » sans
+-- savoir de quoi on lui parle — et le fil ne sert plus à rien.
 
 create table public.conversations (
   id              uuid primary key default gen_random_uuid(),
-  product_id      uuid not null references public.products(id) on delete cascade,
   client_id       uuid not null references public.profiles(id) on delete cascade,
   merchant_id     uuid not null references public.merchants(id) on delete cascade,
   created_at      timestamptz not null default now(),
   last_message_at timestamptz not null default now(),
-  unique (product_id, client_id)
+  unique (client_id, merchant_id)
 );
 
 create index conversations_client_idx   on public.conversations(client_id, last_message_at desc);
 create index conversations_merchant_idx on public.conversations(merchant_id, last_message_at desc);
 
+-- `product_id` porte le contexte du message : « je te parle de CE produit ».
+-- Il est nullable, parce qu'une fois le sujet posé, la suite de l'échange
+-- n'a plus besoin de le répéter. En revanche le PREMIER message d'un fil
+-- doit obligatoirement en porter un — c'est vérifié par un trigger dans
+-- 0002, pas par l'interface : une règle qui doit toujours être vraie
+-- n'appartient pas au navigateur.
+--
+-- `on delete set null` et non `cascade` : si un produit disparaît, on perd
+-- le contexte, pas la conversation. Effacer l'échange d'un client parce que
+-- le commerçant a supprimé une fiche serait une perte de données absurde.
+
 create table public.messages (
   id              uuid primary key default gen_random_uuid(),
   conversation_id uuid not null references public.conversations(id) on delete cascade,
   sender_id       uuid not null references public.profiles(id) on delete cascade,
+  product_id      uuid references public.products(id) on delete set null,
   body            text not null check (length(trim(body)) between 1 and 2000),
   read_at         timestamptz,       -- NULL = non lu, sert au badge de non-lus
   created_at      timestamptz not null default now()
 );
 
 create index messages_conversation_idx on public.messages(conversation_id, created_at);
+create index messages_product_idx      on public.messages(product_id) where product_id is not null;
 
 
 -- ---------------------------------------------------------------------

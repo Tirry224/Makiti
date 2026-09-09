@@ -17,7 +17,7 @@ for f in supabase/migrations/*.sql; do psql -v ON_ERROR_STOP=1 -d makiti_test -f
 psql -d makiti_test -f supabase/tests/security_test.sql
 ```
 
-Chaque vérification affiche `OK`. La première qui échoue interrompt tout
+Les 34 vérifications affichent `OK`. La première qui échoue interrompt tout
 avec `ECHEC`.
 
 ## Ce que ces tests protègent
@@ -27,10 +27,18 @@ fonctionnent — ça, le premier utilisateur s'en apercevra. Il vérifie que les
 actions **interdites** échouent. C'est la partie qu'on ne découvre jamais en
 utilisant l'application normalement, et celle qui fait les fuites de données.
 
-Ces tests ont déjà servi : ils ont détecté qu'un commerçant pouvait
-s'auto-valider, parce que révoquer un privilège au niveau colonne est sans
-effet quand le privilège existe au niveau table. La correction est
-documentée dans la partie 4 de `0002_rules_and_security.sql`.
+Ces tests ont déjà servi deux fois :
+
+1. **Un commerçant pouvait s'auto-valider.** Révoquer un privilège au
+   niveau colonne est sans effet quand le privilège `UPDATE` existe au
+   niveau table — ce que Supabase accorde par défaut.
+2. **Un participant pouvait réécrire le message de l'autre.** La policy
+   « marquer comme lu » autorise la modification des messages reçus ; sans
+   liste blanche de colonnes, cette autorisation couvrait aussi le texte.
+
+Les deux corrections sont documentées dans la partie 4 de
+`0002_rules_and_security.sql`. Les deux failles avaient le même profil :
+aucune erreur, aucun symptôme, rien qu'une porte ouverte.
 
 **Règle : toute nouvelle policy s'accompagne d'un test qui prouve qu'elle
 bloque bien ce qu'elle prétend bloquer.**

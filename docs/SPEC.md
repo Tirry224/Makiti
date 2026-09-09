@@ -18,6 +18,7 @@ Marché : Guinée · Devise : franc guinéen (GNF) · Langue : français.
 | 3 | Catégories | Liste **fixe** de 10 catégories, gérée par l'administrateur. |
 | 4 | Classement du fil | Pas de notation. Tri : *à la une* (manuel) → *populaires* (nb de conversations) → *récents*. |
 | 5 | Notification commerçant | v1 : badge de non-lus + email. Push web reporté en v2. |
+| 5b | Structure des fils | **Un seul fil par couple (client, boutique).** Chaque message référence le produit dont il parle ; le premier message d'un fil en porte obligatoirement un. |
 | 6 | Modération produits | Publication immédiate, bouton « signaler », masquage possible par l'admin. |
 | 7 | Volume cible | 500 commerçants **à un an**. Densité avant volume au lancement. |
 | 8 | Rôles | Un compte = un seul rôle (client **ou** commerçant). Rôle modifiable à la main par l'admin. |
@@ -25,7 +26,7 @@ Marché : Guinée · Devise : franc guinéen (GNF) · Langue : français.
 | 10 | Disponibilité | Binaire (disponible / vendu). **Pas de gestion de stock.** |
 | 11 | Validation commerçant | Manuelle, via le tableau de bord Supabase. Aucune page admin en v1. |
 | 12 | Commerçant en attente | Voit un message d'attente, peut préparer sa boutique et ses produits en **brouillon**. |
-| 13 | Abus | Bouton « signaler » + suspension de compte + limite de 20 nouvelles conversations/jour/client. |
+| 13 | Abus | Bouton « signaler » + suspension de compte + deux quotas : 20 boutiques contactées/jour et 100 messages/jour par compte. |
 | 14 | Recherche | Sur le titre, la description et le nom de la boutique. Insensible aux accents. |
 | 15 | Photos | 1 minimum, 3 maximum. Compression avant envoi. Coûts assumés par le porteur du projet. |
 | 16 | Litige | Suspension du compte vendeur. |

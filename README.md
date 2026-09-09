@@ -12,7 +12,7 @@ conclut hors de l'application.
 
 - [x] Spécification validée
 - [x] Schéma de base de données, règles métier et sécurité (RLS)
-- [x] Tests de sécurité (23 vérifications, voir `supabase/tests/`)
+- [x] Tests de sécurité (34 vérifications, voir `supabase/tests/`)
 - [ ] Projet Supabase créé et migrations exécutées
 - [ ] Application Next.js
 - [ ] Notification par email des nouveaux messages

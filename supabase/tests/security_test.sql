@@ -11,24 +11,12 @@
 \set ON_ERROR_STOP on
 set client_min_messages = notice;
 
--- Un test doit pouvoir être relancé autant de fois qu'on veut sans
--- reconstruire la base. On repart donc systématiquement d'une table vide.
--- `cascade` suffit : la suppression se propage par les clés étrangères
--- jusqu'aux messages, ce qui prouve au passage que le chaînage est correct.
+-- Un test doit pouvoir être relancé sans reconstruire la base. On repart
+-- donc d'une table vide. `cascade` suffit : la suppression se propage par
+-- les clés étrangères jusqu'aux messages, ce qui vérifie au passage que le
+-- chaînage est correct.
 truncate auth.users cascade;
 
--- --- Jeu de données ---------------------------------------------------
-insert into auth.users (id, email, raw_user_meta_data) values
-  ('11111111-1111-1111-1111-111111111111', 'a@test.gn', '{"role":"merchant","full_name":"Boutique A","phone":"620000001"}'),
-  ('22222222-2222-2222-2222-222222222222', 'b@test.gn', '{"role":"merchant","full_name":"Boutique B","phone":"620000002"}'),
-  ('33333333-3333-3333-3333-333333333333', 'c@test.gn', '{"role":"client","full_name":"Client C","phone":"620000003"}'),
-  ('44444444-4444-4444-4444-444444444444', 'd@test.gn', '{"role":"client","full_name":"Client D","phone":"620000004"}');
-
-insert into public.merchants (id, profile_id, shop_name, city_id) values
-  ('aaaaaaaa-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'Chez A', 1),
-  ('bbbbbbbb-0000-0000-0000-000000000002', '22222222-2222-2222-2222-222222222222', 'Chez B', 1);
-
--- Helper de test : signale un échec bruyamment.
 create or replace function pg_temp.check(label text, condition boolean) returns void
 language plpgsql as $$
 begin
@@ -44,25 +32,40 @@ begin
 end $$;
 
 
+-- --- Jeu de données ---------------------------------------------------
+-- A, B : commerçants · C, D : clients · E, F : clients pour les quotas
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('11111111-1111-1111-1111-111111111111', 'a@test.gn', '{"role":"merchant","full_name":"Boutique A","phone":"620000001"}'),
+  ('22222222-2222-2222-2222-222222222222', 'b@test.gn', '{"role":"merchant","full_name":"Boutique B","phone":"620000002"}'),
+  ('33333333-3333-3333-3333-333333333333', 'c@test.gn', '{"role":"client","full_name":"Client C","phone":"620000003"}'),
+  ('44444444-4444-4444-4444-444444444444', 'd@test.gn', '{"role":"client","full_name":"Client D","phone":"620000004"}'),
+  ('55555555-5555-5555-5555-555555555555', 'e@test.gn', '{"role":"client","full_name":"Client E","phone":"620000005"}'),
+  ('66666666-6666-6666-6666-666666666666', 'f@test.gn', '{"role":"client","full_name":"Client F","phone":"620000006"}');
+
+insert into public.merchants (id, profile_id, shop_name, city_id) values
+  ('aaaaaaaa-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'Chez A', 1),
+  ('bbbbbbbb-0000-0000-0000-000000000002', '22222222-2222-2222-2222-222222222222', 'Chez B', 1);
+
+
 -- =====================================================================
--- 1. Le trigger d'inscription a bien créé les profils
+-- 1. Inscription
 -- =====================================================================
 select pg_temp.check('profils créés à l''inscription',
-  (select count(*) from public.profiles) = 4);
+  (select count(*) from public.profiles) = 6);
 
 select pg_temp.check('le rôle envoyé à l''inscription est respecté',
   (select role from public.profiles where id = '33333333-3333-3333-3333-333333333333') = 'client');
 
 
 -- =====================================================================
--- 2. Un commerçant NON validé ne peut pas publier
+-- 2. Un commerçant non validé prépare mais ne publie pas
 -- =====================================================================
 set role authenticated;
 select pg_temp.login('11111111-1111-1111-1111-111111111111');
 
--- Un brouillon, en revanche, doit être possible (point 12 de la spec).
 insert into public.products (id, merchant_id, category_id, title, price_gnf, status)
-values ('cccccccc-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001', 1, 'Sac de riz importé 50kg', 450000, 'draft');
+values ('cccccccc-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001',
+        1, 'Sac de riz importé 50kg', 450000, 'draft');
 
 do $$
 begin
@@ -89,12 +92,10 @@ begin
    where id = 'aaaaaaaa-0000-0000-0000-000000000001';
   raise exception 'ECHEC un commerçant a pu s''auto-valider';
 exception when insufficient_privilege then
-  raise notice 'OK    auto-validation refusée (colonne protégée)';
+  raise notice 'OK    auto-validation refusée (colonne non accordée)';
 end $$;
 
 reset role;
-
--- L'administrateur, lui, valide sans difficulté.
 update public.merchants set status = 'approved', approved_at = now()
  where id in ('aaaaaaaa-0000-0000-0000-000000000001', 'bbbbbbbb-0000-0000-0000-000000000002');
 
@@ -116,7 +117,8 @@ exception when others then
 end $$;
 
 insert into public.product_images (product_id, storage_path, position)
-values ('cccccccc-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001/p1/0.webp', 0);
+values ('cccccccc-0000-0000-0000-000000000001',
+        'aaaaaaaa-0000-0000-0000-000000000001/p1/0.webp', 0);
 
 update public.products set status = 'active'
  where id = 'cccccccc-0000-0000-0000-000000000001';
@@ -142,22 +144,34 @@ end $$;
 
 reset role;
 
+-- Un second produit chez A, et un produit chez B, pour la suite des tests.
+-- Noter l'ordre imposé par le trigger : brouillon, puis photo, puis
+-- publication. Impossible de créer directement un produit publié sans
+-- photo, même en administrateur — les triggers s'appliquent aussi à lui.
+insert into public.products (id, merchant_id, category_id, title, price_gnf) values
+  ('cccccccc-0000-0000-0000-000000000002', 'aaaaaaaa-0000-0000-0000-000000000001', 3, 'Téléphone Tecno', 850000),
+  ('cccccccc-0000-0000-0000-000000000003', 'bbbbbbbb-0000-0000-0000-000000000002', 3, 'Chargeur', 25000);
+insert into public.product_images (product_id, storage_path, position) values
+  ('cccccccc-0000-0000-0000-000000000002', 'y/0.webp', 0),
+  ('cccccccc-0000-0000-0000-000000000003', 'z/0.webp', 0);
+update public.products set status = 'active'
+ where id in ('cccccccc-0000-0000-0000-000000000002', 'cccccccc-0000-0000-0000-000000000003');
+
 
 -- =====================================================================
--- 6. Un commerçant ne peut pas toucher aux produits d'un autre
+-- 6. Un commerçant ne touche pas aux produits d'un autre
 -- =====================================================================
 set role authenticated;
-select pg_temp.login('22222222-2222-2222-2222-222222222222');   -- Boutique B
+select pg_temp.login('22222222-2222-2222-2222-222222222222');
 
--- Le produit reste VISIBLE (catalogue public)…
 select pg_temp.check('le produit d''autrui est visible dans le catalogue',
   (select count(*) from public.products
     where id = 'cccccccc-0000-0000-0000-000000000001') = 1);
 
--- … mais pas modifiable. Le RLS ne lève pas d'erreur : il fait simplement
--- que la ligne n'existe pas pour cet utilisateur. Zéro ligne modifiée.
+-- Le RLS ne lève pas d'erreur : la ligne n'existe simplement pas pour cet
+-- utilisateur. Zéro ligne modifiée.
 with modif as (
-  update public.products set title = 'Piraté' 
+  update public.products set title = 'Piraté'
    where id = 'cccccccc-0000-0000-0000-000000000001' returning 1
 )
 select pg_temp.check('modification du produit d''autrui bloquée',
@@ -167,42 +181,111 @@ reset role;
 
 
 -- =====================================================================
--- 7. Le cœur du sujet : l'étanchéité des conversations privées
+-- 7. Un seul fil par couple (client, boutique)
 -- =====================================================================
 set role authenticated;
 select pg_temp.login('33333333-3333-3333-3333-333333333333');   -- Client C
 
-insert into public.conversations (id, product_id, client_id, merchant_id)
+insert into public.conversations (id, client_id, merchant_id)
 values ('dddddddd-0000-0000-0000-000000000001',
-        'cccccccc-0000-0000-0000-000000000001',
         '33333333-3333-3333-3333-333333333333',
         'aaaaaaaa-0000-0000-0000-000000000001');
 
-insert into public.messages (conversation_id, sender_id, body)
+do $$
+begin
+  insert into public.conversations (client_id, merchant_id)
+  values ('33333333-3333-3333-3333-333333333333',
+          'aaaaaaaa-0000-0000-0000-000000000001');
+  raise exception 'ECHEC un second fil a été ouvert vers la même boutique';
+exception when unique_violation then
+  raise notice 'OK    un seul fil par couple (client, boutique)';
+end $$;
+
+
+-- =====================================================================
+-- 8. Le premier message doit préciser le produit
+-- =====================================================================
+do $$
+begin
+  insert into public.messages (conversation_id, sender_id, body)
+  values ('dddddddd-0000-0000-0000-000000000001',
+          '33333333-3333-3333-3333-333333333333', 'Bonjour, c''est combien ?');
+  raise exception 'ECHEC premier message accepté sans produit';
+exception when others then
+  if sqlerrm like 'ECHEC%' then raise; end if;
+  raise notice 'OK    premier message refusé sans produit référencé';
+end $$;
+
+insert into public.messages (conversation_id, sender_id, product_id, body)
 values ('dddddddd-0000-0000-0000-000000000001',
         '33333333-3333-3333-3333-333333333333',
+        'cccccccc-0000-0000-0000-000000000001',
         'Bonjour, le sac de riz est-il disponible ?');
 
-select pg_temp.check('le client voit sa conversation',
-  (select count(*) from public.conversations) = 1);
+-- La suite de l'échange n'a plus besoin de répéter le produit.
+insert into public.messages (conversation_id, sender_id, body)
+values ('dddddddd-0000-0000-0000-000000000001',
+        '33333333-3333-3333-3333-333333333333', 'Et vous livrez ?');
+select pg_temp.check('les messages suivants peuvent omettre le produit',
+  (select count(*) from public.messages where product_id is null) = 1);
+
+-- On peut changer de sujet dans le même fil : c'est tout l'intérêt.
+insert into public.messages (conversation_id, sender_id, product_id, body)
+values ('dddddddd-0000-0000-0000-000000000001',
+        '33333333-3333-3333-3333-333333333333',
+        'cccccccc-0000-0000-0000-000000000002',
+        'Et le téléphone Tecno, il est neuf ?');
+select pg_temp.check('un même fil couvre plusieurs produits',
+  (select count(distinct product_id) from public.messages
+    where conversation_id = 'dddddddd-0000-0000-0000-000000000001') = 2);
+
+
+-- =====================================================================
+-- 9. On ne référence pas le produit d'une autre boutique
+-- =====================================================================
+do $$
+begin
+  insert into public.messages (conversation_id, sender_id, product_id, body)
+  values ('dddddddd-0000-0000-0000-000000000001',
+          '33333333-3333-3333-3333-333333333333',
+          'cccccccc-0000-0000-0000-000000000003',   -- produit de la boutique B
+          'Ce chargeur ?');
+  raise exception 'ECHEC produit d''une autre boutique accepté';
+exception when others then
+  if sqlerrm like 'ECHEC%' then raise; end if;
+  raise notice 'OK    produit d''une autre boutique refusé';
+end $$;
 
 reset role;
+
+
+-- =====================================================================
+-- 10. Étanchéité des conversations privées
+-- =====================================================================
 set role authenticated;
 select pg_temp.login('11111111-1111-1111-1111-111111111111');   -- Commerçant A
-select pg_temp.check('le commerçant destinataire voit la conversation',
-  (select count(*) from public.messages) = 1);
+select pg_temp.check('le commerçant destinataire voit le fil',
+  (select count(*) from public.conversations) = 1);
+-- Trois messages seulement : les deux tentatives refusées plus haut ont
+-- été annulées par la base. Un refus ne laisse aucune trace partielle.
+select pg_temp.check('le commerçant destinataire voit les messages',
+  (select count(*) from public.messages) = 3);
+select pg_temp.check('le commerçant voit le nom de son interlocuteur',
+  (select full_name from public.profiles
+    where id = '33333333-3333-3333-3333-333333333333') = 'Client C');
 
-reset role;
-set role authenticated;
+reset role; set role authenticated;
 select pg_temp.login('44444444-4444-4444-4444-444444444444');   -- Client D, étranger
-select pg_temp.check('un tiers ne voit AUCUNE conversation',
+select pg_temp.check('un tiers ne voit AUCUN fil',
   (select count(*) from public.conversations) = 0);
 select pg_temp.check('un tiers ne voit AUCUN message',
   (select count(*) from public.messages) = 0);
+select pg_temp.check('un tiers ne voit pas le nom des autres clients',
+  (select count(*) from public.profiles
+    where id = '33333333-3333-3333-3333-333333333333') = 0);
 
-reset role;
-set role authenticated;
-select pg_temp.login('22222222-2222-2222-2222-222222222222');   -- Commerçant concurrent
+reset role; set role authenticated;
+select pg_temp.login('22222222-2222-2222-2222-222222222222');   -- Concurrent
 select pg_temp.check('un commerçant concurrent ne voit AUCUN message',
   (select count(*) from public.messages) = 0);
 
@@ -210,27 +293,52 @@ reset role;
 
 
 -- =====================================================================
--- 8. Un commerçant ne peut pas ouvrir de conversation (rôle unique)
+-- 11. On ne réécrit pas le message d'autrui
+-- =====================================================================
+-- Le commerçant a le droit de marquer comme lus les messages reçus. Sans
+-- liste blanche de colonnes, ce même droit lui permettrait de falsifier
+-- leur contenu.
+set role authenticated;
+select pg_temp.login('11111111-1111-1111-1111-111111111111');
+
+do $$
+begin
+  update public.messages set body = 'Je m''engage à payer le double'
+   where sender_id = '33333333-3333-3333-3333-333333333333';
+  raise exception 'ECHEC un participant a pu falsifier le message de l''autre';
+exception when insufficient_privilege then
+  raise notice 'OK    falsification du message d''autrui refusée';
+end $$;
+
+update public.messages set read_at = now()
+ where sender_id = '33333333-3333-3333-3333-333333333333';
+select pg_temp.check('marquage « lu » autorisé',
+  (select count(*) from public.messages where read_at is not null) = 3);
+
+reset role;
+
+
+-- =====================================================================
+-- 12. Un commerçant ne peut pas ouvrir de fil (rôle unique)
 -- =====================================================================
 set role authenticated;
 select pg_temp.login('22222222-2222-2222-2222-222222222222');
 
 do $$
 begin
-  insert into public.conversations (product_id, client_id, merchant_id)
-  values ('cccccccc-0000-0000-0000-000000000001',
-          '22222222-2222-2222-2222-222222222222',
+  insert into public.conversations (client_id, merchant_id)
+  values ('22222222-2222-2222-2222-222222222222',
           'aaaaaaaa-0000-0000-0000-000000000001');
-  raise exception 'ECHEC un commerçant a pu ouvrir une conversation';
+  raise exception 'ECHEC un commerçant a pu ouvrir un fil';
 exception when insufficient_privilege then
-  raise notice 'OK    ouverture de conversation refusée à un commerçant';
+  raise notice 'OK    ouverture de fil refusée à un commerçant';
 end $$;
 
 reset role;
 
 
 -- =====================================================================
--- 9. Un utilisateur suspendu ne peut plus écrire
+-- 13. Un compte suspendu ne peut plus écrire
 -- =====================================================================
 update public.profiles set is_suspended = true
  where id = '33333333-3333-3333-3333-333333333333';
@@ -240,10 +348,11 @@ select pg_temp.login('33333333-3333-3333-3333-333333333333');
 
 do $$
 begin
-  insert into public.messages (conversation_id, sender_id, body)
+  insert into public.messages (conversation_id, sender_id, product_id, body)
   values ('dddddddd-0000-0000-0000-000000000001',
-          '33333333-3333-3333-3333-333333333333', 'Encore moi');
-  raise exception 'ECHEC un utilisateur suspendu a pu écrire';
+          '33333333-3333-3333-3333-333333333333',
+          'cccccccc-0000-0000-0000-000000000001', 'Encore moi');
+  raise exception 'ECHEC un compte suspendu a pu écrire';
 exception when insufficient_privilege then
   raise notice 'OK    écriture refusée à un compte suspendu';
 end $$;
@@ -254,42 +363,94 @@ update public.profiles set is_suspended = false
 
 
 -- =====================================================================
--- 10. Le compteur de contacts et la limite anti-spam
+-- 14. Le compteur de popularité compte des CLIENTS, pas des messages
 -- =====================================================================
-select pg_temp.check('compteur de contacts incrémenté',
+-- Le client C a envoyé deux messages sur le sac de riz : le compteur doit
+-- valoir 1, sinon un client bavard fait grimper un produit tout seul.
+select pg_temp.check('un client bavard ne compte qu''une fois',
   (select contact_count from public.products
     where id = 'cccccccc-0000-0000-0000-000000000001') = 1);
 
--- La limite se teste en administrateur : les triggers s'appliquent même
--- quand le RLS est contourné.
-insert into public.products (id, merchant_id, category_id, title, price_gnf, status)
-select gen_random_uuid(), 'aaaaaaaa-0000-0000-0000-000000000001', 1, 'Produit ' || i, 1000, 'draft'
-  from generate_series(1, 25) i;
+set role authenticated;
+select pg_temp.login('44444444-4444-4444-4444-444444444444');
+insert into public.conversations (id, client_id, merchant_id)
+values ('dddddddd-0000-0000-0000-000000000002',
+        '44444444-4444-4444-4444-444444444444',
+        'aaaaaaaa-0000-0000-0000-000000000001');
+insert into public.messages (conversation_id, sender_id, product_id, body)
+values ('dddddddd-0000-0000-0000-000000000002',
+        '44444444-4444-4444-4444-444444444444',
+        'cccccccc-0000-0000-0000-000000000001', 'Toujours dispo ?');
+reset role;
+
+select pg_temp.check('un second client fait bien monter le compteur',
+  (select contact_count from public.products
+    where id = 'cccccccc-0000-0000-0000-000000000001') = 2);
+
+
+-- =====================================================================
+-- 15. Les deux limites anti-spam
+-- =====================================================================
+-- (a) nombre de boutiques contactées par jour
+insert into auth.users (id, email, raw_user_meta_data)
+select gen_random_uuid(), 'spam' || i || '@test.gn',
+       '{"role":"merchant","full_name":"Boutique","phone":"620"}'::jsonb
+  from generate_series(1, 30) i;
+
+insert into public.merchants (profile_id, shop_name, city_id, status)
+select p.id, 'Boutique ' || p.id, 1, 'approved'
+  from public.profiles p
+ where p.role = 'merchant'
+   and p.id not in ('11111111-1111-1111-1111-111111111111',
+                    '22222222-2222-2222-2222-222222222222');
 
 do $$
-declare p record; n int := 0;
+declare m record; n int := 0;
 begin
-  for p in select id from public.products where status = 'draft' loop
+  for m in select id from public.merchants loop
     begin
-      insert into public.conversations (product_id, client_id, merchant_id)
-      values (p.id, '44444444-4444-4444-4444-444444444444',
-              'aaaaaaaa-0000-0000-0000-000000000001');
+      insert into public.conversations (client_id, merchant_id)
+      values ('55555555-5555-5555-5555-555555555555', m.id);
+      n := n + 1;
+    exception
+      when unique_violation then null;   -- fil déjà existant, on passe
+      when others then
+        raise notice 'OK    limite de contacts déclenchée après % boutiques', n;
+        return;
+    end;
+  end loop;
+  raise exception 'ECHEC limite de contacts jamais déclenchée (% fils)', n;
+end $$;
+
+-- (b) nombre de messages par jour, tous fils confondus
+do $$
+declare conv uuid; n int := 0;
+begin
+  insert into public.conversations (client_id, merchant_id)
+  values ('66666666-6666-6666-6666-666666666666',
+          'aaaaaaaa-0000-0000-0000-000000000001')
+  returning id into conv;
+
+  for i in 1..120 loop
+    begin
+      insert into public.messages (conversation_id, sender_id, product_id, body)
+      values (conv, '66666666-6666-6666-6666-666666666666',
+              'cccccccc-0000-0000-0000-000000000002', 'message ' || i);
       n := n + 1;
     exception when others then
-      raise notice 'OK    limite anti-spam déclenchée après % conversations', n;
+      raise notice 'OK    limite de messages déclenchée après %', n;
       return;
     end;
   end loop;
-  raise exception 'ECHEC la limite anti-spam ne s''est jamais déclenchée (% insertions)', n;
+  raise exception 'ECHEC limite de messages jamais déclenchée (% messages)', n;
 end $$;
 
 
 -- =====================================================================
--- 11. La recherche est insensible aux accents et à la casse
+-- 16. Recherche
 -- =====================================================================
--- Le titre contient « importé ». On le cherche sans accent ET en
--- majuscules : c'est exactement ce que tapera un client sur un clavier
--- de téléphone.
+-- Le titre contient « importé ». On le cherche sans accent et en
+-- majuscules : c'est ce que tapera un client sur un clavier de téléphone.
 select pg_temp.check('recherche sans accent trouve le produit accentué',
   (select count(*) from public.search_products('IMPORTE')) = 1);
 
@@ -297,13 +458,13 @@ select pg_temp.check('recherche avec accent trouve aussi',
   (select count(*) from public.search_products('importé')) = 1);
 
 select pg_temp.check('recherche par nom de boutique',
-  (select count(*) from public.search_products('chez a')) = 1);
+  (select count(*) from public.search_products('chez a')) = 2);
 
 select pg_temp.check('filtre par ville sans résultat hors zone',
   (select count(*) from public.search_products(null, 4)) = 0);
 
-select pg_temp.check('les brouillons n''apparaissent jamais dans la recherche',
-  (select count(*) from public.search_products()) = 1);
+select pg_temp.check('les brouillons n''apparaissent jamais',
+  (select count(*) from public.search_products()) = 3);
 
 \echo ''
 \echo '===== TOUS LES TESTS SONT PASSES ====='

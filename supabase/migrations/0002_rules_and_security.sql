@@ -145,29 +145,64 @@ create trigger products_check_publishable
 
 
 -- 3.3 — Compteur de contacts (sert au tri « populaires »).
+-- Il ne compte pas les messages, mais le nombre de CLIENTS DISTINCTS ayant
+-- posé une question sur ce produit. Sans cette distinction, un client
+-- bavard ferait grimper artificiellement un produit dans le classement, et
+-- ton fil récompenserait le bruit au lieu de l'intérêt réel.
 create or replace function public.bump_contact_count()
 returns trigger
 language plpgsql
 security definer
 set search_path = ''
 as $$
+declare
+  v_client uuid;
 begin
-  update public.products
-     set contact_count = contact_count + 1
-   where id = new.product_id;
+  if new.product_id is null then
+    return new;
+  end if;
+
+  select client_id into v_client
+    from public.conversations where id = new.conversation_id;
+
+  -- Premier message de CE client sur CE produit ?
+  if not exists (
+    select 1
+      from public.messages m
+      join public.conversations c on c.id = m.conversation_id
+     where m.product_id = new.product_id
+       and c.client_id  = v_client
+       and m.id <> new.id
+  ) then
+    update public.products
+       set contact_count = contact_count + 1
+     where id = new.product_id;
+  end if;
+
   return new;
 end;
 $$;
 
-create trigger conversations_bump_contact_count
-  after insert on public.conversations
+create trigger messages_bump_contact_count
+  after insert on public.messages
   for each row execute function public.bump_contact_count();
 
 
--- 3.4 — Anti-spam : 20 nouvelles conversations maximum par jour et par client.
--- Invisible pour un usage normal, mais empêche un script d'ouvrir des
--- milliers de fils en une nuit et de noyer tous tes commerçants.
--- C'est une protection PRÉVENTIVE : le bouton « signaler » et la suspension
+-- 3.4 — Anti-spam, DEUX limites complémentaires.
+--
+-- Le passage à « un fil par client » a déplacé le problème : puisqu'un
+-- client n'ouvre plus qu'un seul fil par boutique, limiter les fils ne
+-- protège plus de rien — il suffirait d'envoyer 5 000 messages dans le même
+-- fil pour noyer un commerçant. Il faut donc verrouiller les deux portes :
+--   (a) le nombre de commerçants qu'un client peut contacter par jour ;
+--   (b) le nombre de messages qu'il peut envoyer par jour, tous fils confondus.
+--
+-- Leçon générale : quand tu changes un modèle de données, redemande-toi ce
+-- que tes protections existantes protégeaient encore. Une règle de sécurité
+-- écrite pour l'ancien modèle devient souvent décorative dans le nouveau,
+-- sans qu'aucun test ne le signale.
+--
+-- Ces protections sont PRÉVENTIVES : le bouton « signaler » et la suspension
 -- de compte, eux, n'interviennent qu'après les dégâts.
 create or replace function public.check_conversation_rate_limit()
 returns trigger
@@ -193,6 +228,85 @@ $$;
 create trigger conversations_rate_limit
   before insert on public.conversations
   for each row execute function public.check_conversation_rate_limit();
+
+
+-- (b) 100 messages par jour et par expéditeur, tous fils confondus.
+-- Volontairement large : un commerçant très actif qui répond à trente
+-- clients dans la journée ne doit jamais rencontrer cette limite.
+create or replace function public.check_message_rate_limit()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  recent_count int;
+begin
+  select count(*) into recent_count
+    from public.messages
+   where sender_id = new.sender_id
+     and created_at > now() - interval '1 day';
+
+  if recent_count >= 100 then
+    raise exception 'Limite atteinte : 100 messages par jour maximum.';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger messages_rate_limit
+  before insert on public.messages
+  for each row execute function public.check_message_rate_limit();
+
+
+-- 3.4 bis — Cohérence du produit référencé par un message.
+-- Deux règles que l'interface ne doit PAS être seule à garantir :
+--   1. le premier message d'un fil porte obligatoirement un produit,
+--      sinon le commerçant reçoit une question sans objet ;
+--   2. le produit référencé appartient bien à la boutique destinataire.
+--      Sans cette vérification, on pourrait écrire à la boutique A en
+--      référençant un produit de la boutique B — affichage incohérent au
+--      mieux, moyen de sonder l'existence de produits masqués au pire.
+create or replace function public.check_message_product()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_merchant  uuid;
+  v_is_first  boolean;
+begin
+  select merchant_id into v_merchant
+    from public.conversations where id = new.conversation_id;
+
+  v_is_first := not exists (
+    select 1 from public.messages
+     where conversation_id = new.conversation_id
+  );
+
+  if v_is_first and new.product_id is null then
+    raise exception 'Le premier message doit préciser le produit concerné.';
+  end if;
+
+  if new.product_id is not null then
+    if not exists (
+      select 1 from public.products
+       where id = new.product_id
+         and merchant_id = v_merchant
+         and status in ('active', 'sold')
+    ) then
+      raise exception 'Ce produit n''appartient pas à cette boutique.';
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger messages_check_product
+  before insert on public.messages
+  for each row execute function public.check_message_product();
 
 
 -- 3.5 — Remonter une conversation dès qu'un message y arrive.
@@ -251,6 +365,25 @@ grant  update (shop_name, description, whatsapp_phone, city_id, address_hint)
 revoke update on public.products from authenticated, anon;
 grant  update (category_id, title, description, price_gnf, is_negotiable, status)
   on public.products to authenticated;
+
+-- Sur `messages`, la seule modification légitime est le passage en « lu ».
+-- Sans cette restriction, la policy 6.7 « marquer comme lu » laisserait un
+-- participant RÉÉCRIRE le message de son interlocuteur : elle autorise la
+-- modification des lignes reçues, et sans liste blanche de colonnes cette
+-- autorisation couvre `body`. Un commerçant pourrait donc falsifier ce que
+-- le client lui a écrit, ou l'inverse.
+-- Le RLS choisit QUELLES LIGNES sont accessibles ; lui seul ne suffit
+-- jamais. Il faut toujours se demander en plus : quelles COLONNES ?
+revoke update on public.messages from authenticated, anon;
+grant  update (read_at) on public.messages to authenticated;
+
+-- Une conversation n'est jamais modifiée par un utilisateur : sa date de
+-- dernier message est tenue à jour par un trigger.
+revoke update on public.conversations from authenticated, anon;
+
+-- Rien ne s'efface : on masque (voir `status`). Supprimer une fiche
+-- détruirait le contexte des conversations qui y renvoient.
+revoke delete on public.messages, public.conversations from authenticated, anon;
 
 -- Les référentiels sont en lecture seule pour tout le monde.
 revoke insert, update, delete on public.cities     from authenticated, anon;
@@ -405,8 +538,10 @@ create policy "conversations: reservees aux participants"
     or merchant_id = public.my_merchant_id()
   );
 
--- Seul un client peut ouvrir une conversation, uniquement sur un produit
--- réellement publié par une boutique approuvée.
+-- Seul un client peut ouvrir une conversation, et seulement vers une
+-- boutique validée. Le contrôle du produit ne se fait plus ici — il a suivi
+-- le produit là où il vit maintenant, c'est-à-dire sur le message
+-- (trigger 3.4 bis).
 create policy "conversations: un client contacte un commercant"
   on public.conversations for insert
   with check (
@@ -417,13 +552,9 @@ create policy "conversations: un client contacte un commercant"
       where id = auth.uid() and role = 'client'
     )
     and exists (
-      select 1
-        from public.products p
-        join public.merchants m on m.id = p.merchant_id
-       where p.id = public.conversations.product_id
-         and p.status = 'active'
-         and m.status = 'approved'
-         and m.id = public.conversations.merchant_id
+      select 1 from public.merchants m
+      where m.id = public.conversations.merchant_id
+        and m.status = 'approved'
     )
   );
 
@@ -452,7 +583,9 @@ create policy "messages: envoi par les participants"
   );
 
 -- Marquer comme lu : uniquement les messages reçus, jamais ceux qu'on a
--- envoyés soi-même.
+-- envoyés soi-même. La partie 4 a restreint l'écriture à la seule colonne
+-- `read_at` : c'est cette restriction, et non cette policy, qui empêche de
+-- réécrire le texte d'autrui. Les deux mécanismes sont nécessaires.
 create policy "messages: marquer comme lu"
   on public.messages for update
   using (
