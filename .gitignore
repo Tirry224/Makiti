@@ -8,3 +8,6 @@ build/
 .DS_Store
 *.log
 .vercel
+
+# canvas assemblé, régénérable depuis design/*.dc.html
+design/makiti-maquette.html

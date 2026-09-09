@@ -1,0 +1,38 @@
+{
+  "pages": [
+    { "id": "page-1", "name": "Écrans" },
+    { "id": "page-2", "name": "Directions visuelles" }
+  ],
+  "artboards": [
+    { "file": "Main.dc.html",         "title": "Fil d'accueil",        "page": "page-1", "x": 0,    "y": 0,    "w": 390, "h": 844 },
+    { "file": "Recherche.dc.html",    "title": "Recherche & filtres",  "page": "page-1", "x": 480,  "y": 0,    "w": 390, "h": 844 },
+    { "file": "Produit.dc.html",      "title": "Fiche produit",        "page": "page-1", "x": 960,  "y": 0,    "w": 390, "h": 844 },
+    { "file": "Boutique.dc.html",     "title": "Boutique publique",    "page": "page-1", "x": 1440, "y": 0,    "w": 390, "h": 844 },
+
+    { "file": "Inscription.dc.html",  "title": "Inscription",          "page": "page-1", "x": 0,    "y": 1000, "w": 390, "h": 844 },
+    { "file": "Connexion.dc.html",    "title": "Connexion",            "page": "page-1", "x": 480,  "y": 1000, "w": 390, "h": 844 },
+    { "file": "Attente.dc.html",      "title": "Boutique en attente",  "page": "page-1", "x": 960,  "y": 1000, "w": 390, "h": 844 },
+
+    { "file": "MesProduits.dc.html",  "title": "Mes produits",         "page": "page-1", "x": 0,    "y": 2000, "w": 390, "h": 844 },
+    { "file": "AjoutProduit.dc.html", "title": "Ajouter un produit",   "page": "page-1", "x": 480,  "y": 2000, "w": 390, "h": 844 },
+
+    { "file": "Conversations.dc.html","title": "Messages",             "page": "page-1", "x": 0,    "y": 3000, "w": 390, "h": 844 },
+    { "file": "Discussion.dc.html",   "title": "Fil de discussion",    "page": "page-1", "x": 480,  "y": 3000, "w": 390, "h": 844 },
+
+    { "file": "DirectionB.dc.html",   "title": "B — Utilitaire",       "page": "page-2", "x": 480,  "y": 0,    "w": 390, "h": 844 },
+    { "file": "DirectionC.dc.html",   "title": "C — Vitrine",          "page": "page-2", "x": 960,  "y": 0,    "w": 390, "h": 844 }
+  ],
+  "annotations": [
+    { "id": "r-visiteur",  "page": "page-1", "x": -340, "y": 20,   "w": 290,
+      "text": "PARCOURS VISITEUR — sans compte\n\nOn voit tout le catalogue sans s'inscrire. Le compte n'est demandé qu'au moment d'écrire au vendeur : le client s'engage une fois qu'il veut quelque chose, pas avant." },
+    { "id": "r-compte",    "page": "page-1", "x": -340, "y": 1020, "w": 290,
+      "text": "COMPTES\n\nLe rôle est choisi à l'inscription et il est définitif. L'écran d'attente existe pour que le commerçant ne reparte pas : il prépare ses produits en brouillon pendant la vérification." },
+    { "id": "r-commercant","page": "page-1", "x": -340, "y": 2020, "w": 290,
+      "text": "ESPACE COMMERÇANT\n\nDeux chiffres seulement : produits publiés et messages non lus. Le second est le seul qui le fera revenir chaque jour." },
+    { "id": "r-messages",  "page": "page-1", "x": -340, "y": 3020, "w": 290,
+      "text": "MESSAGERIE — un fil par client\n\nChaque message peut citer un produit. Le second produit du fil est marqué « Vendu » : c'est la réponse à la question laissée ouverte." },
+    { "id": "d-choix",     "page": "page-2", "x": 0,    "y": 20,   "w": 400,
+      "text": "TROIS DIRECTIONS, UN SEUL CHOIX À FAIRE\n\nA — Marché (page « Écrans ») : grille à deux colonnes, fond papier chaud, accent terre cuite. Équilibre entre densité et image. C'est la direction dans laquelle tous les écrans sont dessinés.\n\nB — Utilitaire : liste dense, 9 produits par écran au lieu de 4, gris froid. On compare vite, mais les produits sont peu désirables.\n\nC — Vitrine : une image par écran, typographie forte. Très désirable, mais on ne voit que 2 produits — mauvais quand le catalogue est petit et hétéroclite.\n\nDis-moi laquelle tu gardes : je redessine les onze écrans dans cette direction." }
+  ],
+  "launch": { "view": "canvas", "page": "page-1" }
+}
