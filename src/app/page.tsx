@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/Card";
 import { Photo } from "@/components/ui/Photo";
 import { Badge } from "@/components/ui/Badge";
 import { PriceTag } from "@/components/product/PriceTag";
-import { categories, featuredProduct, products } from "@/lib/mock";
+import { PAR_ECRAN, categories, featuredProduct, products } from "@/lib/mock";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
 import { Package } from "lucide-react";
@@ -30,9 +30,9 @@ export default async function HomePage({
   searchParams: Promise<{ ville?: string }>;
 }) {
   const { ville = "Conakry" } = await searchParams;
-  const visible = products.filter(
-    (p) => (p.status === "active" || p.status === "sold") && p.merchant.city === ville,
-  );
+  const visible = products
+    .filter((p) => (p.status === "active" || p.status === "sold") && p.merchant.city === ville)
+    .slice(0, PAR_ECRAN);
   const featuredHere = featuredProduct.merchant.city === ville ? featuredProduct : null;
 
   return (
@@ -44,17 +44,24 @@ export default async function HomePage({
 
       <ScreenBody>
         <Section className="gap-3 pb-1">
-          <FakeInput className="text-ink-soft">
-            <Search size={19} strokeWidth={1.8} aria-hidden />
-            Rechercher un produit
-          </FakeInput>
+          {/* Le champ n'est pas un champ : il ouvre l'écran de recherche.
+              Un vrai champ ici obligerait à charger du JavaScript sur le
+              premier écran de l'application pour ne rien saisir neuf fois
+              sur dix. */}
+          <Link href="/recherche" prefetch={false}>
+            <FakeInput className="text-ink-soft">
+              <Search size={19} strokeWidth={1.8} aria-hidden />
+              Rechercher un produit
+            </FakeInput>
+          </Link>
           {/* `overflow-x-auto` : la rangée de catégories défile au doigt
               plutôt que de passer à la ligne et de manger l'écran. */}
           <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5">
+            <Chip selected>Tout</Chip>
             {categories.map((c) => (
-              <Chip key={c} selected={c === "Tout"}>
-                {c}
-              </Chip>
+              <Link key={c.slug} href={`/recherche?categorie=${c.slug}`} prefetch={false}>
+                <Chip>{c.court}</Chip>
+              </Link>
             ))}
           </div>
         </Section>
@@ -74,7 +81,7 @@ export default async function HomePage({
           <>
         <Section className="gap-2 pt-2 pb-0">
           <SectionLabel>À la une</SectionLabel>
-          <Link href={`/produit/${featuredHere?.id ?? featuredProduct.id}`}>
+          <Link href={`/produit/${featuredHere?.id ?? featuredProduct.id}`} prefetch={false}>
             <Card className="flex">
               <Photo ratio="free" className="w-26 shrink-0" />
               <div className="flex flex-col justify-center gap-1 px-3 py-3">

@@ -11,7 +11,7 @@ export function MerchantCard({
   merchant: Pick<Merchant, "id" | "shopName" | "city" | "addressHint">;
 }) {
   return (
-    <Link href={`/boutique/${merchant.id}`}>
+    <Link href={`/boutique/${merchant.id}`} prefetch={false}>
       <Card className="flex items-center gap-3 p-3.5">
         <Avatar name={merchant.shopName} kind="shop" size={46} />
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">

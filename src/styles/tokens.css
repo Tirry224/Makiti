@@ -90,7 +90,9 @@
      lui-même — aucun appel à Google au chargement de la page. */
 
   --font-sans: var(--font-body-src), "Segoe UI", system-ui, sans-serif;
-  --font-display: var(--font-display-src), var(--font-body-src), sans-serif;
+  /* Une seule famille chargée : les titres prennent la même, en plus gras
+     et plus resserré (voir base.css). Voir layout.tsx pour le pourquoi. */
+  --font-display: var(--font-body-src), "Segoe UI", system-ui, sans-serif;
 
   /* Échelle de tailles : 8 marches, et pas une de plus.
      La maquette a été dessinée à main levée et contenait 21 tailles

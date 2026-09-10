@@ -48,7 +48,7 @@ export function MenuItem({
      bouton. On ne met pas un `onClick` sur un `<div>` : ni le clavier ni
      un lecteur d'écran ne sauraient s'en servir. */
   return href ? (
-    <Link href={href} className={className}>
+    <Link href={href} prefetch={false} className={className}>
       {content}
     </Link>
   ) : (

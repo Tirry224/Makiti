@@ -15,6 +15,7 @@ export function ThreadRow({ thread }: { thread: Thread }) {
   return (
     <Link
       href={`/messages/${thread.id}`}
+      prefetch={false}
       className="flex items-start gap-3 border-b border-line py-3.5"
     >
       <Avatar name={thread.peerName} kind={thread.peerKind} />

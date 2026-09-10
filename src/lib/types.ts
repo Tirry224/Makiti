@@ -9,6 +9,13 @@
  */
 
 export type ProductStatus = "draft" | "active" | "sold" | "hidden";
+/**
+ * Neuf ou occasion. Deux catégories de la liste le réclament explicitement
+ * (téléphones, pièces auto), et sur ces deux-là c'est le premier critère
+ * d'achat — avant le prix. En faire des catégories aurait doublé la liste ;
+ * c'est donc un attribut du produit, et un filtre à la recherche.
+ */
+export type ProductCondition = "neuf" | "occasion";
 export type MerchantStatus = "pending" | "approved" | "rejected";
 export type UserRole = "client" | "merchant";
 
@@ -26,6 +33,7 @@ export type Product = {
   id: string;
   merchant: Pick<Merchant, "id" | "shopName" | "city" | "addressHint">;
   category: string;
+  condition: ProductCondition;
   title: string;
   description: string | null;
   priceGnf: number;

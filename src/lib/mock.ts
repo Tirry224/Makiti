@@ -39,9 +39,14 @@ export const merchantAissatou: Merchant = {
   status: "approved",
 };
 
-function product(p: Omit<Product, "status" | "isFeatured" | "contactCount" | "photoCount"> &
+function product(p: Omit<Product, "status" | "condition" | "isFeatured" | "contactCount" | "photoCount"> &
   Partial<Product>): Product {
-  return { status: "active", isFeatured: false, contactCount: 0, photoCount: 1, ...p };
+  /* `condition` vaut « neuf » par défaut : c'est le cas ordinaire, et
+     l'occasion est l'information qui mérite d'être signalée. */
+  return {
+    status: "active", condition: "neuf",
+    isFeatured: false, contactCount: 0, photoCount: 1, ...p,
+  };
 }
 
 export const products: Product[] = [
@@ -58,10 +63,34 @@ export const products: Product[] = [
     photoCount: 3,
   }),
   product({
+    id: "p-iphone11",
+    merchant: techKaloum,
+    category: "Téléphones",
+    title: "iPhone 11 64 Go",
+    description:
+      "Occasion, batterie 89 %, aucune rayure. Débloqué tous opérateurs, chargeur fourni.",
+    priceGnf: 3_500_000,
+    condition: "occasion",
+    isNegotiable: true,
+    contactCount: 18,
+    photoCount: 3,
+  }),
+  product({
+    id: "p-coque-iphone",
+    merchant: techKaloum,
+    category: "Accessoires téléphone",
+    title: "Coque iPhone 11 antichoc",
+    description: null,
+    priceGnf: 45_000,
+    isNegotiable: false,
+    contactCount: 3,
+  }),
+  product({
     id: "p-tecno",
     merchant: techKaloum,
     category: "Téléphones",
     title: "Téléphone Tecno Spark 10",
+    condition: "neuf",
     description: "Neuf sous emballage, garantie 6 mois.",
     priceGnf: 850_000,
     isNegotiable: false,
@@ -72,6 +101,7 @@ export const products: Product[] = [
     merchant: aissatou,
     category: "Produits de beauté",
     title: "Perruque lace frontale 20 pouces",
+    condition: "occasion",
     description: null,
     priceGnf: 320_000,
     isNegotiable: false,
@@ -125,20 +155,36 @@ export function findProduct(id: string): Product | undefined {
   return [...products, featuredProduct].find((p) => p.id === id);
 }
 
-/* Libellés courts pour la rangée de filtres : « Vêtements femme » tient
-   dans une puce, « Accessoires téléphone » non. Nom complet dans la fiche
-   produit, nom court dans les filtres — c'est la même catégorie. */
-export const categories = [
-  "Tout",
-  "Téléphones",
-  "Accessoires",
-  "Vêtements femme",
-  "Vêtements homme",
-  "Sacs",
-  "Parfums",
-  "Beauté",
-  "Pièces auto",
+/**
+ * Les 8 catégories, dans l'ordre d'affichage.
+ *
+ * Trois libellés par catégorie et ce n'est pas du luxe : `nom` est le nom
+ * officiel (fiche produit, formulaire), `court` tient dans une puce de
+ * filtre, `slug` vit dans l'URL et ne changera jamais — un lien partagé sur
+ * WhatsApp doit survivre à un changement de libellé.
+ */
+export type Categorie = { slug: string; nom: string; court: string };
+
+export const categories: Categorie[] = [
+  { slug: "telephones", nom: "Téléphones", court: "Téléphones" },
+  { slug: "accessoires", nom: "Accessoires téléphone", court: "Accessoires" },
+  { slug: "mode-femme", nom: "Vêtements femme", court: "Vêtements femme" },
+  { slug: "mode-homme", nom: "Vêtements homme", court: "Vêtements homme" },
+  { slug: "sacs", nom: "Sacs", court: "Sacs" },
+  { slug: "parfums", nom: "Parfums", court: "Parfums" },
+  { slug: "beaute", nom: "Produits de beauté", court: "Beauté" },
+  { slug: "pieces-auto", nom: "Pièces automobiles", court: "Pièces auto" },
 ];
+
+/**
+ * Combien de produits par écran.
+ *
+ * 12 et non 24 : sur un forfait facturé au mégaoctet, un écran de fil se
+ * paie surtout en vignettes. Douze produits, c'est déjà six lignes de
+ * défilement — au-delà, on fait payer des images que personne ne regarde.
+ * Voir docs/PERFORMANCE.md, règle R5.
+ */
+export const PAR_ECRAN = 12;
 
 export const threads: Thread[] = [
   {

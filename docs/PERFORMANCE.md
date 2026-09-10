@@ -19,7 +19,7 @@ encore 15 à 20 % : les chiffres réels sont un peu meilleurs.
 | Poste | Poids | Payé quand ? |
 |---|---|---|
 | JavaScript + CSS (socle) | **169 Ko** | Première visite seulement, ensuite en cache |
-| Polices (2 fichiers woff2) | **60 Ko** | Première visite seulement |
+| Police (1 fichier woff2) | **19,7 Ko** | Première visite seulement |
 | HTML d'une page | 4 à 7 Ko | **À chaque navigation** |
 | Photos | 0 Ko | **À chaque écran**, dès qu'elles existeront |
 
@@ -41,7 +41,7 @@ de tes utilisateurs**, et là que nos décisions comptent vraiment.
 | Budget | Valeur | Vérifié par |
 |---|---|---|
 | Socle JS + CSS | ≤ 200 Ko gzip | `npm run poids` |
-| Polices préchargées | ≤ 40 Ko | `npm run poids` — **dépassé aujourd'hui : 60 Ko** |
+| Polices préchargées | ≤ 40 Ko | `npm run poids` — 19,7 Ko, tenu |
 | HTML d'une page | ≤ 12 Ko gzip | `npm run poids` |
 | Vignette produit | ≤ 15 Ko | à la revue |
 | Photo pleine taille | ≤ 120 Ko | à la revue |
@@ -98,11 +98,12 @@ si on le laisse grossir :
   si le JavaScript n'a pas fini de charger, ce qui est exactement le cas sur
   un réseau lent.
 
-### R4 — Les polices coûtent 60 Ko et dépassent le budget
+### R4 — Une seule police, décidé
 
-Deux familles chargées : Figtree pour le texte, Bricolage Grotesque pour les
-titres. C'est un quart du poids du socle pour une différence esthétique.
-Trois sorties possibles, à trancher (§5).
+Le projet en chargeait deux : Figtree pour le texte, Bricolage Grotesque pour
+les titres — 60 Ko, dont 40 pour les seuls titres. Bricolage est retirée :
+les titres gardent leur présence par la graisse et l'interlettrage. **19,7 Ko
+aujourd'hui.** Ajouter une police redevient une décision, pas un réflexe.
 
 ### R5 — Les données : demander peu, et une seule fois
 
@@ -134,16 +135,21 @@ de composants · animations au défilement · carrousels · temps réel permanen
 recherche à la frappe · pages qui chargent puis re-chargent · publicité ·
 outils d'analyse tiers · cartes interactives.
 
-## 5. Décisions en attente
+## 5. Décisions prises
 
-1. **Polices** — garder les deux (60 Ko), réduire Bricolage aux graisses
-   réellement utilisées (~35 Ko), ou n'en garder qu'une (~20 Ko). Ma
-   recommandation : une seule police. Sur un écran de 390 px, la seconde ne
-   se remarque que dans les titres.
-2. **Produits par écran** — 24 ou 12 ?
-3. **Vignettes** — 400 px de large est confortable ; 300 px suffirait pour
-   une carte qui en fait 180. Combien on sacrifie de netteté pour un tiers
-   d'octets en moins ?
+1. **Une seule police** (Figtree). −40 Ko. Voir R4.
+2. **12 produits par écran** et un bouton « Voir plus » qui en demande douze
+   de plus, plafonné à 60. Constante `PAR_ECRAN` dans `src/lib/mock.ts`.
+   Douze, c'est déjà six lignes de défilement ; au-delà on fait payer des
+   vignettes que personne ne regarde.
+3. **Vignettes de 300 px de large**, pour des cartes qui en font 180. Le
+   double de la taille d'affichage suffit sur un écran à deux pixels par
+   point ; 400 px ne se voyait pas et coûtait un tiers d'octets en plus.
+4. **Filtres sans JavaScript** : `<details>` natif et liens. Un menu de
+   filtre ne coûte donc aucun octet de socle et fonctionne avant que le
+   JavaScript soit chargé.
+5. **`prefetch={false}`** posé sur tous les liens de liste : fil, recherche,
+   cartes produit, boutiques, conversations, menus.
 
 ## 6. Ce qu'on ne fait pas, et à quelle condition on y reviendrait
 

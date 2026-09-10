@@ -59,8 +59,8 @@ Au même rang que « ça marche ». Doctrine complète et budgets chiffrés dans
 6. **La panne réseau est un état normal**, pas une erreur : toute page reste
    lisible sans ses images.
 
-État mesuré : socle 169 Ko gzip, polices 60 Ko (**budget dépassé de 20 Ko**),
-HTML 4 à 7 Ko par page. `npm run poids` échoue tant que ce n'est pas réglé.
+État mesuré : socle 169 Ko gzip, police 19,7 Ko, HTML 4 à 7 Ko par page.
+Tous les budgets sont tenus ; `npm run poids` échoue si l'un se met à céder.
 
 ## Où vivent les choses
 
@@ -82,19 +82,23 @@ HTML 4 à 7 Ko par page. `npm run poids` échoue tant que ce n'est pas réglé.
 
 ## État au 10 septembre 2026
 
-**Étape 1 — maquette : faite**, sauf l'écran de recherche (v2 proposée,
-6 états, page « Recherche v2 » du canvas, **en attente de ton arbitrage**).
+**Étape 1 — maquette : faite.** La recherche v2 (6 états) est dessinée ET
+codée ; ses artboards restent sur la page « Recherche v2 » du canvas.
 
 **Étape 2 — front et actions : à moitié.**
 
 - ✅ 32 des 33 écrans codés, tous atteignables depuis `/ecrans`.
-- ❌ **Écran 4 (fil hors ligne)** : maquetté, jamais codé. Seul écran manquant.
-- ❌ **Aucune interactivité.** Zéro `"use client"` hors `error.tsx`, zéro
-  `<form>`, zéro `onSubmit`. Tout l'état passe par l'URL (`?ville=`, `?q=`,
-  `?vue=`, `?etat=`). Les boutons ne font rien. **C'est le gros du travail
-  restant.**
-- ✅ Recherche : filtrage en mémoire dans la page, sans accents ni casse —
-  même règle que la fonction SQL `search_products` qui la remplacera.
+- ✅ **Recherche refaite** : quatre états servis par une seule page (repos,
+  résultats, hors périmètre, zéro-ici-mais-ailleurs), filtres ville /
+  catégorie / état / tri, pagination « Voir plus ». Zéro JavaScript : les
+  filtres sont des liens, les menus des `<details>` natifs, l'état vit dans
+  l'URL. Les règles sont isolées dans `src/lib/recherche.ts`, partagées avec
+  le fil, et calquées sur la future fonction SQL `search_products`.
+- ❌ **Écran 4 (fil hors ligne)** : maquetté, jamais codé. Seul écran
+  manquant — et il coûtera le premier `"use client"` du projet.
+- ❌ **Formulaires : rien.** Zéro `<form>`, zéro `onSubmit`. Inscription,
+  connexion, ajout de produit, envoi de message : les boutons ne font
+  toujours rien. **C'est le gros du travail restant**, en Server Actions.
 
 **Étape 3 — Supabase : pas commencée, et c'est voulu.**
 4 migrations écrites et testées, jamais exécutées. Aucun client Supabase dans
@@ -103,24 +107,38 @@ HTML 4 à 7 Ko par page. `npm run poids` échoue tant que ce n'est pas réglé.
 **Dette connue :** les catégories semées par `0003` sont celles d'avant le
 repositionnement. Correctif décrit dans `REPRISE.md`, à appliquer à l'étape 3.
 
-## Décisions en attente (les miennes sont des propositions, pas des choix)
+## Décisions prises (10 sept., délégation explicite)
+
+- **Neuf / occasion** : un attribut du produit (`Product.condition`) et un
+  filtre de recherche, pas une catégorie — sinon la liste doublait. Affiché
+  seulement quand il vaut « occasion » : le neuf est l'hypothèse par défaut,
+  et une carte ne porte qu'une étiquette à la fois.
+- **12 produits par écran**, « Voir plus » par tranches de 12, plafond 60.
+- **Une seule police.** −40 Ko.
+- **Vignettes 300 px.**
+- **Filtres en `<details>` natif**, pas en composant client.
+- **Recherche v2 validée et codée** telle que maquettée, à deux corrections
+  près, constatées à l'écran : le menu de filtre ne peut pas vivre dans une
+  barre défilante (`overflow-x` rogne aussi la verticale — il est donc dans
+  le flux et pousse les résultats), et les filtres sont masqués sur l'écran
+  hors périmètre, où aucun d'eux ne ferait apparaître un réfrigérateur.
+
+## Décisions encore en attente
 
 | Sujet | Où | Ma proposition |
 |---|---|---|
-| Recherche v2 : les 6 états | canvas `Recherche v2` | À valider avant de coder. |
-| Neuf / occasion | Ta liste le cite 2 fois | Un **filtre**, pas une catégorie. Coût : un champ obligatoire de plus. |
-| Recherches récentes | Écran de recherche | Dans le navigateur : gratuit, marche sans compte. |
-| Boutiques dans les résultats | Écran de recherche | Un bandeau « Boutique → » en tête. Pas encore dessiné. |
+| Recherches récentes | Écran de recherche | Reporté : c'est le seul morceau de la recherche qui exige du JavaScript. À reprendre avec l'écran hors ligne, qui en demande aussi. |
+| Boutiques dans les résultats | Écran de recherche | Un bandeau « Boutique → » en tête de résultats. Ni dessiné ni codé. |
 | Vêtements enfant, chaussures | Catégories | Absents de la liste. Oubli ou choix ? |
-| Polices : 2, 1 ou une réduite | `layout.tsx` | Une seule police. La seconde ne se voit que dans les titres. |
-| Produits par écran : 24 ou 12 | Fil et recherche | 12 + « Voir plus » : deux fois moins d'octets par écran. |
-| Largeur des vignettes : 400 ou 300 px | Photos | 300 px suffit pour une carte de 180 px. |
 | Blocage entre personnes | Écran 32 | Aucune table ne le porte. |
 | Motif de refus d'une boutique | Écran 21 | `merchants.status` ne dit pas pourquoi. |
 | Suppression de compte | Écran 18 | Effacement réel ou anonymisation ? |
 
 ## Journal — cinq dernières entrées
 
+- **10 sept.** Recherche v2 codée (4 états, 4 filtres, pagination), sans une
+  ligne de JavaScript. Police unique (−40 Ko), `prefetch={false}` sur tous
+  les liens de liste, `PAR_ECRAN` à 12, `Product.condition`. Budgets tenus.
 - **10 sept.** Contrainte réseau posée en `docs/PERFORMANCE.md` : mesures
   réelles, budgets chiffrés, six règles, et `npm run poids` qui échoue quand
   un budget est dépassé — ce qu'il fait déjà à cause des polices.
