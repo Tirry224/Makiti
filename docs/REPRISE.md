@@ -30,19 +30,24 @@ Marché : Guinée · Devise : franc guinéen (GNF), en entiers · Langue : fran�
 `docs/ECRANS.md` — inventaire des 33 écrans.
 
 ### Base de données — écrite et testée, PAS déployée
-`supabase/migrations/` — 5 fichiers SQL à exécuter dans l'ordre :
+`supabase/migrations/` — 4 fichiers SQL à exécuter dans l'ordre :
 
 - `0001_schema.sql` — 9 tables : profiles, merchants, cities, categories,
   products, product_images, conversations, messages, reports
 - `0002_rules_and_security.sql` — **le fichier le plus important** :
   triggers métier et règles de sécurité au niveau des lignes (RLS)
-- `0003_search_and_seed.sql` — fonction `search_products`, catégories
-  d'origine, 12 villes
+- `0003_search_and_seed.sql` — fonction `search_products`, catégories,
+  12 villes
 - `0004_storage.sql` — stockage des photos
-- `0005_categories_v2.sql` — la liste retenue : 8 catégories sur un seul
-  niveau (téléphones, accessoires, mode femme, mode homme, sacs, parfums,
-  beauté, pièces auto) et la colonne `examples` qui aide le commerçant à
-  choisir. Remplace celles de 0003.
+
+> **Dette connue, à régler au moment du branchement Supabase et pas avant :**
+> les catégories semées par `0003` (alimentation, maison, bricolage…) ne sont
+> plus celles du produit. La liste retenue est celle de `SPEC.md` §1.3 et de
+> `src/lib/mock.ts`. Elle demandera une migration `0005` qui : sème les 8
+> catégories, ajoute une colonne `examples` (les listes d'exemples affichées
+> sous le sélecteur), et ne supprime les anciennes que si aucun produit ne
+> les référence — `products.category_id` est une clé étrangère, un `delete`
+> non gardé ferait échouer toute la migration.
 
 `supabase/tests/` — 34 tests de sécurité, rejouables sur un PostgreSQL
 local. Ils vérifient que les actions **interdites** échouent. Ils ont déjà

@@ -126,8 +126,8 @@ export function findProduct(id: string): Product | undefined {
 }
 
 /* Libellés courts pour la rangée de filtres : « Vêtements femme » tient
-   dans une puce, « Accessoires téléphone » non. La base porte le nom
-   complet (voir `0005_categories_v2.sql`), l'écran porte le nom court. */
+   dans une puce, « Accessoires téléphone » non. Nom complet dans la fiche
+   produit, nom court dans les filtres — c'est la même catégorie. */
 export const categories = [
   "Tout",
   "Téléphones",

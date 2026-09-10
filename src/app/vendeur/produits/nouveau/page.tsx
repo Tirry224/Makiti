@@ -55,9 +55,10 @@ export default function NewProductPage() {
             <Input id="title" placeholder="Parfum Oud Intense 100 ml" />
           </Field>
 
-          {/* L'aide sous le sélecteur vient de `categories.examples` en base :
-              le commerçant reconnaît son produit dans la liste d'exemples au
-              lieu de deviner ce que « Accessoires téléphone » recouvre. */}
+          {/* L'aide sous le sélecteur : le commerçant reconnaît son produit
+              dans la liste d'exemples au lieu de deviner ce que « Accessoires
+              téléphone » recouvre. En dur pour l'instant, comme le reste de la
+              maquette ; elle viendra de la base au branchement Supabase. */}
           <Field label="Catégorie" hint="Visage, corps, cheveux, maquillage, soins, perruques, mèches…">
             <FakeInput trailing={<ChevronDown size={18} strokeWidth={2} className="text-ink-soft" />}>
               Produits de beauté

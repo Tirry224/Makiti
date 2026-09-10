@@ -20,7 +20,7 @@ quinze dont la moitié sont vides.
 |---|-------|----------|
 | 1 | Authentification | Email + mot de passe. Téléphone obligatoire mais **non vérifié** (pas de SMS, pas de coût). |
 | 2 | Navigation | Catalogue **libre sans compte**. Compte obligatoire uniquement pour envoyer un message. |
-| 3 | Catégories | Liste **fixe** de 8 catégories sur **un seul niveau**, gérée par l'administrateur. Pas de sous-catégories, pas de « Autre » : les sous-listes servent d'exemples affichés sous le sélecteur (colonne `categories.examples`). |
+| 3 | Catégories | Liste **fixe** de 8 catégories sur **un seul niveau**, gérée par l'administrateur. Pas de sous-catégories, pas de « Autre » : les sous-listes servent d'exemples affichés sous le sélecteur, jamais de niveau de navigation. |
 | 4 | Classement du fil | Pas de notation. Tri : *à la une* (manuel) → *populaires* (nb de conversations) → *récents*. |
 | 5 | Notification commerçant | v1 : badge de non-lus + email. Push web reporté en v2. |
 | 5b | Structure des fils | **Un seul fil par couple (client, boutique).** Chaque message référence le produit dont il parle ; le premier message d'un fil en porte obligatoirement un. |
