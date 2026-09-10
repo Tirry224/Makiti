@@ -1,0 +1,84 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Figtree:wght@400;500;600;700&display=swap">
+  <style>
+    :root{
+      --paper:oklch(0.981 0.008 80);
+      --card:#ffffff;
+      --ink:oklch(0.245 0.018 60);
+      --ink2:oklch(0.545 0.014 60);
+      --line:oklch(0.902 0.012 75);
+      --accent:oklch(0.55 0.15 42);
+      --accent-dark:oklch(0.45 0.15 42);
+      --accent-soft:oklch(0.955 0.028 42);
+      --ok:oklch(0.55 0.15 150);
+      --ok-soft:oklch(0.955 0.028 150);
+      --ph:oklch(0.935 0.013 75);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Figtree,'Segoe UI',system-ui,sans-serif;color:var(--ink);
+         background:var(--paper);-webkit-font-smoothing:antialiased;font-size:15px;line-height:1.45}
+    h1,h2,h3{font-family:'Bricolage Grotesque',Figtree,system-ui,sans-serif;margin:0;letter-spacing:-0.022em;line-height:1.15}
+    a{color:oklch(0.55 0.15 42);text-decoration:none}
+    a:hover{color:oklch(0.45 0.15 42)}
+    .scr{width:390px;height:844px;background:var(--paper);display:flex;flex-direction:column;overflow:hidden}
+    .bar{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--card);
+         border-bottom:1px solid var(--line);flex-shrink:0}
+    .bd{flex-grow:1;overflow:hidden;display:flex;flex-direction:column}
+    .pad{padding:16px;display:flex;flex-direction:column;gap:14px}
+    .lbl{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink2)}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+    .ph{background:var(--ph);display:flex;align-items:center;justify-content:center;color:oklch(0.72 0.02 75)}
+    .chip{display:inline-flex;align-items:center;gap:6px;padding:8px 13px;border-radius:999px;
+          border:1px solid var(--line);background:var(--card);font-size:13px;font-weight:500;white-space:nowrap}
+    .chip-on{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+    .tag{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;
+         font-size:11px;font-weight:600;letter-spacing:.01em}
+    .btn{height:52px;border-radius:12px;border:none;font-family:inherit;font-size:16px;font-weight:600;
+         display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;width:100%}
+    .btn-1{background:var(--accent);color:#fff}
+    .btn-2{background:var(--card);color:var(--ink);border:1px solid var(--line)}
+    .fld{display:flex;flex-direction:column;gap:6px}
+    .fld > span{font-size:13px;font-weight:600;color:var(--ink2)}
+    .inp{height:52px;border:1px solid var(--line);border-radius:12px;background:var(--card);
+         display:flex;align-items:center;gap:10px;padding:0 14px;font-size:15px}
+    .nav{display:flex;border-top:1px solid var(--line);background:var(--card);flex-shrink:0}
+    .nav > div{flex-grow:1;height:64px;display:flex;flex-direction:column;align-items:center;
+               justify-content:center;gap:3px;font-size:11px;font-weight:500;color:var(--ink2)}
+    .prc{font-family:'Bricolage Grotesque',Figtree,sans-serif;font-weight:700;letter-spacing:-0.01em}
+    .mut{color:var(--ink2)}
+  </style>
+</helmet>
+<div class="scr" style="position:relative;background:var(--paper)">
+  <div style="position:absolute;inset:0;padding:60px 16px;display:flex;flex-direction:column;gap:14px"><div style="display:flex;gap:11px;align-items:center"><div style="width:54px;height:54px;border-radius:9px;background:oklch(0.91 0.01 75)"></div><div style="flex-grow:1;display:flex;flex-direction:column;gap:6px"><div style="height:11px;width:70%;border-radius:4px;background:oklch(0.91 0.01 75)"></div><div style="height:11px;width:40%;border-radius:4px;background:oklch(0.93 0.008 75)"></div></div></div><div style="display:flex;gap:11px;align-items:center"><div style="width:54px;height:54px;border-radius:9px;background:oklch(0.91 0.01 75)"></div><div style="flex-grow:1;display:flex;flex-direction:column;gap:6px"><div style="height:11px;width:70%;border-radius:4px;background:oklch(0.91 0.01 75)"></div><div style="height:11px;width:40%;border-radius:4px;background:oklch(0.93 0.008 75)"></div></div></div><div style="display:flex;gap:11px;align-items:center"><div style="width:54px;height:54px;border-radius:9px;background:oklch(0.91 0.01 75)"></div><div style="flex-grow:1;display:flex;flex-direction:column;gap:6px"><div style="height:11px;width:70%;border-radius:4px;background:oklch(0.91 0.01 75)"></div><div style="height:11px;width:40%;border-radius:4px;background:oklch(0.93 0.008 75)"></div></div></div></div>
+  <div style="position:absolute;inset:0;background:oklch(0.24 0.018 60 / .45)"></div>
+  <div style="position:absolute;left:0;right:0;bottom:0;background:var(--card);
+              border-radius:20px 20px 0 0;padding:10px 18px 22px;display:flex;flex-direction:column;gap:15px">
+    <div style="width:40px;height:4px;border-radius:999px;background:var(--line);align-self:center"></div>
+    <h2 style="font-size:19px;font-weight:700;color:var(--ink)">Créez un compte pour écrire</h2>
+    
+  <p style="margin:0;font-size:14.5px;color:var(--ink2);line-height:1.55">
+    Le vendeur a besoin de savoir qui le contacte. La création du compte prend
+    moins d'une minute et vous gardez l'accès à vos échanges.</p>
+  <div class="card" style="padding:10px;display:flex;gap:10px;align-items:center">
+    <div class="ph" style="width:44px;height:44px;border-radius:8px;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.6"/><path d="m4 17 5-4.5 4 3.5 3-2.5 4 3.5"/></svg></div>
+    <div style="display:flex;flex-direction:column;gap:2px">
+      <span style="font-size:13.5px;font-weight:600">Sac de riz importé 50 kg</span>
+      <span class="prc" style="font-size:13.5px">450 000 GNF</span>
+    </div>
+  </div>
+  <button class="btn btn-1">Créer mon compte</button>
+  <button class="btn btn-2" style="height:46px;font-size:15px">J'ai déjà un compte</button>
+  <div style="text-align:center;font-size:12.5px;color:var(--ink2)">
+    Ou appelez directement le vendeur sur WhatsApp.</div>
+  </div>
+</div></x-dc>
+</body>
+</html>

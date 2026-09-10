@@ -1,0 +1,70 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Figtree:wght@400;500;600;700&display=swap">
+  <style>
+    :root{
+      --paper:oklch(0.981 0.008 80);
+      --card:#ffffff;
+      --ink:oklch(0.245 0.018 60);
+      --ink2:oklch(0.545 0.014 60);
+      --line:oklch(0.902 0.012 75);
+      --accent:oklch(0.55 0.15 42);
+      --accent-dark:oklch(0.45 0.15 42);
+      --accent-soft:oklch(0.955 0.028 42);
+      --ok:oklch(0.55 0.15 150);
+      --ok-soft:oklch(0.955 0.028 150);
+      --ph:oklch(0.935 0.013 75);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Figtree,'Segoe UI',system-ui,sans-serif;color:var(--ink);
+         background:var(--paper);-webkit-font-smoothing:antialiased;font-size:15px;line-height:1.45}
+    h1,h2,h3{font-family:'Bricolage Grotesque',Figtree,system-ui,sans-serif;margin:0;letter-spacing:-0.022em;line-height:1.15}
+    a{color:oklch(0.55 0.15 42);text-decoration:none}
+    a:hover{color:oklch(0.45 0.15 42)}
+    .scr{width:390px;height:844px;background:var(--paper);display:flex;flex-direction:column;overflow:hidden}
+    .bar{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--card);
+         border-bottom:1px solid var(--line);flex-shrink:0}
+    .bd{flex-grow:1;overflow:hidden;display:flex;flex-direction:column}
+    .pad{padding:16px;display:flex;flex-direction:column;gap:14px}
+    .lbl{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink2)}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+    .ph{background:var(--ph);display:flex;align-items:center;justify-content:center;color:oklch(0.72 0.02 75)}
+    .chip{display:inline-flex;align-items:center;gap:6px;padding:8px 13px;border-radius:999px;
+          border:1px solid var(--line);background:var(--card);font-size:13px;font-weight:500;white-space:nowrap}
+    .chip-on{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+    .tag{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;
+         font-size:11px;font-weight:600;letter-spacing:.01em}
+    .btn{height:52px;border-radius:12px;border:none;font-family:inherit;font-size:16px;font-weight:600;
+         display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;width:100%}
+    .btn-1{background:var(--accent);color:#fff}
+    .btn-2{background:var(--card);color:var(--ink);border:1px solid var(--line)}
+    .fld{display:flex;flex-direction:column;gap:6px}
+    .fld > span{font-size:13px;font-weight:600;color:var(--ink2)}
+    .inp{height:52px;border:1px solid var(--line);border-radius:12px;background:var(--card);
+         display:flex;align-items:center;gap:10px;padding:0 14px;font-size:15px}
+    .nav{display:flex;border-top:1px solid var(--line);background:var(--card);flex-shrink:0}
+    .nav > div{flex-grow:1;height:64px;display:flex;flex-direction:column;align-items:center;
+               justify-content:center;gap:3px;font-size:11px;font-weight:500;color:var(--ink2)}
+    .prc{font-family:'Bricolage Grotesque',Figtree,sans-serif;font-weight:700;letter-spacing:-0.01em}
+    .mut{color:var(--ink2)}
+  </style>
+</helmet>
+<div class="scr" style="position:relative;background:var(--paper)">
+  <div style="position:absolute;inset:0;padding:60px 16px;display:flex;flex-direction:column;gap:14px"><div style="display:flex;gap:11px;align-items:center"><div style="width:54px;height:54px;border-radius:9px;background:oklch(0.91 0.01 75)"></div><div style="flex-grow:1;display:flex;flex-direction:column;gap:6px"><div style="height:11px;width:70%;border-radius:4px;background:oklch(0.91 0.01 75)"></div><div style="height:11px;width:40%;border-radius:4px;background:oklch(0.93 0.008 75)"></div></div></div><div style="display:flex;gap:11px;align-items:center"><div style="width:54px;height:54px;border-radius:9px;background:oklch(0.91 0.01 75)"></div><div style="flex-grow:1;display:flex;flex-direction:column;gap:6px"><div style="height:11px;width:70%;border-radius:4px;background:oklch(0.91 0.01 75)"></div><div style="height:11px;width:40%;border-radius:4px;background:oklch(0.93 0.008 75)"></div></div></div><div style="display:flex;gap:11px;align-items:center"><div style="width:54px;height:54px;border-radius:9px;background:oklch(0.91 0.01 75)"></div><div style="flex-grow:1;display:flex;flex-direction:column;gap:6px"><div style="height:11px;width:70%;border-radius:4px;background:oklch(0.91 0.01 75)"></div><div style="height:11px;width:40%;border-radius:4px;background:oklch(0.93 0.008 75)"></div></div></div><div style="display:flex;gap:11px;align-items:center"><div style="width:54px;height:54px;border-radius:9px;background:oklch(0.91 0.01 75)"></div><div style="flex-grow:1;display:flex;flex-direction:column;gap:6px"><div style="height:11px;width:70%;border-radius:4px;background:oklch(0.91 0.01 75)"></div><div style="height:11px;width:40%;border-radius:4px;background:oklch(0.93 0.008 75)"></div></div></div><div style="display:flex;gap:11px;align-items:center"><div style="width:54px;height:54px;border-radius:9px;background:oklch(0.91 0.01 75)"></div><div style="flex-grow:1;display:flex;flex-direction:column;gap:6px"><div style="height:11px;width:70%;border-radius:4px;background:oklch(0.91 0.01 75)"></div><div style="height:11px;width:40%;border-radius:4px;background:oklch(0.93 0.008 75)"></div></div></div></div>
+  <div style="position:absolute;inset:0;background:oklch(0.24 0.018 60 / .45)"></div>
+  <div style="position:absolute;left:0;right:0;bottom:0;background:var(--card);
+              border-radius:20px 20px 0 0;padding:10px 18px 22px;display:flex;flex-direction:column;gap:15px">
+    <div style="width:40px;height:4px;border-radius:999px;background:var(--line);align-self:center"></div>
+    <h2 style="font-size:19px;font-weight:700;color:var(--ink)">Mariama Diallo</h2>
+    <div><div style="display:flex;gap:13px;align-items:flex-start;padding:13px 0;border-bottom:1px solid var(--line);color:var(--ink)"><span style="margin-top:1px;flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l9-4 9 4v8l-9 4-9-4V8Z"/><path d="M3 8l9 4 9-4"/><path d="M12 12v8"/></svg></span><div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:15px;font-weight:600">Voir sa fiche</span><span class="mut" style="font-size:12.5px;line-height:1.4">Ville, date d'inscription, produits concernés.</span></div></div><div style="display:flex;gap:13px;align-items:flex-start;padding:13px 0;border-bottom:1px solid var(--line);color:oklch(0.5 0.17 27)"><span style="margin-top:1px;flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4h9l-1 3h6v9h-7l-1-3H5"/></svg></span><div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:15px;font-weight:600">Signaler cette conversation</span><span class="mut" style="font-size:12.5px;line-height:1.4">Insultes, arnaque, spam. Notre équipe la lira.</span></div></div><div style="display:flex;gap:13px;align-items:flex-start;padding:13px 0;border-bottom:1px solid var(--line);color:oklch(0.5 0.17 27)"><span style="margin-top:1px;flex-shrink:0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12"/><path d="M18 6 6 18"/></svg></span><div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:15px;font-weight:600">Bloquer cette personne</span><span class="mut" style="font-size:12.5px;line-height:1.4">Elle ne pourra plus vous écrire. Le fil reste consultable.</span></div></div></div>
+  </div>
+</div></x-dc>
+</body>
+</html>
