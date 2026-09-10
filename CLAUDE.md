@@ -39,7 +39,28 @@ devra faire dans `REPRISE.md` (dette connue) et arrête-toi là.
 
 **Langue :** code, commentaires, commits, documentation, interface — français.
 
-**Avant de pousser :** `npm run typecheck` et `npm run build`.
+**Avant de pousser :** `npm run typecheck`, `npm run build`, `npm run poids`.
+
+## Contrainte n°1 : réseau médiocre, données facturées
+
+Au même rang que « ça marche ». Doctrine complète et budgets chiffrés dans
+`docs/PERFORMANCE.md` ; l'essentiel tient en six lignes :
+
+1. **Les photos décident de tout.** Compression sur l'appareil avant envoi,
+   deux tailles stockées (vignette 400 px q60, écran 1080 px q70), WebP,
+   `loading="lazy"`. Aucune image décorative dans le projet.
+2. **`prefetch={false}` sur tout lien de liste** — Next précharge sinon 24
+   fiches pour une seule qui sera lue.
+3. **Composants serveur par défaut.** Chaque `"use client"` grossit le socle.
+   Formulaires en Server Actions : ils marchent avant que le JS soit chargé.
+4. **Aucune bibliothèque** de composants, d'état, d'animation, de carrousel.
+5. **Pas de temps réel permanent, pas de sondage, pas de recherche à la
+   frappe.** On rafraîchit à l'ouverture de l'écran.
+6. **La panne réseau est un état normal**, pas une erreur : toute page reste
+   lisible sans ses images.
+
+État mesuré : socle 169 Ko gzip, polices 60 Ko (**budget dépassé de 20 Ko**),
+HTML 4 à 7 Ko par page. `npm run poids` échoue tant que ce n'est pas réglé.
 
 ## Où vivent les choses
 
@@ -53,6 +74,7 @@ devra faire dans `REPRISE.md` (dette connue) et arrête-toi là.
 | `design/` | Maquette : un `.dc.html` par écran, `canvas.json` pour la disposition. |
 | `supabase/` | 4 migrations écrites, **ni déployées ni branchées**. |
 | `docs/SPEC.md` | Décisions produit. `ECRANS.md` : les 33 écrans. `REPRISE.md` : reprise à froid. |
+| `docs/PERFORMANCE.md` | Budgets de poids et règles réseau. `scripts/poids.mjs` les vérifie. |
 | `/ecrans` | Index de tous les écrans. Page de travail, **à supprimer** quand la session existera. |
 | `/styleguide` | Le design system à l'écran. |
 
@@ -90,12 +112,18 @@ repositionnement. Correctif décrit dans `REPRISE.md`, à appliquer à l'étape 
 | Recherches récentes | Écran de recherche | Dans le navigateur : gratuit, marche sans compte. |
 | Boutiques dans les résultats | Écran de recherche | Un bandeau « Boutique → » en tête. Pas encore dessiné. |
 | Vêtements enfant, chaussures | Catégories | Absents de la liste. Oubli ou choix ? |
+| Polices : 2, 1 ou une réduite | `layout.tsx` | Une seule police. La seconde ne se voit que dans les titres. |
+| Produits par écran : 24 ou 12 | Fil et recherche | 12 + « Voir plus » : deux fois moins d'octets par écran. |
+| Largeur des vignettes : 400 ou 300 px | Photos | 300 px suffit pour une carte de 180 px. |
 | Blocage entre personnes | Écran 32 | Aucune table ne le porte. |
 | Motif de refus d'une boutique | Écran 21 | `merchants.status` ne dit pas pourquoi. |
 | Suppression de compte | Écran 18 | Effacement réel ou anonymisation ? |
 
 ## Journal — cinq dernières entrées
 
+- **10 sept.** Contrainte réseau posée en `docs/PERFORMANCE.md` : mesures
+  réelles, budgets chiffrés, six règles, et `npm run poids` qui échoue quand
+  un budget est dépassé — ce qu'il fait déjà à cause des polices.
 - **10 sept.** Maquette : les 6 états de l'écran de recherche (page canvas
   « Recherche v2 »). Aucun code applicatif touché.
 - **10 sept.** Retrait de la migration `0005` : elle enfreignait l'ordre de

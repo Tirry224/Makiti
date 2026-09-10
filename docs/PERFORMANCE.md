@@ -1,0 +1,172 @@
+# Makiti — tenir sur une mauvaise connexion
+
+Contrainte n°1 du projet, au même rang que « ça marche » : l'application doit
+rester utilisable sur un réseau lent, instable et **facturé au mégaoctet**.
+Ce document dit ce que ça coûte aujourd'hui, ce qu'on s'autorise, et ce que
+ça interdit.
+
+Règle de lecture : un budget qu'on ne mesure pas est un vœu.
+`npm run build && npm run poids` donne les chiffres ci-dessous et **échoue**
+si un budget est dépassé.
+
+---
+
+## 1. Ce que l'application pèse aujourd'hui
+
+Mesuré le 10 septembre 2026, en gzip. Vercel sert en brotli, qui retire
+encore 15 à 20 % : les chiffres réels sont un peu meilleurs.
+
+| Poste | Poids | Payé quand ? |
+|---|---|---|
+| JavaScript + CSS (socle) | **169 Ko** | Première visite seulement, ensuite en cache |
+| Polices (2 fichiers woff2) | **60 Ko** | Première visite seulement |
+| HTML d'une page | 4 à 7 Ko | **À chaque navigation** |
+| Photos | 0 Ko | **À chaque écran**, dès qu'elles existeront |
+
+**Le chiffre qui doit choquer : 169 Ko de JavaScript pour une application où
+rien n'est encore interactif.** Ce n'est pas du gaspillage de notre part,
+c'est le prix d'entrée de Next et React : le navigateur télécharge de quoi
+« réanimer » la page même quand il n'y a rien à réanimer.
+
+Sur une connexion à 50 kbit/s effectifs, ces 235 Ko font environ **40 secondes
+d'attente à la première visite**. C'est le pire moment de l'expérience, et
+c'est celui qu'on ne peut pas beaucoup réduire sans changer d'outil (§6).
+
+Les visites suivantes sont une autre histoire : le socle est en cache, il ne
+reste que le HTML et les photos. **C'est là que se joue la facture de données
+de tes utilisateurs**, et là que nos décisions comptent vraiment.
+
+## 2. Budgets
+
+| Budget | Valeur | Vérifié par |
+|---|---|---|
+| Socle JS + CSS | ≤ 200 Ko gzip | `npm run poids` |
+| Polices préchargées | ≤ 40 Ko | `npm run poids` — **dépassé aujourd'hui : 60 Ko** |
+| HTML d'une page | ≤ 12 Ko gzip | `npm run poids` |
+| Vignette produit | ≤ 15 Ko | à la revue |
+| Photo pleine taille | ≤ 120 Ko | à la revue |
+| Un écran de fil complet | ≤ 250 Ko, photos comprises | à la revue |
+
+## 3. Les règles, par ordre d'impact décroissant
+
+### R1 — Les photos sont le poste n°1, tout le reste est secondaire
+
+Un fil de 24 produits, c'est 24 vignettes. À 25 Ko la vignette : **600 Ko**.
+À 8 Ko : **190 Ko**. Le même écran, trois fois moins cher, pour une différence
+que personne ne voit sur un téléphone.
+
+- **Compression sur l'appareil du commerçant, avant l'envoi.** Une photo de
+  téléphone fait 3 à 6 Mo ; l'envoyer telle quelle coûte cher au commerçant et
+  se paie ensuite à chaque affichage.
+- **Deux tailles stockées, générées au téléversement** : une vignette
+  (largeur 400 px, qualité 60) et une photo d'écran (largeur 1080 px,
+  qualité 70). Pas de redimensionnement à la volée côté serveur : la
+  transformation d'images de Supabase est une option payante, et on la
+  paierait à chaque affichage au lieu d'une fois au téléversement.
+- **Format WebP**, avec la photo d'origine en repli. AVIF compresse encore
+  mieux mais coûte du temps de calcul sur des téléphones d'entrée de gamme.
+- **`loading="lazy"` sous la ligne de flottaison**, et des dimensions écrites
+  en dur : une image sans dimensions fait sauter la page quand elle arrive.
+- **Jamais de photo décorative.** Aucune bannière, aucune illustration
+  d'ambiance. Les seuls octets d'image du projet sont des produits.
+
+### R2 — Ne pas précharger ce qui ne sera pas lu
+
+Next précharge par défaut les liens visibles à l'écran. Sur un fil de 24
+produits, c'est **24 fiches téléchargées pour une seule qui sera ouverte**.
+Confortable sur la fibre, ruineux sur un forfait à la journée.
+
+Règle : `prefetch={false}` sur tous les liens de liste (fil, recherche,
+boutique, messages). Le préchargement reste acceptable sur un lien unique et
+très probable — le bouton « Contacter » d'une fiche produit, par exemple.
+
+### R3 — Le JavaScript se paie une fois, mais il ne se rembourse jamais
+
+Le socle de 169 Ko est en cache après la première visite. Il ne grossit que
+si on le laisse grossir :
+
+- **Tout reste en composant serveur par défaut.** Chaque `"use client"`
+  ajoute son composant *et ses dépendances* au socle. À justifier au cas par
+  cas, pas par habitude.
+- **Aucune bibliothèque de composants** (pas de MUI, pas de shadcn en bloc) :
+  le design system maison existe déjà et pèse ce que pèse son HTML.
+- **Aucun gestionnaire d'état global**, aucun carrousel, aucune bibliothèque
+  d'animation, aucun client de données côté navigateur.
+- **Les icônes une par une** (`import { X } from "lucide-react"`), jamais le
+  paquet entier.
+- Les formulaires passent par les **Server Actions** : ils fonctionnent même
+  si le JavaScript n'a pas fini de charger, ce qui est exactement le cas sur
+  un réseau lent.
+
+### R4 — Les polices coûtent 60 Ko et dépassent le budget
+
+Deux familles chargées : Figtree pour le texte, Bricolage Grotesque pour les
+titres. C'est un quart du poids du socle pour une différence esthétique.
+Trois sorties possibles, à trancher (§5).
+
+### R5 — Les données : demander peu, et une seule fois
+
+- **Pagination courte.** 24 produits par écran aujourd'hui ; 12 suffiraient
+  sur un écran de téléphone, avec un bouton « Voir plus ». À trancher.
+- **Pas de temps réel permanent.** Supabase Realtime tient une connexion
+  ouverte : batterie et données consommées en continu pour un usage où un
+  message toutes les heures suffit. On rafraîchit à l'ouverture de l'écran.
+- **Pas de sondage automatique** en arrière-plan, jamais.
+- La recherche n'interroge le serveur **qu'à la validation**, pas à chaque
+  frappe : une recherche à la frappe, c'est huit requêtes pour un mot.
+
+### R6 — Le réseau tombe : ce n'est pas une erreur, c'est un état normal
+
+- Toute page doit rester lisible si une image n'arrive pas.
+- L'**écran 4 (fil hors ligne)**, maquetté mais jamais codé, devient
+  prioritaire : il montre les produits déjà consultés.
+- Un service worker qui garde la coquille de l'application et les fiches
+  déjà vues est le meilleur gain pour les visites répétées. Reporté après le
+  branchement Supabase : c'est un vrai chantier, et il ne sert à rien tant
+  qu'il n'y a pas de vraies données.
+
+## 4. Ce que ces règles interdisent
+
+Écrit noir sur blanc pour ne pas rediscuter à chaque envie :
+
+vidéo · bannières et illustrations · polices supplémentaires · bibliothèque
+de composants · animations au défilement · carrousels · temps réel permanent ·
+recherche à la frappe · pages qui chargent puis re-chargent · publicité ·
+outils d'analyse tiers · cartes interactives.
+
+## 5. Décisions en attente
+
+1. **Polices** — garder les deux (60 Ko), réduire Bricolage aux graisses
+   réellement utilisées (~35 Ko), ou n'en garder qu'une (~20 Ko). Ma
+   recommandation : une seule police. Sur un écran de 390 px, la seconde ne
+   se remarque que dans les titres.
+2. **Produits par écran** — 24 ou 12 ?
+3. **Vignettes** — 400 px de large est confortable ; 300 px suffirait pour
+   une carte qui en fait 180. Combien on sacrifie de netteté pour un tiers
+   d'octets en moins ?
+
+## 6. Ce qu'on ne fait pas, et à quelle condition on y reviendrait
+
+**On ne quitte pas Next.** Un site rendu en HTML pur, sans framework, ferait
+tomber le socle de 169 Ko à environ 5 Ko. La tentation est réelle. Mais :
+
+- ce socle est payé **une fois** puis mis en cache, alors que les photos se
+  paient à **chaque** écran — c'est donc R1, pas le framework, qui décide de
+  la facture mensuelle de tes utilisateurs ;
+- les 33 écrans sont écrits en React ; les réécrire coûterait des semaines
+  qui ne produiraient aucune fonctionnalité.
+
+**Le déclencheur qui rouvrirait la question :** si, après avoir appliqué R1 à
+R4, la première visite dépasse encore 150 Ko, il faudra reposer la question
+**avant** de coder les actions — pas après. Changer de socle une fois les
+formulaires écrits coûterait deux fois plus cher.
+
+## 7. Vérifier
+
+```
+npm run build && npm run poids
+```
+
+À faire avant chaque mise en ligne. Sur le terrain, la vraie mesure reste
+l'onglet réseau du navigateur, limité à « Slow 3G », sur la page d'accueil et
+sur une fiche produit.
