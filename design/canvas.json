@@ -15,6 +15,10 @@
     {
       "id": "page-4",
       "name": "Messagerie"
+    },
+    {
+      "id": "page-5",
+      "name": "Recherche v2"
     }
   ],
   "artboards": [
@@ -305,6 +309,60 @@
       "y": 1000,
       "w": 390,
       "h": 844
+    },
+    {
+      "file": "RechercheEntree.dc.html",
+      "title": "A — Entrée (champ vide)",
+      "page": "page-5",
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 844
+    },
+    {
+      "file": "RechercheResultats.dc.html",
+      "title": "B — Résultats",
+      "page": "page-5",
+      "x": 480,
+      "y": 0,
+      "w": 390,
+      "h": 844
+    },
+    {
+      "file": "RechercheFiltreCategorie.dc.html",
+      "title": "C — Filtre catégorie",
+      "page": "page-5",
+      "x": 960,
+      "y": 0,
+      "w": 390,
+      "h": 844
+    },
+    {
+      "file": "RechercheChargement.dc.html",
+      "title": "D — Chargement",
+      "page": "page-5",
+      "x": 1440,
+      "y": 0,
+      "w": 390,
+      "h": 844
+    },
+    {
+      "file": "RechercheAilleurs.dc.html",
+      "title": "E — 0 ici, 3 ailleurs",
+      "page": "page-5",
+      "x": 0,
+      "y": 1000,
+      "w": 390,
+      "h": 844
+    },
+    {
+      "file": "RechercheHorsPerimetre.dc.html",
+      "title": "F — Hors périmètre",
+      "page": "page-5",
+      "x": 480,
+      "y": 1000,
+      "w": 390,
+      "h": 844
     }
   ],
   "annotations": [
@@ -371,6 +429,46 @@
       "y": 1020,
       "w": 290,
       "text": "CITER UN PRODUIT\n\nC'est le mécanisme qui rend viable « un seul fil par client » : à tout moment on joint un produit au message. Sans cet écran, ta décision ne tient pas."
+    },
+    {
+      "id": "r-etats",
+      "page": "page-5",
+      "x": -340,
+      "y": 20,
+      "w": 290,
+      "text": "RECHERCHE — SIX ÉTATS\n\nLa page codée aujourd'hui n'en dessine qu'un : les résultats. A, D, E et F n'existent nulle part, et ce sont eux qu'on rencontre le plus souvent.\n\nA est l'état par défaut : on arrive ici avec un champ VIDE. Y afficher des produits ferait croire à des résultats. On y met donc les deux seules choses utiles : ce qu'on a déjà cherché, et les 8 catégories. Une liste courte rend cet écran possible ; avec 30 sous-catégories ce serait un mur."
+    },
+    {
+      "id": "r-filtres",
+      "page": "page-5",
+      "x": 1920,
+      "y": 20,
+      "w": 300,
+      "text": "LES PUCES REMPLACENT LE PANNEAU\n\nDans la v1, l'écran disait deux fois la même chose : une puce « Filtres · 2 » ET une rangée de filtres actifs, ni l'une ni l'autre vraiment cliquable.\n\nIci une seule rangée. Chaque puce PORTE sa valeur courante et l'ouvre au tap (C). Puce foncée = filtre appliqué, puce claire = valeur par défaut : l'état se lit sans compter.\n\nPas de bouton « Appliquer » : le choix s'applique au tap. Un brouillon de filtres non appliqués est un état de plus à gérer, pour trois filtres. Le panneau global redeviendra justifié le jour où il y aura prix + état + livraison."
+    },
+    {
+      "id": "r-vide",
+      "page": "page-5",
+      "x": -340,
+      "y": 1020,
+      "w": 290,
+      "text": "DEUX ÉCHECS, DEUX RÉPONSES\n\nE : le filtre est en cause. On CHIFFRE l'alternative — « 3 produits ailleurs » — au lieu de conseiller dans le vide.\n\nF : c'est le catalogue qui est en cause. Depuis que Makiti est spécialisé, « aucun résultat » veut souvent dire « on ne vend pas ça ». Répondre « essayez un mot plus court » fait réessayer trois fois avant d'abandonner. Dire non franchement, puis montrer ce qu'on vend, respecte la personne et la garde sur l'application."
+    },
+    {
+      "id": "r-decisions",
+      "page": "page-5",
+      "x": 960,
+      "y": 1020,
+      "w": 300,
+      "text": "TROIS CHOSES À TRANCHER\n\n1. NEUF / OCCASION — visible en B sous forme d'étiquette. Ta liste de catégories le mentionne deux fois (téléphones, pièces auto). C'est un filtre, pas une catégorie, sinon la liste double. Coût : un champ obligatoire de plus pour le commerçant.\n\n2. RECHERCHES RÉCENTES (A) — dans le navigateur, ou liées au compte ? Le navigateur est gratuit et marche sans compte, ce que le catalogue ouvert exige de toute façon.\n\n3. BOUTIQUES — la recherche lit déjà le nom de boutique mais n'affiche que des produits : taper « Tech Kaloum » sort une liste sans qu'on comprenne pourquoi. Il manque un bandeau « Boutique → » en tête de résultats. Pas dessiné : c'est ta décision, pas la mienne."
+    },
+    {
+      "id": "r-v1",
+      "page": "page-1",
+      "x": -340,
+      "y": 2020,
+      "w": 290,
+      "text": "RECHERCHE V1 — À REMPLACER\n\nLes deux écrans de recherche de cette page datent d'avant le repositionnement. La proposition est sur la page « Recherche v2 ». Ils resteront ici le temps que tu compares, puis ils partiront."
     }
   ],
   "launch": {
