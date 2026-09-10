@@ -15,7 +15,7 @@ conclut hors de l'application.
 - [x] Tests de sécurité (34 vérifications, voir `supabase/tests/`)
 - [ ] Projet Supabase créé et migrations exécutées
 - [x] Design system et bibliothèque de composants (`src/styles/`, `src/components/`)
-- [ ] Les 32 écrans (5 faits sur 32)
+- [ ] Les 33 écrans (11 faits sur 33)
 - [ ] Branchement des données et des actions
 - [ ] Notification par email des nouveaux messages
 - [ ] Déploiement Vercel
@@ -33,8 +33,11 @@ npm install
 npm run dev
 ```
 
-- `/` fil d'accueil · `/produit/p-riz` fiche produit · `/inscription`
-  · `/messages` · `/messages/t-mariama` fil de discussion
+Écrans disponibles : `/` · `/recherche` · `/produit/p-riz` ·
+`/boutique/m-aissatou` · `/inscription` · `/connexion` ·
+`/mot-de-passe-oublie` · `/compte` · `/compte/informations` ·
+`/messages` · `/messages/t-mariama`. Toute autre adresse affiche la page
+« Cette page n'existe pas ».
 - **`/styleguide`** : tous les composants et tous les tokens sur une page.
 
 Les écrans affichent des données de démonstration (`src/lib/mock.ts`).

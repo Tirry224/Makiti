@@ -1,4 +1,4 @@
-# Inventaire des écrans — 32
+# Inventaire des écrans — 33
 
 Liste exhaustive. Elle sert de plan de construction : chaque ligne est un
 écran à coder, et chaque case cochée est du travail réellement terminé.
@@ -54,6 +54,12 @@ Liste exhaustive. Elle sert de plan de construction : chaque ligne est un
 | 30 | Fil de discussion | Produits cités, produit vendu grisé |
 | 31 | Citer un produit | Rend viable « un fil par client » |
 | 32 | Actions conversation | Signaler, bloquer |
+
+## Transverse — 1
+
+| # | Écran | Note |
+|---|-------|------|
+| 33 | Page introuvable (404) | Ajouté après coup : l'inventaire des 32 écrans supposait que l'utilisateur ne se trompe jamais d'adresse. Un lien partagé sur WhatsApp qui traîne, un produit retiré, une faute de frappe — ça arrive, et Next affiche sinon sa propre page en anglais sans aucun moyen de repartir. |
 
 ## Ce que cet inventaire a révélé
 
