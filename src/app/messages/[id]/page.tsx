@@ -5,6 +5,7 @@ import { TopBar } from "@/components/ui/TopBar";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { ProductRef } from "@/components/chat/ProductRef";
 import { conversation, threads } from "@/lib/mock";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 /** Fil de discussion — écran 30 de docs/ECRANS.md. */
@@ -26,7 +27,11 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
             </span>
           </div>
         }
-        right={<Flag size={19} strokeWidth={1.8} className="text-ink-soft" aria-hidden />}
+        right={
+          <Link href={`/messages/${thread.id}/actions`} aria-label="Actions">
+            <Flag size={19} strokeWidth={1.8} className="text-ink-soft" aria-hidden />
+          </Link>
+        }
       />
 
       {/* `justify-end` colle la conversation au bas de l'écran quand elle
@@ -44,13 +49,13 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
       </ScreenBody>
 
       <ScreenFooter className="flex items-center gap-2.5">
-        <button
-          type="button"
+        <Link
+          href={`/messages/${thread.id}/citer`}
           aria-label="Joindre un produit"
           className="flex size-tap shrink-0 items-center justify-center rounded-full border border-line text-ink-soft"
         >
           <Plus size={21} strokeWidth={2} aria-hidden />
-        </button>
+        </Link>
         <input
           className="h-tap flex-1 rounded-full border border-line bg-surface px-4 text-base"
           placeholder="Écrire un message…"

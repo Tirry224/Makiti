@@ -23,7 +23,13 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
     <Screen>
       <ScreenBody>
         <div className="relative">
-          <Photo ratio="hero" label={`Photo 1 sur ${product.photoCount}`} className={sold ? "grayscale" : ""} />
+          <Link href={`/produit/${product.id}/photos`} aria-label="Voir les photos">
+            <Photo
+              ratio="hero"
+              label={`Photo 1 sur ${product.photoCount}`}
+              className={sold ? "grayscale" : ""}
+            />
+          </Link>
           <Link
             href="/"
             aria-label="Retour"
@@ -61,10 +67,13 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
 
           <MerchantCard merchant={product.merchant} />
 
-          <p className="flex items-center gap-1.5 text-sm text-ink-soft">
+          <Link
+            href={`/produit/${product.id}/signaler`}
+            className="flex items-center gap-1.5 text-sm text-ink-soft"
+          >
             <Flag size={16} strokeWidth={1.8} aria-hidden />
             Signaler ce produit
-          </p>
+          </Link>
         </Section>
       </ScreenBody>
 
@@ -73,7 +82,9 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
           <Button variant="secondary">Ce produit n&apos;est plus disponible</Button>
         ) : (
           <>
-            <Button icon={MessageCircle}>Contacter le vendeur</Button>
+            <Button icon={MessageCircle} href={`/produit/${product.id}/contacter`}>
+              Contacter le vendeur
+            </Button>
             <Button
               variant="secondary"
               fullWidth={false}

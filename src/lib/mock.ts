@@ -180,3 +180,50 @@ export const conversation: Message[] = [
   { id: "msg-4", mine: true, product: null, body: "Oui, 30 000 GNF de livraison.", sentAt: "09:25" },
   { id: "msg-5", mine: false, product: huile, body: "Et ce bidon d'huile ?", sentAt: "14:03" },
 ];
+
+/* ── Vues secondaires ──────────────────────────────────────────────────
+   Sans authentification, on ne peut pas encore savoir si l'utilisateur est
+   client ou commerçant. Ces jeux séparés permettent de voir les deux points
+   de vue ; ils disparaîtront quand la session existera. */
+
+export const clientThreads: Thread[] = [
+  {
+    id: "t-mariama",
+    peerName: "Chez Aïssatou",
+    peerKind: "shop",
+    lastProductTitle: "Sac de riz importé 50 kg",
+    lastMessage: "Oui, 30 000 GNF de livraison.",
+    lastAt: "09:25",
+    unreadCount: 1,
+  },
+  {
+    id: "t-ibrahima",
+    peerName: "Tech Kaloum",
+    peerKind: "shop",
+    lastProductTitle: "Téléphone Tecno Spark 10",
+    lastMessage: "Vous pouvez passer cet après-midi",
+    lastAt: "Hier",
+    unreadCount: 0,
+  },
+];
+
+/** Les produits d'une seule boutique, côté commerçant (brouillons compris). */
+export const myProducts: Product[] = products.filter((p) => p.merchant.id === "m-aissatou");
+
+export const reportReasons = [
+  "Produit interdit ou illégal",
+  "Photo trompeuse",
+  "Prix ou description mensongers",
+  "Contrefaçon",
+  "Autre",
+];
+
+export const cities = [
+  "Toutes les villes",
+  "Conakry",
+  "Coyah",
+  "Kindia",
+  "Boké",
+  "Labé",
+  "Kankan",
+];

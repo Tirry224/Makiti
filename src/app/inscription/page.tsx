@@ -118,7 +118,7 @@ export default function SignupPage() {
             />
           </Field>
 
-          <Button>Créer mon compte</Button>
+          <Button href="/inscription/boutique">Créer mon compte</Button>
 
           <p className="text-center text-base text-ink-soft">
             Déjà un compte ?{" "}

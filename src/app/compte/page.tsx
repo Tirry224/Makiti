@@ -30,7 +30,7 @@ export default function AccountPage() {
           </MenuList>
 
           <MenuList>
-            <MenuItem icon={Package} label="Devenir vendeur" href="/inscription" />
+            <MenuItem icon={Package} label="Ma boutique" href="/vendeur" />
             <MenuItem icon={FileText} label="Conditions d'utilisation" />
           </MenuList>
 

@@ -11,21 +11,35 @@ import { Photo } from "@/components/ui/Photo";
 import { Badge } from "@/components/ui/Badge";
 import { PriceTag } from "@/components/product/PriceTag";
 import { categories, featuredProduct, products } from "@/lib/mock";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Button } from "@/components/ui/Button";
+import { Package } from "lucide-react";
 import Link from "next/link";
 
-/** Fil d'accueil — écran 1 de docs/ECRANS.md. */
-export default function HomePage() {
-  const visible = products.filter((p) => p.status === "active" || p.status === "sold");
+/**
+ * Fil d'accueil — écrans 1 et 2 de docs/ECRANS.md.
+ *
+ * Le filtre de ville passe par l'URL (`/?ville=Boké`) et non par un état
+ * caché dans la page. Conséquence : le fil filtré se partage par lien, le
+ * bouton « retour » du téléphone défait le filtre, et l'écran vide est
+ * atteignable pour de vrai — pas seulement en imagination.
+ */
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ ville?: string }>;
+}) {
+  const { ville = "Conakry" } = await searchParams;
+  const visible = products.filter(
+    (p) => (p.status === "active" || p.status === "sold") && p.merchant.city === ville,
+  );
+  const featuredHere = featuredProduct.merchant.city === ville ? featuredProduct : null;
 
   return (
     <Screen>
       <TopBar
         title={<Wordmark size="lg" />}
-        right={
-          <Chip icon={MapPin}>
-            Conakry
-          </Chip>
-        }
+        right={<Chip icon={MapPin}>{ville}</Chip>}
       />
 
       <ScreenBody>
@@ -45,9 +59,22 @@ export default function HomePage() {
           </div>
         </Section>
 
+        {visible.length === 0 ? (
+          <EmptyState
+            icon={Package}
+            title={`Aucun produit à ${ville} pour le moment`}
+            description="Makiti démarre à Conakry. Changez de ville pour voir ce qui est en vente, ou inscrivez-vous comme vendeur pour être le premier ici."
+          >
+            <Button href="/?ville=Conakry">Voir les produits à Conakry</Button>
+            <Button variant="secondary" href="/inscription">
+              Devenir vendeur à {ville}
+            </Button>
+          </EmptyState>
+        ) : (
+          <>
         <Section className="gap-2 pt-2 pb-0">
           <SectionLabel>À la une</SectionLabel>
-          <Link href={`/produit/${featuredProduct.id}`}>
+          <Link href={`/produit/${featuredHere?.id ?? featuredProduct.id}`}>
             <Card className="flex">
               <Photo ratio="free" className="w-26 shrink-0" />
               <div className="flex flex-col justify-center gap-1 px-3 py-3">
@@ -77,6 +104,8 @@ export default function HomePage() {
             ))}
           </div>
         </Section>
+          </>
+        )}
       </ScreenBody>
 
       <BottomNav active="home" />
