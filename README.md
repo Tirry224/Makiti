@@ -14,7 +14,9 @@ conclut hors de l'application.
 - [x] Schéma de base de données, règles métier et sécurité (RLS)
 - [x] Tests de sécurité (34 vérifications, voir `supabase/tests/`)
 - [ ] Projet Supabase créé et migrations exécutées
-- [ ] Application Next.js
+- [x] Design system et bibliothèque de composants (`src/styles/`, `src/components/`)
+- [ ] Les 32 écrans (5 faits sur 32)
+- [ ] Branchement des données et des actions
 - [ ] Notification par email des nouveaux messages
 - [ ] Déploiement Vercel
 
@@ -23,6 +25,23 @@ conclut hors de l'application.
 Les règles de sécurité sont couvertes par des tests exécutables sur un
 PostgreSQL local : voir [`supabase/tests/README.md`](supabase/tests/README.md).
 À lancer après toute modification d'une policy.
+
+## Démarrer l'application
+
+```bash
+npm install
+npm run dev
+```
+
+- `/` fil d'accueil · `/produit/p-riz` fiche produit · `/inscription`
+  · `/messages` · `/messages/t-mariama` fil de discussion
+- **`/styleguide`** : tous les composants et tous les tokens sur une page.
+
+Les écrans affichent des données de démonstration (`src/lib/mock.ts`).
+Aucun bouton n'agit encore : c'est la prochaine étape.
+
+Pour changer l'apparence de l'application, voir
+[`src/styles/README.md`](src/styles/README.md).
 
 ## Mise en place de la base
 

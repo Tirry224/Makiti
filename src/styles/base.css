@@ -1,0 +1,72 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   MAKITI — STYLES DE BASE
+   ═══════════════════════════════════════════════════════════════════════
+   Ce fichier ne contient QUE ce qui s'applique à toute l'application :
+   le fond, la police par défaut, l'apparence des titres, le contour de
+   focus. Tout le reste appartient aux composants.
+
+   Il n'utilise que des tokens. Aucune valeur en dur.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+@layer base {
+  html {
+    /* Empêche le voile gris que certains navigateurs mobiles peignent
+       sur un élément au moment du tap. */
+    -webkit-tap-highlight-color: transparent;
+    /* Le navigateur peint le fond derrière la page : sans cette ligne,
+       tirer la page vers le bas révèle du blanc froid sous notre papier. */
+    background-color: var(--color-paper);
+  }
+
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: var(--leading-normal);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Les titres portent la police d'affichage et un interlettrage
+     légèrement resserré : sans ça, un gros titre paraît distendu. */
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.022em;
+    line-height: var(--leading-tight);
+  }
+
+  /* ── Accessibilité ────────────────────────────────────────────────
+     `:focus-visible` ne se déclenche qu'au clavier, jamais à la souris
+     ni au doigt. On voit donc un contour net quand on navigue au clavier,
+     et rien du tout au tap. Supprimer ce contour, comme le font beaucoup
+     de sites, rend l'application inutilisable pour qui ne peut pas se
+     servir d'une souris. On ne le supprime jamais. */
+  :focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus);
+  }
+
+  ::selection {
+    background-color: var(--color-accent-soft);
+    color: var(--color-accent-hover);
+  }
+
+  /* Les champs n'héritent pas de la police du document par défaut. */
+  input, textarea, select, button {
+    font: inherit;
+    color: inherit;
+  }
+
+  input::placeholder, textarea::placeholder {
+    color: var(--color-ink-soft);
+  }
+
+  /* Respecte le réglage système « réduire les animations ». */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

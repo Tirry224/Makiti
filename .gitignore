@@ -11,3 +11,6 @@ build/
 
 # canvas assemblé, régénérable depuis design/*.dc.html
 design/makiti-maquette.html
+
+# TypeScript
+*.tsbuildinfo
