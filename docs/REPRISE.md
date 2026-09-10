@@ -1,10 +1,16 @@
 # Reprendre le travail sur Makiti
 
+> Ce document sert à reprendre le projet **à froid** : installation,
+> déploiement, architecture. L'état d'avancement au jour le jour vit dans
+> `CLAUDE.md`, à la racine — un seul endroit pour éviter que les deux
+> divergent.
+
 Ce fichier est le point d'entrée pour continuer le projet dans une nouvelle
 conversation. Il dit ce qui est fait, ce qui reste, et ce qui a déjà été
 tranché pour ne pas rediscuter les mêmes choses deux fois.
 
-Branche de travail : `claude/ecstatic-wright-ed0bp3`.
+Branche de travail : voir `git branch`. Elle change à chaque série de
+travaux, la noter ici la rendrait fausse une semaine plus tard.
 
 ---
 
