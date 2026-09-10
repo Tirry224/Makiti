@@ -5,6 +5,7 @@ Le commerçant publie ses produits, le client les parcourt librement et le
 contacte par messagerie interne. **Aucun paiement en ligne** : la vente se
 conclut hors de l'application.
 
+- **Reprendre le travail : [`docs/REPRISE.md`](docs/REPRISE.md)**
 - Spécification complète : [`docs/SPEC.md`](docs/SPEC.md)
 - Base de données : [`supabase/migrations/`](supabase/migrations/)
 
