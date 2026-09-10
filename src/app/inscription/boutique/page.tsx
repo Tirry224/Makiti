@@ -56,7 +56,7 @@ export default function ShopSignupPage() {
           </Field>
 
           <Field label="Que vendez-vous ?" htmlFor="description">
-            <Textarea id="description" rows={3} placeholder="Alimentation générale : riz, huile, sucre, lait…" />
+            <Textarea id="description" rows={3} placeholder="Parfums, mèches et produits de beauté…" />
           </Field>
         </Section>
       </ScreenBody>

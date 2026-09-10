@@ -1,7 +1,7 @@
 import { cn } from "@/lib/cn";
 import type { LucideIcon } from "lucide-react";
 
-/** Filtre ou catégorie sélectionnable : « Conakry », « Alimentation ». */
+/** Filtre ou catégorie sélectionnable : « Conakry », « Téléphones ». */
 export function Chip({
   children,
   selected = false,

@@ -52,12 +52,15 @@ export default function NewProductPage() {
           </Field>
 
           <Field label="Titre" htmlFor="title">
-            <Input id="title" placeholder="Sac de riz importé 50 kg" />
+            <Input id="title" placeholder="Parfum Oud Intense 100 ml" />
           </Field>
 
-          <Field label="Catégorie">
+          {/* L'aide sous le sélecteur vient de `categories.examples` en base :
+              le commerçant reconnaît son produit dans la liste d'exemples au
+              lieu de deviner ce que « Accessoires téléphone » recouvre. */}
+          <Field label="Catégorie" hint="Visage, corps, cheveux, maquillage, soins, perruques, mèches…">
             <FakeInput trailing={<ChevronDown size={18} strokeWidth={2} className="text-ink-soft" />}>
-              Alimentation &amp; Boissons
+              Produits de beauté
             </FakeInput>
           </Field>
 

@@ -8,7 +8,7 @@ import { cn } from "@/lib/cn";
  * arrive près du pouce et laisse voir l'écran d'où l'on vient, donc on ne
  * perd pas le fil.
  *
- * Chaque feuille est une VRAIE ADRESSE (`/produit/p-riz/signaler`) et non
+ * Chaque feuille est une VRAIE ADRESSE (`/produit/p-parfum/signaler`) et non
  * un état caché dans la page. Trois avantages : le bouton « retour » du
  * téléphone la referme sans qu'on écrive une ligne, la feuille se partage
  * par lien, et l'écran existe sans qu'aucune action ne soit encore

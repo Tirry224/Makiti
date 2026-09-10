@@ -7,6 +7,11 @@ de l'application.
 
 Marché : Guinée · Devise : franc guinéen (GNF) · Langue : français.
 
+Périmètre produit : téléphonie et accessoires, mode femme et homme, sacs,
+parfums, produits de beauté, pièces automobiles. Le catalogue est
+**volontairement spécialisé** : mieux vaut huit catégories habitées que
+quinze dont la moitié sont vides.
+
 ---
 
 ## 1. Décisions validées
@@ -15,7 +20,7 @@ Marché : Guinée · Devise : franc guinéen (GNF) · Langue : français.
 |---|-------|----------|
 | 1 | Authentification | Email + mot de passe. Téléphone obligatoire mais **non vérifié** (pas de SMS, pas de coût). |
 | 2 | Navigation | Catalogue **libre sans compte**. Compte obligatoire uniquement pour envoyer un message. |
-| 3 | Catégories | Liste **fixe** de 10 catégories, gérée par l'administrateur. |
+| 3 | Catégories | Liste **fixe** de 8 catégories sur **un seul niveau**, gérée par l'administrateur. Pas de sous-catégories, pas de « Autre » : les sous-listes servent d'exemples affichés sous le sélecteur (colonne `categories.examples`). |
 | 4 | Classement du fil | Pas de notation. Tri : *à la une* (manuel) → *populaires* (nb de conversations) → *récents*. |
 | 5 | Notification commerçant | v1 : badge de non-lus + email. Push web reporté en v2. |
 | 5b | Structure des fils | **Un seul fil par couple (client, boutique).** Chaque message référence le produit dont il parle ; le premier message d'un fil en porte obligatoirement un. |
@@ -67,5 +72,9 @@ produit à la une.
 ## 5. Questions encore ouvertes
 
 - Sur quel **critère concret** un commerçant est-il approuvé ?
-- Liste définitive des **10 catégories** et des **villes**.
+- Liste définitive des **villes**.
+- **Vêtements enfant** : absents de la liste des 8 catégories. À trancher
+  avant le lancement — les ranger dans « Vêtements femme/homme » serait faux.
+- Surveiller la demande des commerçants : trois demandes identiques hors
+  périmètre = une catégorie à ajouter, jamais un « Autre » à rouvrir.
 - Conditions générales d'utilisation à rédiger avant la mise en ligne.

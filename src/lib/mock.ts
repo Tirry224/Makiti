@@ -3,7 +3,7 @@
  *
  * Elles occupent la place des vraies données le temps que l'écran soit
  * dessiné. Elles disparaîtront quand les pages liront Supabase — et elles
- * sont volontairement RÉALISTES (Madina, Ratoma, pagne wax, prix en GNF)
+ * sont volontairement RÉALISTES (Madina, Ratoma, bazin riche, prix en GNF)
  * plutôt que « Produit 1 · Lorem ipsum ». Un écran rempli de faux contenu
  * neutre paraît toujours réussi ; c'est le vrai contenu, avec ses titres
  * trop longs et ses noms de boutique à rallonge, qui casse une mise en page.
@@ -34,7 +34,7 @@ const fanta: Product["merchant"] = {
 
 export const merchantAissatou: Merchant = {
   ...aissatou,
-  description: "Alimentation générale : riz, huile, sucre, lait.",
+  description: "Parfums, mèches et produits de beauté.",
   whatsappPhone: "622334455",
   status: "approved",
 };
@@ -46,12 +46,12 @@ function product(p: Omit<Product, "status" | "isFeatured" | "contactCount" | "ph
 
 export const products: Product[] = [
   product({
-    id: "p-riz",
+    id: "p-parfum",
     merchant: aissatou,
-    category: "Alimentation & Boissons",
-    title: "Sac de riz importé 50 kg",
+    category: "Parfums",
+    title: "Parfum Oud Intense 100 ml",
     description:
-      "Riz parfumé importé, sac de 50 kg. Qualité contrôlée. Retrait sur place au marché de Madina, livraison possible dans Conakry.",
+      "Eau de parfum boisée, tenue longue durée. Flacon scellé, 100 ml. Retrait sur place au marché de Madina, livraison possible dans Conakry.",
     priceGnf: 450_000,
     isNegotiable: true,
     contactCount: 12,
@@ -60,7 +60,7 @@ export const products: Product[] = [
   product({
     id: "p-tecno",
     merchant: techKaloum,
-    category: "Électronique & Téléphones",
+    category: "Téléphones",
     title: "Téléphone Tecno Spark 10",
     description: "Neuf sous emballage, garantie 6 mois.",
     priceGnf: 850_000,
@@ -68,10 +68,10 @@ export const products: Product[] = [
     contactCount: 7,
   }),
   product({
-    id: "p-huile",
+    id: "p-perruque",
     merchant: aissatou,
-    category: "Alimentation & Boissons",
-    title: "Bidon d'huile 20 L",
+    category: "Produits de beauté",
+    title: "Perruque lace frontale 20 pouces",
     description: null,
     priceGnf: 320_000,
     isNegotiable: false,
@@ -79,41 +79,41 @@ export const products: Product[] = [
     contactCount: 4,
   }),
   product({
-    id: "p-ventilateur",
+    id: "p-ecouteurs",
     merchant: techKaloum,
-    category: "Maison & Meubles",
-    title: "Ventilateur sur pied",
+    category: "Accessoires téléphone",
+    title: "Écouteurs sans fil + boîtier de charge",
     description: null,
     priceGnf: 275_000,
     isNegotiable: true,
     contactCount: 2,
   }),
   product({
-    id: "p-sucre",
+    id: "p-sac",
     merchant: aissatou,
-    category: "Alimentation & Boissons",
-    title: "Sucre en poudre 25 kg",
+    category: "Sacs",
+    title: "Sac à main cuir façon croco",
     description: null,
     priceGnf: 210_000,
     isNegotiable: false,
   }),
   product({
-    id: "p-savon",
+    id: "p-meches",
     merchant: aissatou,
-    category: "Beauté & Cosmétiques",
-    title: "Savon de Marseille × 12",
+    category: "Produits de beauté",
+    title: "Mèches brésiliennes × 3 paquets",
     description: null,
-    priceGnf: 48_000,
+    priceGnf: 480_000,
     isNegotiable: false,
     status: "draft",
   }),
 ];
 
 export const featuredProduct: Product = product({
-  id: "p-pagne",
+  id: "p-bazin",
   merchant: fanta,
-  category: "Vêtements & Chaussures",
-  title: "Pagne wax 6 yards",
+  category: "Vêtements femme",
+  title: "Ensemble bazin riche brodé",
   description: null,
   priceGnf: 180_000,
   isNegotiable: true,
@@ -125,13 +125,19 @@ export function findProduct(id: string): Product | undefined {
   return [...products, featuredProduct].find((p) => p.id === id);
 }
 
+/* Libellés courts pour la rangée de filtres : « Vêtements femme » tient
+   dans une puce, « Accessoires téléphone » non. La base porte le nom
+   complet (voir `0005_categories_v2.sql`), l'écran porte le nom court. */
 export const categories = [
   "Tout",
-  "Alimentation",
-  "Vêtements",
-  "Électronique",
+  "Téléphones",
+  "Accessoires",
+  "Vêtements femme",
+  "Vêtements homme",
+  "Sacs",
+  "Parfums",
   "Beauté",
-  "Maison",
+  "Pièces auto",
 ];
 
 export const threads: Thread[] = [
@@ -139,8 +145,8 @@ export const threads: Thread[] = [
     id: "t-mariama",
     peerName: "Mariama Diallo",
     peerKind: "person",
-    lastProductTitle: "Sac de riz importé 50 kg",
-    lastMessage: "Et ce bidon d'huile ?",
+    lastProductTitle: "Parfum Oud Intense 100 ml",
+    lastMessage: "Et cette perruque ?",
     lastAt: "14:03",
     unreadCount: 2,
   },
@@ -148,7 +154,7 @@ export const threads: Thread[] = [
     id: "t-ibrahima",
     peerName: "Ibrahima Camara",
     peerKind: "person",
-    lastProductTitle: "Bidon d'huile 20 L",
+    lastProductTitle: "Perruque lace frontale 20 pouces",
     lastMessage: "D'accord, je passe demain matin",
     lastAt: "11:47",
     unreadCount: 0,
@@ -157,28 +163,28 @@ export const threads: Thread[] = [
     id: "t-fatoumata",
     peerName: "Fatoumata Bah",
     peerKind: "person",
-    lastProductTitle: "Sucre en poudre 25 kg",
+    lastProductTitle: "Sac à main cuir façon croco",
     lastMessage: "C'est votre dernier prix ?",
     lastAt: "Hier",
     unreadCount: 1,
   },
 ];
 
-const riz = findProduct("p-riz")!;
-const huile = findProduct("p-huile")!;
+const parfum = findProduct("p-parfum")!;
+const perruque = findProduct("p-perruque")!;
 
 export const conversation: Message[] = [
   {
     id: "msg-1",
     mine: false,
-    product: riz,
-    body: "Bonjour, le sac de riz est-il disponible ?",
+    product: parfum,
+    body: "Bonjour, le parfum Oud est-il disponible ?",
     sentAt: "09:12",
   },
-  { id: "msg-2", mine: true, product: null, body: "Bonjour Mariama, oui il en reste 4 sacs.", sentAt: "09:20" },
+  { id: "msg-2", mine: true, product: null, body: "Bonjour Mariama, oui il en reste 4 flacons.", sentAt: "09:20" },
   { id: "msg-3", mine: false, product: null, body: "Et vous livrez à Ratoma ?", sentAt: "09:22" },
   { id: "msg-4", mine: true, product: null, body: "Oui, 30 000 GNF de livraison.", sentAt: "09:25" },
-  { id: "msg-5", mine: false, product: huile, body: "Et ce bidon d'huile ?", sentAt: "14:03" },
+  { id: "msg-5", mine: false, product: perruque, body: "Et cette perruque ?", sentAt: "14:03" },
 ];
 
 /* ── Vues secondaires ──────────────────────────────────────────────────
@@ -191,7 +197,7 @@ export const clientThreads: Thread[] = [
     id: "t-mariama",
     peerName: "Chez Aïssatou",
     peerKind: "shop",
-    lastProductTitle: "Sac de riz importé 50 kg",
+    lastProductTitle: "Parfum Oud Intense 100 ml",
     lastMessage: "Oui, 30 000 GNF de livraison.",
     lastAt: "09:25",
     unreadCount: 1,

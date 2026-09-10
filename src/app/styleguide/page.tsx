@@ -66,8 +66,8 @@ function Block({ title, note, children }: { title: string; note?: string; childr
 }
 
 export default function StyleguidePage() {
-  const riz = findProduct("p-riz")!;
-  const huile = findProduct("p-huile")!;
+  const parfum = findProduct("p-parfum")!;
+  const perruque = findProduct("p-perruque")!;
 
   return (
     <Screen>
@@ -89,7 +89,7 @@ export default function StyleguidePage() {
           <div className="flex flex-col gap-3">
             {TEXTS.map(([cls, note]) => (
               <div key={cls} className="flex flex-col gap-0.5">
-                <span className={`${cls} font-semibold`}>Sac de riz importé 50 kg</span>
+                <span className={`${cls} font-semibold`}>Parfum Oud Intense 100 ml</span>
                 <span className="text-2xs text-ink-soft">
                   {cls} — {note}
                 </span>
@@ -130,7 +130,7 @@ export default function StyleguidePage() {
           </div>
           <div className="flex flex-wrap gap-2">
             <Chip selected>Tout</Chip>
-            <Chip>Alimentation</Chip>
+            <Chip>Parfums</Chip>
             <Chip icon={MapPin}>Conakry</Chip>
           </div>
         </Block>
@@ -140,7 +140,7 @@ export default function StyleguidePage() {
             <Input id="sg-shop" placeholder="Chez Aïssatou" />
           </Field>
           <Field label="Description" htmlFor="sg-desc" hint="Deux phrases suffisent.">
-            <Textarea id="sg-desc" rows={3} placeholder="Alimentation générale…" />
+            <Textarea id="sg-desc" rows={3} placeholder="Parfums et produits de beauté…" />
           </Field>
           <FakeInput className="text-ink-soft">
             <Search size={19} strokeWidth={1.8} aria-hidden />
@@ -163,24 +163,24 @@ export default function StyleguidePage() {
 
         <Block title="Produits">
           <div className="grid grid-cols-2 gap-3">
-            <ProductCard product={riz} />
-            <ProductCard product={huile} />
+            <ProductCard product={parfum} />
+            <ProductCard product={perruque} />
           </div>
           <div className="flex flex-col gap-2.5">
             {products.slice(0, 3).map((p) => (
               <ProductRow key={p.id} product={p} />
             ))}
           </div>
-          <MerchantCard merchant={riz.merchant} />
+          <MerchantCard merchant={parfum.merchant} />
         </Block>
 
         <Block title="Messagerie">
           <div className="flex flex-col gap-2.5">
-            <ProductRef product={riz} />
+            <ProductRef product={parfum} />
             {conversation.slice(0, 3).map((m) => (
               <MessageBubble key={m.id} message={m} />
             ))}
-            <ProductRef product={huile} />
+            <ProductRef product={perruque} />
           </div>
           <Card className="px-3">
             {threads.slice(0, 2).map((t) => (
