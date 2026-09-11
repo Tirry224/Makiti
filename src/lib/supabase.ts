@@ -39,6 +39,20 @@ if (!url || !key) {
   );
 }
 
+/* Une variable PRÉSENTE mais mal saisie est plus perfide qu'une variable
+   absente : on l'a remplie, donc on la croit bonne, et on cherche le
+   problème partout ailleurs. L'oubli le plus fréquent est le `https://`,
+   parce que les tableaux de bord affichent souvent l'adresse sans lui.
+   Le message montre donc la forme attendue ET ce qui a été reçu. */
+if (!/^https:\/\//.test(url)) {
+  throw new Error(
+    `NEXT_PUBLIC_SUPABASE_URL est mal formée.\n` +
+      `  reçu    : ${url}\n` +
+      `  attendu : https://<référence-du-projet>.supabase.co (le « https:// » est obligatoire)\n` +
+      "Cette valeur se copie dans Supabase → Project Settings → Data API → Project URL.",
+  );
+}
+
 export const supabase = createClient<Database>(url, key);
 
 /** Adresse publique d'une photo de produit dans le stockage. */
