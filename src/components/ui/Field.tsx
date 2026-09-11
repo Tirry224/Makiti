@@ -1,3 +1,4 @@
+import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 /**
@@ -40,6 +41,28 @@ export function Input({ className, ...props }: React.ComponentProps<"input">) {
 
 export function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
   return <textarea className={cn(CONTROL, "resize-none py-3 leading-normal", className)} {...props} />;
+}
+
+/** Une vraie liste déroulante — contrairement à `FakeInput`, qui n'en a
+ * que l'apparence. Sert partout où le choix vient d'une liste fixe de la
+ * base (villes, catégories). */
+export function Select({ className, children, ...props }: React.ComponentProps<"select">) {
+  return (
+    <div className="relative">
+      <select
+        className={cn(CONTROL, "h-control appearance-none pr-10", className)}
+        {...props}
+      >
+        {children}
+      </select>
+      <ChevronDown
+        size={18}
+        strokeWidth={2}
+        aria-hidden
+        className="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2 text-ink-soft"
+      />
+    </div>
+  );
 }
 
 /**

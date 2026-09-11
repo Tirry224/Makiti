@@ -15,6 +15,8 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
@@ -320,6 +322,7 @@ export type Database = {
           is_suspended: boolean
           phone: string
           role: Database["public"]["Enums"]["user_role"]
+          suspended_at: string | null
         }
         Insert: {
           auth_user_id: string
@@ -331,6 +334,7 @@ export type Database = {
           is_suspended?: boolean
           phone: string
           role: Database["public"]["Enums"]["user_role"]
+          suspended_at?: string | null
         }
         Update: {
           auth_user_id?: string
@@ -342,6 +346,7 @@ export type Database = {
           is_suspended?: boolean
           phone?: string
           role?: Database["public"]["Enums"]["user_role"]
+          suspended_at?: string | null
         }
         Relationships: []
       }
