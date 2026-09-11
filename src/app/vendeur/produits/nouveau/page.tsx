@@ -1,7 +1,7 @@
-import { Plus, X } from "lucide-react";
+
 import { Button } from "@/components/ui/Button";
 import { Field, Input, MessageErreur, Select, Textarea } from "@/components/ui/Field";
-import { Photo } from "@/components/ui/Photo";
+import { ChoixPhotos } from "@/components/product/ChoixPhotos";
 import { Screen, ScreenBody, ScreenFooter, Section } from "@/components/ui/Screen";
 import { Toggle } from "@/components/ui/Toggle";
 import { TopBar } from "@/components/ui/TopBar";
@@ -41,29 +41,11 @@ export default async function NewProductPage({
         <Section className="gap-4">
           <MessageErreur code={erreur} />
 
-          <Field label="Photos" hint="1 photo minimum, 3 maximum. Sans photo, un produit ne se vend pas.">
-            <div className="flex gap-3">
-              <div className="relative">
-                <Photo ratio="free" className="size-25 rounded-lg" iconSize={24} />
-                <button
-                  type="button"
-                  aria-label="Retirer la photo"
-                  className="absolute -top-1.5 -right-1.5 flex size-6 cursor-pointer items-center justify-center rounded-full bg-ink text-paper"
-                >
-                  <X size={13} strokeWidth={2.6} aria-hidden />
-                </button>
-              </div>
-              {[0, 1].map((i) => (
-                <button
-                  key={i}
-                  type="button"
-                  aria-label="Ajouter une photo"
-                  className="flex size-25 cursor-pointer items-center justify-center rounded-lg border border-dashed border-line text-ink-soft"
-                >
-                  <Plus size={24} strokeWidth={2} aria-hidden />
-                </button>
-              ))}
-            </div>
+          <Field
+            label="Photos"
+            hint="1 photo minimum, 3 maximum. Elles sont réduites sur votre téléphone avant l'envoi."
+          >
+            <ChoixPhotos />
           </Field>
 
           <Field label="Titre" htmlFor="titre">

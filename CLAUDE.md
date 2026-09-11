@@ -54,8 +54,13 @@ Au même rang que « ça marche ». Doctrine complète et budgets chiffrés dans
    `loading="lazy"`. Aucune image décorative dans le projet.
 2. **`prefetch={false}` sur tout lien de liste** — Next précharge sinon 24
    fiches pour une seule qui sera lue.
-3. **Composants serveur par défaut.** Chaque `"use client"` grossit le socle.
-   Formulaires en Server Actions : ils marchent avant que le JS soit chargé.
+3. **Le JavaScript se juge au gramme, pas au principe.** Le défaut reste le
+   composant serveur parce qu'il coûte zéro, mais un composant client est
+   justifié dès qu'il économise plus qu'il ne pèse, qu'il donne une
+   information que le serveur n'a pas, ou qu'il supprime un aller-retour.
+   Exemple qui tranche : la compression des photos fait passer un envoi de
+   **2 920 Ko à 185 Ko**. Les formulaires restent en Server Actions —
+   ils marchent avant que le JS soit chargé, ce qui est gratuit.
 4. **Aucune bibliothèque** de composants, d'état, d'animation, de carrousel.
 5. **Pas de temps réel permanent, pas de sondage, pas de recherche à la
    frappe.** On rafraîchit à l'ouverture de l'écran.
@@ -83,6 +88,7 @@ Tous les budgets sont tenus ; `npm run poids` échoue si l'un se met à céder.
 | `src/lib/validation.ts` | Les règles de saisie, isolées pour être retraduites en contraintes SQL. |
 | `src/lib/recherche.ts` | Filtres, tri, hors périmètre. Partagé par le fil et la recherche. |
 | `scripts/` | `poids.mjs` (budgets), `parcours.mjs` (parcours avec et sans JavaScript). |
+| `src/components/product/ChoixPhotos.tsx` | Compression des photos dans le navigateur. Le composant client le plus rentable du projet. |
 | `src/lib/types.ts` | Types du domaine, à remplacer par les types générés. |
 | `design/` | Maquette : un `.dc.html` par écran, `canvas.json` pour la disposition. |
 | `supabase/` | 4 migrations écrites, **ni déployées ni branchées**. |
@@ -118,8 +124,10 @@ codée ; ses artboards restent sur la page « Recherche v2 » du canvas.
 - ✅ **Deux composants clients seulement**, et le socle n'a pas bougé :
   `BandeauReseau` (l'état du réseau n'existe que dans le navigateur) et
   `RecherchesRecentes` (`localStorage`).
-- ⚠️ **Photos** : les emplacements existent, l'envoi de fichier non. C'est
-  le seul morceau d'action qui attend le stockage (étape 3).
+- ✅ **Photos** : choix, aperçu et **compression dans le navigateur** avant
+  l'envoi — 2 920 Ko ramenés à 185 Ko, mesuré. Sans JavaScript, le champ de
+  fichier fonctionne quand même : la photo part lourde, mais elle part.
+  Reste à brancher le stockage et la vignette de 300 px (étape 3).
 
 **Étape 3 — Supabase : pas commencée, et c'est voulu.**
 4 migrations écrites et testées, jamais exécutées. Aucun client Supabase dans
@@ -170,6 +178,11 @@ repositionnement. Correctif décrit dans `REPRISE.md`, à appliquer à l'étape 
 
 ## Journal — cinq dernières entrées
 
+- **11 sept.** Règle R3 corrigée : « pas de JavaScript » n'était pas la
+  consigne, la performance l'est. Un composant client est justifié s'il
+  rend plus qu'il ne coûte. Premier cas : `ChoixPhotos`, qui compresse
+  avant l'envoi (2 920 Ko → 185 Ko, mesuré) et complète la dernière action
+  du front.
 - **11 sept.** Étape 2 terminée : toutes les actions branchées en Server
   Actions, contraintes natives, écran 32b codé, bandeau réseau, historique
   de recherche. Les deux `loading.tsx` retirés — ils bloquaient cinq écrans

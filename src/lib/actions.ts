@@ -172,6 +172,13 @@ export async function publierProduit(data: FormData) {
   if (!categories.some((c) => c.slug === categorie)) refuser(page, "categorie", garder);
   if (lirePrix(prixSaisi) === null) refuser(page, "prix", garder);
 
+  /* 1 photo minimum, 3 maximum (décision 15 de SPEC.md). La règle est
+     dite à l'écran avant d'agir, et revérifiée ici : les contraintes du
+     navigateur se contournent. */
+  const photos = data.getAll("photos").filter((f) => f instanceof File && f.size > 0);
+  if (photos.length === 0) refuser(page, "photo", garder);
+  if (photos.length > 3) refuser(page, "photo", garder);
+
   // TODO étape 3 : créer le produit, envoyer les photos, publier.
   redirect("/vendeur");
 }

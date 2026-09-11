@@ -18,6 +18,16 @@
 import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 
+/** Un PNG minuscule mais valide, pour les champs de photo. */
+const PHOTO = {
+  name: 'produit.png',
+  mimeType: 'image/png',
+  buffer: Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    'base64',
+  ),
+};
+
 const B = process.env.BASE ?? 'http://localhost:3000';
 
 /** Le binaire de Chromium, là où Playwright le range d'habitude. */
@@ -126,7 +136,7 @@ const ok = (c, m) => { if (!c) echecs++; console.log((c ? '  OK   ' : ' ÉCHEC '
   await s.goto(B + '/vendeur/produits/nouveau');
   await s.fill('#titre', 'iPhone 12 128 Go');
   await s.selectOption('#categorie', 'telephones');
-  // Le brouillon échappe aux règles : c'est sa raison d'être.
+  // Le brouillon échappe aux règles : c'est sa raison d'être — photo comprise.
   await s.click('button[name=brouillon]');
   await s.waitForLoadState('load');
   ok(new URL(s.url()).pathname === '/vendeur', 'brouillon accepté sans prix (' + s.url() + ')');
@@ -137,7 +147,13 @@ const ok = (c, m) => { if (!c) echecs++; console.log((c ? '  OK   ' : ' ÉCHEC '
   await s.fill('#prix', '4 200 000');
   await s.click('button[type=submit]');
   await s.waitForLoadState('load');
-  ok(new URL(s.url()).pathname === '/vendeur', 'produit publié (' + s.url() + ')');
+  ok(s.url().includes('erreur=photo'), 'publication sans photo refusée (' + new URL(s.url()).search + ')');
+
+  await s.setInputFiles('#photos', PHOTO);
+  await s.fill('#prix', '4 200 000');
+  await s.click('button[type=submit]');
+  await s.waitForLoadState('load');
+  ok(new URL(s.url()).pathname === '/vendeur', 'produit publié avec sa photo (' + s.url() + ')');
 
   await s.goto(B + '/produit/p-parfum/signaler');
   await s.click('text=Contrefaçon');
