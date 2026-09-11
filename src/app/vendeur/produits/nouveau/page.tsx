@@ -14,10 +14,10 @@ import { getCategories } from "@/lib/data/reference";
  */
 export default async function NewProductPage() {
   const supabase = await createClient();
-  const merchant = await getMyMerchant(supabase);
+  // Indépendantes l'une de l'autre : parties en même temps plutôt qu'en
+  // attendant le résultat de la première pour lancer la seconde.
+  const [merchant, categories] = await Promise.all([getMyMerchant(supabase), getCategories(supabase)]);
   if (!merchant) redirect("/inscription/boutique");
-
-  const categories = await getCategories(supabase);
 
   return (
     <Screen>

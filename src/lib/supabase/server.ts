@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import type { Database } from "@/lib/database.types";
@@ -12,8 +13,16 @@ import type { Database } from "@/lib/database.types";
  * écrire) : c'est normal et sans conséquence tant qu'un middleware
  * rafraîchit la session ailleurs. On avale l'erreur plutôt que de faire
  * planter la page pour ça.
+ *
+ * `cache()` de React mémorise le résultat pour la durée d'UNE requête :
+ * une page qui appelle `createClient()` plusieurs fois (directement, ou
+ * indirectement via plusieurs fonctions de `src/lib/data/`) reçoit le
+ * MÊME client déjà construit, au lieu d'en fabriquer un nouveau à chaque
+ * fois. Sans ce partage, `getSessionUser` (cache lui aussi, voir
+ * `src/lib/data/session.ts`) ne peut pas dédupliquer ses appels : deux
+ * clients différents sont deux clés de cache différentes.
  */
-export async function createClient() {
+export const createClient = cache(async () => {
   const cookieStore = await cookies();
 
   return createServerClient<Database>(
@@ -34,4 +43,4 @@ export async function createClient() {
       },
     },
   );
-}
+});

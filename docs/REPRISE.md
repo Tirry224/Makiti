@@ -480,6 +480,20 @@ prises le 2026-09-11, à la demande du porteur du projet.
   défaut resté invisible tant qu'il était testé via un accès
   administrateur. Trouvé en rejouant les requêtes en `set role anon`, sans
   connexion — comme un vrai visiteur.
+- **`auth.getUser()` est un aller-retour réseau, pas une lecture de
+  cookie — l'appeler plusieurs fois par page l'additionne plusieurs
+  fois.** `/vendeur/boutique`, en sortant de l'étape 2, appelait
+  `getMyProfile`/`getMyMerchant` trois fois (une fois par information
+  affichée), donc `auth.getUser()` trois fois, plus les mêmes lignes de
+  `profiles` relues trois fois — sur une page qui n'en avait besoin
+  qu'une. Trouvé en cherchant pourquoi l'application semblait lente.
+  Corrigé en mettant `getSessionUser` et `getMyProfiles` en cache par
+  requête (`cache()` de React, `src/lib/data/session.ts`) et
+  `createClient` avec (`src/lib/supabase/server.ts`) : sans ce dernier,
+  deux appels à `createClient()` produisent deux clients différents, donc
+  deux clés de cache différentes, et la mise en cache des deux autres ne
+  sert à rien. Le middleware garde son propre appel (`updateSession`) :
+  il tourne dans une exécution séparée, que ce cache ne couvre pas.
 - **Une migration appliquée au tableau de bord Supabase n'existe nulle
   part tant qu'elle n'est pas commitée.** Le SQL Editor de Supabase
   n'écrit dans aucun fichier du dépôt : cinq migrations (0005 à 0009) et

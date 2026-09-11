@@ -17,10 +17,10 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
   const { id } = await params;
   const supabase = await createClient();
 
-  const merchant = await getMyMerchant(supabase);
-  if (!merchant) redirect("/inscription/boutique");
-
-  const [{ data: product, error }, { data: images }, categories] = await Promise.all([
+  // Les quatre lectures sont indépendantes : aucune n'a besoin du résultat
+  // d'une autre pour démarrer.
+  const [merchant, { data: product, error }, { data: images }, categories] = await Promise.all([
+    getMyMerchant(supabase),
     supabase
       .from("products")
       .select("id, title, category_id, price_gnf, is_negotiable, description")
@@ -29,6 +29,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
     supabase.from("product_images").select("storage_path, position").eq("product_id", id).order("position"),
     getCategories(supabase),
   ]);
+  if (!merchant) redirect("/inscription/boutique");
   if (error) throw error;
   if (!product) notFound();
 

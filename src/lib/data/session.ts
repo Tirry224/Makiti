@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
 
@@ -15,16 +16,29 @@ export type SessionProfile = {
  * auprès de Supabase, la seconde se contente de lire le cookie sans le
  * vérifier — suffisant pour de l'affichage, pas pour une décision de sécurité.
  * Voir https://supabase.com/docs/guides/auth/server-side/nextjs.
+ *
+ * Cette revalidation est un aller-retour réseau, pas une simple lecture de
+ * cookie — et plusieurs écrans de l'espace vendeur appellent cette fonction
+ * (via `getMyProfile`/`getMyMerchant`) deux ou trois fois chacun. Sans
+ * `cache()`, chaque appel refaisait ce même aller-retour : `cache()` de
+ * React mémorise le résultat pour la durée d'UNE requête, donc le premier
+ * appel paie le coût réseau et tous les suivants sont gratuits. Le
+ * middleware (`src/lib/supabase/middleware.ts`) garde son propre appel,
+ * séparé : il tourne dans une exécution différente (Edge, avant que la
+ * page ne s'affiche), que ce cache ne couvre pas.
  */
-export async function getSessionUser(supabase: SupabaseClient<Database>): Promise<User | null> {
+export const getSessionUser = cache(async (supabase: SupabaseClient<Database>): Promise<User | null> => {
   const {
     data: { user },
   } = await supabase.auth.getUser();
   return user;
-}
+});
 
-/** Les 1 ou 2 profils (client, commerçant) de la connexion active. */
-export async function getMyProfiles(supabase: SupabaseClient<Database>): Promise<SessionProfile[]> {
+/** Les 1 ou 2 profils (client, commerçant) de la connexion active. Mis en
+ * cache pour la même raison que `getSessionUser` : `getMyProfile("client")`
+ * et `getMyProfile("merchant")` appelés sur la même page ne doivent
+ * interroger `profiles` qu'une seule fois. */
+export const getMyProfiles = cache(async (supabase: SupabaseClient<Database>): Promise<SessionProfile[]> => {
   const user = await getSessionUser(supabase);
   if (!user) return [];
   const { data, error } = await supabase
@@ -40,7 +54,7 @@ export async function getMyProfiles(supabase: SupabaseClient<Database>): Promise
     isSuspended: p.is_suspended,
     isDeleted: p.is_deleted,
   }));
-}
+});
 
 /** Le profil (client OU commerçant) de la connexion active pour ce rôle,
  * ou `null` si elle n'a pas encore ce compte-là. */
