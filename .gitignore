@@ -2,7 +2,9 @@ node_modules/
 .next/
 out/
 build/
-.env
+# `.env` est VERSIONNÉ : il ne porte que des valeurs `NEXT_PUBLIC_`, déjà
+# envoyées au navigateur de chaque visiteur (voir les commentaires dedans).
+# Tout ce qui est réellement secret va dans `.env.local`, jamais suivi.
 .env.local
 .env*.local
 .DS_Store
