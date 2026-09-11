@@ -1,20 +1,25 @@
 import { notFound } from "next/navigation";
 import { Check, Flag, MessageCircle } from "lucide-react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Photo } from "@/components/ui/Photo";
 import { Screen, ScreenBody, ScreenFooter, Section } from "@/components/ui/Screen";
 import { PriceTag } from "@/components/product/PriceTag";
 import { MerchantCard } from "@/components/product/MerchantCard";
-import { findProduct } from "@/lib/mock";
-import Link from "next/link";
+import { getProduct } from "@/lib/data";
 
 /** Fiche produit — écrans 7 et 8 de docs/ECRANS.md. */
 export default async function ProductPage({ params }: { params: Promise<{ id: string }> }) {
   /* Depuis Next 15, `params` est une promesse : la page peut commencer à
      s'afficher avant que le routeur ait fini de résoudre l'URL. */
   const { id } = await params;
-  const product = findProduct(id);
+
+  /* `getProduct` renvoie `null` aussi bien pour un produit inexistant que
+     pour un brouillon que le RLS refuse de montrer. C'est volontaire :
+     distinguer les deux dans l'interface reviendrait à confirmer
+     l'existence d'une fiche que le visiteur n'a pas le droit de voir. */
+  const product = await getProduct(id);
   if (!product) notFound();
 
   const sold = product.status === "sold";
@@ -26,7 +31,10 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
           <Link href={`/produit/${product.id}/photos`} aria-label="Voir les photos">
             <Photo
               ratio="hero"
-              label={`Photo 1 sur ${product.photoCount}`}
+              src={product.imageUrls[0]}
+              alt={product.title}
+              priority
+              label={`Photo 1 sur ${product.imageUrls.length}`}
               className={sold ? "grayscale" : ""}
             />
           </Link>

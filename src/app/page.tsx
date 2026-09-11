@@ -1,4 +1,5 @@
-import { MapPin, Search } from "lucide-react";
+import { MapPin, Package, Search } from "lucide-react";
+import Link from "next/link";
 import { BottomNav } from "@/components/ui/BottomNav";
 import { Chip } from "@/components/ui/Chip";
 import { FakeInput } from "@/components/ui/Field";
@@ -10,11 +11,9 @@ import { Card } from "@/components/ui/Card";
 import { Photo } from "@/components/ui/Photo";
 import { Badge } from "@/components/ui/Badge";
 import { PriceTag } from "@/components/product/PriceTag";
-import { categories, featuredProduct, products } from "@/lib/mock";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
-import { Package } from "lucide-react";
-import Link from "next/link";
+import { getCategories, searchCatalogue } from "@/lib/data";
 
 /**
  * Fil d'accueil — écrans 1 et 2 de docs/ECRANS.md.
@@ -27,13 +26,23 @@ import Link from "next/link";
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ ville?: string }>;
+  searchParams: Promise<{ ville?: string; categorie?: string }>;
 }) {
-  const { ville = "Conakry" } = await searchParams;
-  const visible = products.filter(
-    (p) => (p.status === "active" || p.status === "sold") && p.merchant.city === ville,
-  );
-  const featuredHere = featuredProduct.merchant.city === ville ? featuredProduct : null;
+  const { ville = "Conakry", categorie } = await searchParams;
+
+  /* Les deux requêtes ne dépendent pas l'une de l'autre : les enchaîner
+     ferait attendre au visiteur la somme des deux allers-retours au lieu
+     du plus long des deux. */
+  const [categories, visible] = await Promise.all([
+    getCategories(),
+    searchCatalogue({ cityName: ville, categorySlug: categorie }),
+  ]);
+
+  /* `search_products` remonte déjà les produits « à la une » en tête. On
+     prend le premier pour la bannière, le reste va dans la grille — aucun
+     produit n'est affiché deux fois. */
+  const featured = visible.find((p) => p.isFeatured) ?? null;
+  const rest = featured ? visible.filter((p) => p.id !== featured.id) : visible;
 
   return (
     <Screen>
@@ -44,16 +53,29 @@ export default async function HomePage({
 
       <ScreenBody>
         <Section className="gap-3 pb-1">
-          <FakeInput className="text-ink-soft">
-            <Search size={19} strokeWidth={1.8} aria-hidden />
-            Rechercher un produit
-          </FakeInput>
+          <Link href="/recherche">
+            <FakeInput className="text-ink-soft">
+              <Search size={19} strokeWidth={1.8} aria-hidden />
+              Rechercher un produit
+            </FakeInput>
+          </Link>
           {/* `overflow-x-auto` : la rangée de catégories défile au doigt
               plutôt que de passer à la ligne et de manger l'écran. */}
           <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5">
+            <Chip href={`/?ville=${encodeURIComponent(ville)}`} selected={!categorie}>
+              Tout
+            </Chip>
             {categories.map((c) => (
-              <Chip key={c} selected={c === "Tout"}>
-                {c}
+              <Chip
+                key={c.id}
+                href={`/?ville=${encodeURIComponent(ville)}&categorie=${c.slug}`}
+                selected={c.slug === categorie}
+              >
+                {/* « Alimentation & Boissons » est le libellé officiel de la
+                    base ; sur une puce de 8 mm de haut, il pousse toutes les
+                    autres catégories hors de l'écran. On garde ce qui
+                    précède le « & », qui suffit à reconnaître le rayon. */}
+                {c.name.split(" & ")[0]}
               </Chip>
             ))}
           </div>
@@ -72,38 +94,45 @@ export default async function HomePage({
           </EmptyState>
         ) : (
           <>
-        <Section className="gap-2 pt-2 pb-0">
-          <SectionLabel>À la une</SectionLabel>
-          <Link href={`/produit/${featuredHere?.id ?? featuredProduct.id}`}>
-            <Card className="flex">
-              <Photo ratio="free" className="w-26 shrink-0" />
-              <div className="flex flex-col justify-center gap-1 px-3 py-3">
-                <h3 className="text-base font-semibold">{featuredProduct.title}</h3>
-                <PriceTag amount={featuredProduct.priceGnf} size="md" />
-                <p className="text-2xs text-ink-soft">
-                  {featuredProduct.merchant.shopName} · {featuredProduct.merchant.city}
-                </p>
-                {featuredProduct.isNegotiable ? (
-                  <Badge tone="accent" className="self-start">
-                    Négociable
-                  </Badge>
-                ) : null}
-              </div>
-            </Card>
-          </Link>
-        </Section>
+            {featured ? (
+              <Section className="gap-2 pt-2 pb-0">
+                <SectionLabel>À la une</SectionLabel>
+                <Link href={`/produit/${featured.id}`}>
+                  <Card className="flex">
+                    <Photo
+                      ratio="free"
+                      className="w-26 shrink-0"
+                      src={featured.imageUrls[0]}
+                      alt={featured.title}
+                    />
+                    <div className="flex flex-col justify-center gap-1 px-3 py-3">
+                      <h3 className="text-base font-semibold">{featured.title}</h3>
+                      <PriceTag amount={featured.priceGnf} size="md" />
+                      <p className="text-2xs text-ink-soft">
+                        {featured.merchant.shopName} · {featured.merchant.city}
+                      </p>
+                      {featured.isNegotiable ? (
+                        <Badge tone="accent" className="self-start">
+                          Négociable
+                        </Badge>
+                      ) : null}
+                    </div>
+                  </Card>
+                </Link>
+              </Section>
+            ) : null}
 
-        <Section className="gap-2 pt-3.5">
-          <div className="flex items-baseline justify-between">
-            <SectionLabel>Récents</SectionLabel>
-            <span className="text-sm font-semibold text-accent">Populaires</span>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            {visible.map((p) => (
-              <ProductCard key={p.id} product={p} />
-            ))}
-          </div>
-        </Section>
+            <Section className="gap-2 pt-3.5">
+              <div className="flex items-baseline justify-between">
+                <SectionLabel>Récents</SectionLabel>
+                <span className="text-sm font-semibold text-accent">Populaires</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {rest.map((p) => (
+                  <ProductCard key={p.id} product={p} />
+                ))}
+              </div>
+            </Section>
           </>
         )}
       </ScreenBody>

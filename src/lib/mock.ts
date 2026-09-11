@@ -39,9 +39,9 @@ export const merchantAissatou: Merchant = {
   status: "approved",
 };
 
-function product(p: Omit<Product, "status" | "isFeatured" | "contactCount" | "photoCount"> &
+function product(p: Omit<Product, "status" | "isFeatured" | "contactCount" | "imageUrls"> &
   Partial<Product>): Product {
-  return { status: "active", isFeatured: false, contactCount: 0, photoCount: 1, ...p };
+  return { status: "active", isFeatured: false, contactCount: 0, imageUrls: [], ...p };
 }
 
 export const products: Product[] = [
@@ -55,7 +55,6 @@ export const products: Product[] = [
     priceGnf: 450_000,
     isNegotiable: true,
     contactCount: 12,
-    photoCount: 3,
   }),
   product({
     id: "p-tecno",

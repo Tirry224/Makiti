@@ -1,11 +1,16 @@
 /**
- * Types du domaine.
+ * Types du domaine — ce que les écrans et les composants manipulent.
  *
- * Ils reproduisent le schéma de `supabase/migrations/`. Quand le projet
- * Supabase existera, ce fichier sera REMPLACÉ par des types générés
- * automatiquement depuis la base (`supabase gen types typescript`), ce qui
- * garantit qu'ils ne pourront plus se désynchroniser du schéma réel.
- * En attendant, ils servent à typer les données de démonstration.
+ * Ils ne sont volontairement PAS les types générés depuis la base : ceux-là
+ * vivent dans `database.types.ts`, en snake_case, et décrivent des tables.
+ * Ici on décrit ce qu'un écran affiche, ce qui n'est pas la même chose : la
+ * vignette du fil n'a pas besoin de `category_id`, elle a besoin du NOM de
+ * la catégorie, et elle veut l'adresse des photos, pas des chemins de
+ * stockage.
+ *
+ * `data.ts` est le seul endroit qui traduit entre les deux. Le jour où une
+ * colonne est renommée, les types générés changent, `data.ts` refuse de
+ * compiler, et les composants ne bougent pas — c'est le but.
  */
 
 export type ProductStatus = "draft" | "active" | "sold" | "hidden";
@@ -33,8 +38,8 @@ export type Product = {
   status: ProductStatus;
   isFeatured: boolean;
   contactCount: number;
-  /** Nombre de photos. Aucune vraie image n'existe encore. */
-  photoCount: number;
+  /** Adresses publiques des photos, dans l'ordre d'affichage. */
+  imageUrls: string[];
 };
 
 export type Message = {

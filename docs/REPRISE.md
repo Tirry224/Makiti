@@ -107,13 +107,38 @@ dans `.env.local` (jamais dans Git). La clé `service_role` ne doit jamais
 entrer dans le code du navigateur ni dans Git : elle ignore le RLS et donne
 un accès total à la base.
 
-### Étape 2 — Générer les types depuis la base
-`supabase gen types typescript` remplace `src/lib/types.ts`. Les types ne
-peuvent alors plus se désynchroniser du schéma réel.
+### Étape 2 — Générer les types depuis la base — FAIT (2026-09-11)
+`src/lib/database.types.ts` est généré depuis la base réelle et ne doit
+jamais être modifié à la main (la commande de régénération est en tête du
+fichier).
 
-### Étape 3 — Brancher les données en lecture
-Remplacer `src/lib/mock.ts` écran par écran : fil d'accueil, fiche produit,
-boutique publique, recherche (via la fonction `search_products`).
+Une correction par rapport au plan initial, qui disait « remplace
+`src/lib/types.ts` » : les types générés ne remplacent PAS les types du
+domaine, ils s'ajoutent à côté. Les remplacer aurait obligé à réécrire les
+24 composants en snake_case pour parler le langage des tables au lieu de
+celui des écrans. `src/lib/data.ts` est le seul point de contact entre les
+deux mondes — c'est lui qui casse à la compilation quand une colonne est
+renommée, et les composants ne bougent pas.
+
+### Étape 3 — Brancher les données en lecture — FAIT pour le public
+Branchés sur la vraie base : fil d'accueil, recherche (via
+`search_products`), fiche produit, galerie photo, boutique publique.
+
+Toujours sur `src/lib/mock.ts`, et ça ne changera qu'à l'étape 4 : les
+écrans de messagerie et tout l'espace vendeur. Ce n'est pas un oubli — ces
+écrans demandent de savoir QUI regarde, et le RLS ne renverra rien tant
+qu'il n'y a pas de session.
+
+**Jeu de démonstration** : la base était vide, donc invérifiable.
+`supabase/seed_demo.sql` crée deux boutiques et six produits (dont un
+vendu et un brouillon, pour voir les deux cas). À supprimer avant le
+lancement — commande en fin de fichier.
+
+**Limite connue** : les lignes de `product_images` du jeu de démonstration
+ne désignent aucun fichier réel (l'environnement où le branchement a été
+fait n'a pas accès au réseau Supabase). Les vignettes s'afficheront donc
+cassées tant qu'une vraie photo n'aura pas été déposée. Le code, lui, gère
+les deux cas : sans photo, `Photo` affiche son emplacement gris.
 
 ### Étape 4 — Brancher l'authentification
 Inscription (avec le rôle dans les métadonnées, le trigger crée le profil),

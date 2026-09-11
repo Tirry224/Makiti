@@ -14,3 +14,7 @@ design/makiti-maquette.html
 
 # TypeScript
 *.tsbuildinfo
+
+# générés automatiquement par `next dev` à chaque démarrage
+AGENTS.md
+CLAUDE.md

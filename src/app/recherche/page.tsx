@@ -1,4 +1,5 @@
 import { Search, SlidersHorizontal, X } from "lucide-react";
+import Link from "next/link";
 import { BottomNav } from "@/components/ui/BottomNav";
 import { Button } from "@/components/ui/Button";
 import { Chip } from "@/components/ui/Chip";
@@ -6,25 +7,16 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Screen, ScreenBody, Section } from "@/components/ui/Screen";
 import { TopBar } from "@/components/ui/TopBar";
 import { ProductCard } from "@/components/product/ProductCard";
-import { featuredProduct, products } from "@/lib/mock";
-import Link from "next/link";
-
-/** Sans accents et sans majuscules : « telephone » doit trouver « Téléphone ». */
-function normalize(value: string): string {
-  return value
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .toLowerCase();
-}
+import { searchCatalogue } from "@/lib/data";
 
 /**
  * Recherche — écrans 5 et 6 de docs/ECRANS.md.
  *
- * La même règle qu'en base de données est appliquée ici : la recherche
- * porte sur le titre, la description et le nom de la boutique, et ignore
- * accents et majuscules. Ce code disparaîtra quand la page appellera la
- * fonction `search_products` de Supabase — mais le comportement, lui, ne
- * changera pas.
+ * La recherche elle-même est faite par la base, via `search_products` :
+ * insensible aux accents et aux majuscules, elle porte sur le titre, la
+ * description et le nom de la boutique. Refaire ce tri en JavaScript
+ * obligerait à télécharger tout le catalogue pour en jeter la moitié — et
+ * garantirait qu'un jour les deux règles divergent.
  */
 export default async function SearchPage({
   searchParams,
@@ -32,16 +24,8 @@ export default async function SearchPage({
   searchParams: Promise<{ q?: string; ville?: string }>;
 }) {
   const { q = "", ville = "Conakry" } = await searchParams;
-  const needle = normalize(q.trim());
 
-  const results = [...products, featuredProduct].filter((p) => {
-    if (p.status === "draft" || p.status === "hidden") return false;
-    if (p.merchant.city !== ville) return false;
-    if (!needle) return true;
-    return [p.title, p.description ?? "", p.merchant.shopName].some((field) =>
-      normalize(field).includes(needle),
-    );
-  });
+  const results = await searchCatalogue({ query: q, cityName: ville });
 
   return (
     <Screen>

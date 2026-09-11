@@ -17,7 +17,10 @@ conclut hors de l'application.
 - [x] Projet Supabase créé et migrations exécutées
 - [x] Design system et bibliothèque de composants (`src/styles/`, `src/components/`)
 - [x] Les 33 écrans (33 faits) — sans actions branchées
-- [ ] Branchement des données et des actions
+- [x] Branchement des données en LECTURE : fil, recherche, fiche produit,
+      galerie et boutique publique lisent la vraie base
+- [ ] Authentification (inscription, connexion, session)
+- [ ] Branchement des ACTIONS (publier, envoyer un message, signaler)
 - [ ] Notification par email des nouveaux messages
 - [ ] Déploiement Vercel
 
@@ -41,8 +44,19 @@ l'authentification existera.
 Toute autre adresse affiche la page « Cette page n'existe pas ».
 - **`/styleguide`** : tous les composants et tous les tokens sur une page.
 
-Les écrans affichent des données de démonstration (`src/lib/mock.ts`).
-Aucun bouton n'agit encore : c'est la prochaine étape.
+`.env.local` est nécessaire pour démarrer (voir plus bas) : sans lui,
+l'application s'arrête tout de suite avec un message explicite plutôt que
+de laisser une erreur réseau incompréhensible apparaître plus tard.
+
+Le fil, la recherche, la fiche produit, la galerie et la boutique publique
+lisent la **vraie base**. Les écrans de messagerie et d'espace vendeur
+utilisent encore des données de démonstration (`src/lib/mock.ts`) : ils
+demandent une session, qui n'existe pas encore. Aucun bouton n'agit
+toujours — c'est l'étape suivante.
+
+Base vide au départ : `supabase/seed_demo.sql` remplit deux boutiques et
+six produits pour avoir quelque chose à regarder. **À supprimer avant le
+lancement**, la commande est à la fin du fichier.
 
 Pour changer l'apparence de l'application, voir
 [`src/styles/README.md`](src/styles/README.md).
