@@ -1,4 +1,5 @@
 import { MapPin, Search } from "lucide-react";
+import { BandeauReseau } from "@/components/ui/BandeauReseau";
 import { BottomNav } from "@/components/ui/BottomNav";
 import { Chip } from "@/components/ui/Chip";
 import { FakeInput } from "@/components/ui/Field";
@@ -27,9 +28,9 @@ import Link from "next/link";
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ ville?: string }>;
+  searchParams: Promise<{ ville?: string; reseau?: string }>;
 }) {
-  const { ville = "Conakry" } = await searchParams;
+  const { ville = "Conakry", reseau } = await searchParams;
   const visible = products
     .filter((p) => (p.status === "active" || p.status === "sold") && p.merchant.city === ville)
     .slice(0, PAR_ECRAN);
@@ -41,6 +42,11 @@ export default async function HomePage({
         title={<Wordmark size="lg" />}
         right={<Chip icon={MapPin}>{ville}</Chip>}
       />
+
+      {/* Écran 4 : le bandeau apparaît tout seul quand le téléphone perd
+          le réseau. `?reseau=hors-ligne` le force, pour pouvoir relire
+          l'écran depuis /ecrans sans couper sa connexion. */}
+      <BandeauReseau demo={reseau === "hors-ligne"} />
 
       <ScreenBody>
         <Section className="gap-3 pb-1">

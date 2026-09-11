@@ -8,6 +8,7 @@ import { Photo } from "@/components/ui/Photo";
 import { PriceTag } from "@/components/product/PriceTag";
 import { Sheet } from "@/components/ui/Sheet";
 import { myProducts, threads } from "@/lib/mock";
+import { citerProduit } from "@/lib/actions";
 
 /**
  * Écran 31 — citer un produit dans un fil.
@@ -34,25 +35,30 @@ export default async function QuoteProductPage({ params }: { params: Promise<{ i
         Chercher dans cette boutique
       </FakeInput>
 
-      <div>
-        {choices.map((product, index) => (
-          <ChoiceRow
-            key={product.id}
-            label={product.title}
-            selected={index === 0}
-            leading={<Photo ratio="free" className="size-11 shrink-0 rounded-md" iconSize={17} />}
-            detail={
-              product.status === "sold" ? (
-                <Badge>Vendu</Badge>
-              ) : (
-                <PriceTag amount={product.priceGnf} size="sm" />
-              )
-            }
-          />
-        ))}
-      </div>
+      <form action={citerProduit} className="flex flex-col gap-3.5">
+        <input type="hidden" name="fil" value={thread.id} />
+        <div>
+          {choices.map((product, index) => (
+            <ChoiceRow
+              key={product.id}
+              name="produit"
+              value={product.id}
+              label={product.title}
+              selected={index === 0}
+              leading={<Photo ratio="free" className="size-11 shrink-0 rounded-md" iconSize={17} />}
+              detail={
+                product.status === "sold" ? (
+                  <Badge>Vendu</Badge>
+                ) : (
+                  <PriceTag amount={product.priceGnf} size="sm" />
+                )
+              }
+            />
+          ))}
+        </div>
 
-      <Button>Joindre ce produit</Button>
+        <Button type="submit">Joindre ce produit</Button>
+      </form>
     </Sheet>
   );
 }

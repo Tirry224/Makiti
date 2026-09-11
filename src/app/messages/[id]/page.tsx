@@ -5,6 +5,7 @@ import { TopBar } from "@/components/ui/TopBar";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { ProductRef } from "@/components/chat/ProductRef";
 import { conversation, threads } from "@/lib/mock";
+import { envoyerMessage } from "@/lib/actions";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -48,26 +49,36 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
         </div>
       </ScreenBody>
 
-      <ScreenFooter className="flex items-center gap-2.5">
-        <Link
-          href={`/messages/${thread.id}/citer`}
-          aria-label="Joindre un produit"
-          className="flex size-tap shrink-0 items-center justify-center rounded-full border border-line text-ink-soft"
-        >
-          <Plus size={21} strokeWidth={2} aria-hidden />
-        </Link>
-        <input
-          className="h-tap flex-1 rounded-full border border-line bg-surface px-4 text-base"
-          placeholder="Écrire un message…"
-          aria-label="Votre message"
-        />
-        <button
-          type="button"
-          aria-label="Envoyer"
-          className="flex size-tap shrink-0 items-center justify-center rounded-full bg-accent text-on-accent"
-        >
-          <SendHorizontal size={20} strokeWidth={1.9} aria-hidden />
-        </button>
+      {/* Un formulaire, donc la touche « Envoyer » du clavier du téléphone
+          fonctionne, et le message part même si le JavaScript n'est pas
+          chargé. Le fil voyage en champ caché : l'action ne devine rien. */}
+      <ScreenFooter>
+        <form action={envoyerMessage} className="flex items-center gap-2.5">
+          <input type="hidden" name="fil" value={thread.id} />
+          <Link
+            href={`/messages/${thread.id}/citer`}
+            prefetch={false}
+            aria-label="Joindre un produit"
+            className="flex size-tap shrink-0 items-center justify-center rounded-full border border-line text-ink-soft"
+          >
+            <Plus size={21} strokeWidth={2} aria-hidden />
+          </Link>
+          <input
+            name="message"
+            className="h-tap min-w-0 flex-1 rounded-full border border-line bg-surface px-4 text-base"
+            placeholder="Écrire un message…"
+            aria-label="Votre message"
+            autoComplete="off"
+            required
+          />
+          <button
+            type="submit"
+            aria-label="Envoyer"
+            className="flex size-tap shrink-0 cursor-pointer items-center justify-center rounded-full bg-accent text-on-accent"
+          >
+            <SendHorizontal size={20} strokeWidth={1.9} aria-hidden />
+          </button>
+        </form>
       </ScreenFooter>
     </Screen>
   );

@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "poids": "node scripts/poids.mjs"
+    "poids": "node scripts/poids.mjs",
+    "parcours": "node scripts/parcours.mjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",
@@ -22,6 +23,7 @@
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "playwright-core": "^1.63.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.7.0"
   }

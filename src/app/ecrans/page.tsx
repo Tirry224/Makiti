@@ -23,8 +23,8 @@ const GROUPS: { title: string; screens: [string, string, string?][] }[] = [
     screens: [
       ["1", "Fil d'accueil", "/"],
       ["2", "Fil — ville sans produit", "/?ville=Boké"],
-      ["3", "Fil — chargement", undefined],
-      ["4", "Fil — hors ligne", undefined],
+      ["3", "Fil — chargement", undefined], // retiré : exigeait du JavaScript
+      ["4", "Fil — hors ligne", "/?reseau=hors-ligne"],
       ["5", "Recherche — au repos", "/recherche"],
       ["5b", "Recherche — résultats", "/recherche?q=iphone"],
       ["5c", "Recherche — filtrée", "/recherche?categorie=telephones&etat=occasion"],
@@ -71,6 +71,7 @@ const GROUPS: { title: string; screens: [string, string, string?][] }[] = [
       ["30", "Fil de discussion", "/messages/t-mariama"],
       ["31", "Citer un produit", "/messages/t-mariama/citer"],
       ["32", "Actions conversation", "/messages/t-mariama/actions"],
+      ["32b", "Signaler une conversation", "/messages/t-mariama/signaler"],
     ],
   },
   {

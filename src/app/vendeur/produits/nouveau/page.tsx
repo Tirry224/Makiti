@@ -1,10 +1,12 @@
-import { ChevronDown, Plus, X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { Field, FakeInput, Input, Textarea } from "@/components/ui/Field";
+import { Field, Input, MessageErreur, Select, Textarea } from "@/components/ui/Field";
 import { Photo } from "@/components/ui/Photo";
 import { Screen, ScreenBody, ScreenFooter, Section } from "@/components/ui/Screen";
 import { Toggle } from "@/components/ui/Toggle";
 import { TopBar } from "@/components/ui/TopBar";
+import { publierProduit } from "@/lib/actions";
+import { categories } from "@/lib/mock";
 
 /**
  * Écran 24 — ajouter un produit.
@@ -15,7 +17,14 @@ import { TopBar } from "@/components/ui/TopBar";
  * contrainte qu'on voit avant d'agir vaut mieux qu'une contrainte qu'on
  * découvre en la heurtant.
  */
-export default function NewProductPage() {
+export default async function NewProductPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
+  const { erreur, titre, categorie, prix, description, negociable } = await searchParams;
+  const choisie = categories.find((c) => c.slug === categorie);
+
   return (
     <Screen>
       <TopBar
@@ -24,8 +33,14 @@ export default function NewProductPage() {
         right={<span className="text-xs text-ink-soft">Brouillon enregistré</span>}
       />
 
+      {/* Le formulaire enveloppe le corps ET le pied : les deux boutons
+          du bas doivent envoyer les champs du haut. Un `<form>` qui
+          s'arrête avant le pied donne deux boutons qui n'envoient rien. */}
+      <form action={publierProduit} className="flex min-h-0 flex-1 flex-col">
       <ScreenBody>
         <Section className="gap-4">
+          <MessageErreur code={erreur} />
+
           <Field label="Photos" hint="1 photo minimum, 3 maximum. Sans photo, un produit ne se vend pas.">
             <div className="flex gap-3">
               <div className="relative">
@@ -51,24 +66,40 @@ export default function NewProductPage() {
             </div>
           </Field>
 
-          <Field label="Titre" htmlFor="title">
-            <Input id="title" placeholder="Parfum Oud Intense 100 ml" />
+          <Field label="Titre" htmlFor="titre">
+            <Input id="titre" name="titre" defaultValue={titre} required minLength={5} placeholder="Parfum Oud Intense 100 ml" />
           </Field>
 
           {/* L'aide sous le sélecteur : le commerçant reconnaît son produit
               dans la liste d'exemples au lieu de deviner ce que « Accessoires
               téléphone » recouvre. En dur pour l'instant, comme le reste de la
               maquette ; elle viendra de la base au branchement Supabase. */}
-          <Field label="Catégorie" hint="Visage, corps, cheveux, maquillage, soins, perruques, mèches…">
-            <FakeInput trailing={<ChevronDown size={18} strokeWidth={2} className="text-ink-soft" />}>
-              Produits de beauté
-            </FakeInput>
+          <Field
+            label="Catégorie"
+            htmlFor="categorie"
+            hint={choisie ? undefined : "Huit catégories, un seul niveau : votre produit est forcément dans l'une d'elles."}
+          >
+            <Select id="categorie" name="categorie" defaultValue={categorie ?? ""} required>
+              <option value="" disabled>
+                Choisir une catégorie
+              </option>
+              {categories.map((c) => (
+                <option key={c.slug} value={c.slug}>
+                  {c.nom}
+                </option>
+              ))}
+            </Select>
           </Field>
 
-          <Field label="Prix" htmlFor="price">
+          <Field label="Prix" htmlFor="prix">
             <Input
-              id="price"
+              id="prix"
+              name="prix"
               inputMode="numeric"
+              defaultValue={prix}
+              required
+              pattern="[\s.0-9]{1,15}"
+              title="Un montant en francs guinéens, chiffres seulement."
               placeholder="450 000"
               className="pr-14"
             />
@@ -79,25 +110,35 @@ export default function NewProductPage() {
               <span className="text-base font-semibold">Prix négociable</span>
               <span className="text-xs text-ink-soft">Le client sait qu&apos;il peut discuter.</span>
             </div>
-            <Toggle checked label="Prix négociable" />
+            <Toggle name="negociable" defaultChecked={negociable !== ""} label="Prix négociable" />
           </div>
 
           <Field label="Description" htmlFor="description">
             <Textarea
               id="description"
+              name="description"
               rows={4}
-              placeholder="Riz parfumé importé, sac de 50 kg. Retrait au marché de Madina…"
+              defaultValue={description}
+              placeholder="Eau de parfum boisée, flacon scellé 100 ml. Retrait au marché de Madina…"
             />
           </Field>
         </Section>
       </ScreenBody>
 
       <ScreenFooter className="flex flex-col gap-2.5">
-        <Button>Publier le produit</Button>
-        <Button variant="secondary" size="sm">
+        <Button type="submit">Publier le produit</Button>
+        {/* Même formulaire, autre bouton : `name="brouillon"` dit à
+            l'action lequel des deux a été utilisé. Un brouillon n'exige
+            que le titre — il sert justement à s'arrêter en route.
+            `formNoValidate` désactive les contrôles du navigateur POUR CE
+            BOUTON : sans lui, « required » sur le prix empêcherait
+            d'enregistrer un brouillon, c'est-à-dire exactement ce que le
+            brouillon existe pour permettre. */}
+        <Button type="submit" name="brouillon" value="1" formNoValidate variant="secondary" size="sm">
           Garder en brouillon
         </Button>
       </ScreenFooter>
+      </form>
     </Screen>
   );
 }

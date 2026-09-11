@@ -1,0 +1,151 @@
+/**
+ * Les parcours qui doivent marcher, vérifiés dans un vrai navigateur.
+ *
+ *   npm run build && npm start        (dans un terminal)
+ *   npm run parcours                  (dans un autre)
+ *
+ * Deux passages : avec JavaScript, puis SANS. Le second est le plus
+ * important — c'est l'état d'une connexion guinéenne pendant les premières
+ * secondes, et c'est lui qui a révélé que cinq écrans sur sept restaient
+ * bloqués sur un squelette (voir docs/PERFORMANCE.md, règle R7). Un test
+ * qui ne tourne qu'avec JavaScript n'aurait rien vu.
+ *
+ * Playwright n'est PAS une dépendance du projet : il ne part jamais dans
+ * le navigateur des utilisateurs. À installer une fois, à la main :
+ *   npm i -D playwright-core && npx playwright install chromium
+ * Le chemin du navigateur se donne par CHROMIUM= si besoin.
+ */
+import { chromium } from 'playwright-core';
+import { existsSync } from 'node:fs';
+
+const B = process.env.BASE ?? 'http://localhost:3000';
+
+/** Le binaire de Chromium, là où Playwright le range d'habitude. */
+function navigateur() {
+  const candidats = [
+    process.env.CHROMIUM,
+    '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+    `${process.env.HOME}/.cache/ms-playwright/chromium-1194/chrome-linux/chrome`,
+  ].filter(Boolean);
+  const trouve = candidats.find((c) => existsSync(c));
+  if (!trouve) {
+    console.error(
+      "Chromium introuvable. Installe-le (npx playwright install chromium) " +
+      "ou donne son chemin : CHROMIUM=/chemin/vers/chrome npm run parcours",
+    );
+    process.exit(2);
+  }
+  return trouve;
+}
+let echecs = 0;
+const ok = (c, m) => { if (!c) echecs++; console.log((c ? '  OK   ' : ' ÉCHEC ') + m); };
+
+(async () => {
+  const b = await chromium.launch({ executablePath: navigateur() });
+
+  console.log('\n── Avec JavaScript ──');
+  const p = await b.newPage({ viewport: { width: 390, height: 844 } });
+  let requetes = 0;
+  p.on('request', (r) => { if (r.method() === 'POST') requetes++; });
+
+  // Un formulaire vide ne part même pas : le navigateur le retient. Zéro
+  // octet dépensé pour une faute que l'on sait détecter sur place.
+  await p.goto(B + '/inscription');
+  await p.click('button[type=submit]');
+  await p.waitForTimeout(1000);
+  ok(requetes === 0, 'formulaire vide : aucune requête envoyée');
+  ok(new URL(p.url()).search === '', "on reste sur place, rien à recharger");
+  await p.fill('#nom', 'Mariama Diallo');
+  await p.fill('#telephone', '620 45 12 87');
+  await p.fill('#email', 'pas-un-email');
+  await p.fill('#motdepasse', 'motdepasse1');
+  await p.click('button[type=submit]');
+  await p.waitForTimeout(1200);
+  ok(requetes === 0, "email sans @ : le navigateur bloque avant toute requête");
+  ok((await p.locator('#motdepasse').inputValue()) === 'motdepasse1', 'le mot de passe reste saisi (aucun rechargement)');
+
+  // « mariama@exemple » passe la validation du navigateur mais pas la
+  // nôtre : c'est le serveur qui doit trancher, et il tranche.
+  await p.fill('#email', 'mariama@exemple');
+  await p.click('button[type=submit]');
+  await p.waitForURL(/erreur=email/, { timeout: 15000 }).catch(() => {});
+  ok(p.url().includes('erreur=email'), 'email sans domaine complet refusé par le serveur (' + new URL(p.url()).search + ')');
+  ok((await p.locator('#nom').inputValue()) === 'Mariama Diallo', 'le nom saisi est conservé');
+  ok(!p.url().includes('motdepasse'), "le mot de passe n'est JAMAIS dans l'URL");
+
+  await p.fill('#email', 'mariama@exemple.com');
+  // Le mot de passe a disparu avec la redirection — et c'est voulu : il ne
+  // voyage jamais dans l'URL. On le retape, comme le ferait la personne.
+  ok((await p.locator('#motdepasse').inputValue()) === '', "le mot de passe n'est pas réaffiché après un refus");
+  await p.fill('#motdepasse', 'motdepasse1');
+  await p.click('text=Vendre');
+  await p.click('button[type=submit]');
+  await p.waitForURL(/boutique/, { timeout: 15000 }).catch(() => {});
+  ok(p.url().endsWith('/inscription/boutique'), 'vendeur → étape boutique (' + p.url() + ')');
+
+  await p.goto(B + '/recherche');
+  await p.fill('input[name=q]', 'iphone');
+  await p.press('input[name=q]', 'Enter');
+  await p.waitForLoadState('networkidle');
+  ok(p.url().includes('q=iphone'), "la recherche passe par l'URL");
+  ok((await p.locator('text=iPhone 11 64 Go').count()) > 0, 'résultats affichés');
+
+  await p.goto(B + '/recherche');
+  await p.waitForTimeout(400);
+  ok((await p.locator('text=Recherches récentes').count()) > 0, 'recherche récente mémorisée');
+
+  console.log('\n── Sans JavaScript ──');
+  const ctx = await b.newContext({ javaScriptEnabled: false, viewport: { width: 390, height: 844 } });
+  const s = await ctx.newPage();
+  await s.goto(B + '/inscription');
+  await s.fill('#nom', 'Ibrahima Camara');
+  await s.fill('#telephone', '622334455');
+  await s.fill('#email', 'ibrahima@exemple.com');
+  await s.fill('#motdepasse', 'motdepasse1');
+  await s.click('button[type=submit]');
+  await s.waitForLoadState('load');
+  ok(new URL(s.url()).pathname === '/', 'inscription acheteur aboutit (' + s.url() + ')');
+
+  await s.goto(B + '/recherche');
+  await s.fill('input[name=q]', 'parfum');
+  await s.press('input[name=q]', 'Enter');
+  await s.waitForLoadState('load');
+  ok(s.url().includes('q=parfum'), 'la recherche fonctionne');
+
+  await s.goto(B + '/recherche?q=iphone');
+  await s.locator('summary').nth(1).click();
+  await s.waitForTimeout(200);
+  ok(await s.locator('text=Accessoires téléphone').isVisible(), "le menu de filtre s'ouvre");
+
+  await s.goto(B + '/messages/t-mariama');
+  await s.fill('input[name=message]', 'Bonjour, il est encore disponible ?');
+  await s.click('button[type=submit]');
+  await s.waitForLoadState('load');
+  ok(s.url().includes('/messages/t-mariama'), 'message envoyé');
+
+  await s.goto(B + '/vendeur/produits/nouveau');
+  await s.fill('#titre', 'iPhone 12 128 Go');
+  await s.selectOption('#categorie', 'telephones');
+  // Le brouillon échappe aux règles : c'est sa raison d'être.
+  await s.click('button[name=brouillon]');
+  await s.waitForLoadState('load');
+  ok(new URL(s.url()).pathname === '/vendeur', 'brouillon accepté sans prix (' + s.url() + ')');
+
+  await s.goto(B + '/vendeur/produits/nouveau');
+  await s.fill('#titre', 'iPhone 12 128 Go');
+  await s.selectOption('#categorie', 'telephones');
+  await s.fill('#prix', '4 200 000');
+  await s.click('button[type=submit]');
+  await s.waitForLoadState('load');
+  ok(new URL(s.url()).pathname === '/vendeur', 'produit publié (' + s.url() + ')');
+
+  await s.goto(B + '/produit/p-parfum/signaler');
+  await s.click('text=Contrefaçon');
+  await s.click('button[type=submit]');
+  await s.waitForLoadState('load');
+  ok(s.url().includes('signale=1'), 'signalement envoyé (' + s.url() + ')');
+
+  console.log(echecs === 0 ? '\nTout passe.' : `\n${echecs} échec(s).`);
+  await b.close();
+  process.exit(echecs === 0 ? 0 : 1);
+})();

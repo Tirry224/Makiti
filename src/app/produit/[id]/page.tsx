@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { Check, Flag, MessageCircle } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { MessageSucces } from "@/components/ui/Field";
 import { Photo } from "@/components/ui/Photo";
 import { Screen, ScreenBody, ScreenFooter, Section } from "@/components/ui/Screen";
 import { PriceTag } from "@/components/product/PriceTag";
@@ -10,10 +11,17 @@ import { findProduct } from "@/lib/mock";
 import Link from "next/link";
 
 /** Fiche produit — écrans 7 et 8 de docs/ECRANS.md. */
-export default async function ProductPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ProductPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
   /* Depuis Next 15, `params` est une promesse : la page peut commencer à
      s'afficher avant que le routeur ait fini de résoudre l'URL. */
   const { id } = await params;
+  const { signale } = await searchParams;
   const product = findProduct(id);
   if (!product) notFound();
 
@@ -47,6 +55,13 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
         </div>
 
         <Section>
+          {/* La feuille de signalement s'est refermée : sans un mot ici,
+              on ne sait pas si le signalement est parti. */}
+          {signale ? (
+            <MessageSucces>
+              Signalement envoyé. Notre équipe le lira ; le vendeur n&apos;est pas prévenu.
+            </MessageSucces>
+          ) : null}
           <div className="flex flex-col gap-2">
             <h1 className="text-2xl font-bold">{product.title}</h1>
             <div className="flex items-center gap-2.5">

@@ -46,6 +46,7 @@ de tes utilisateurs**, et là que nos décisions comptent vraiment.
 | Vignette produit | ≤ 15 Ko | à la revue |
 | Photo pleine taille | ≤ 120 Ko | à la revue |
 | Un écran de fil complet | ≤ 250 Ko, photos comprises | à la revue |
+| Tout écran doit marcher sans JavaScript | oui | `npm run parcours` |
 
 ## 3. Les règles, par ordre d'impact décroissant
 
@@ -116,6 +117,35 @@ aujourd'hui.** Ajouter une police redevient une décision, pas un réflexe.
 - La recherche n'interroge le serveur **qu'à la validation**, pas à chaque
   frappe : une recherche à la frappe, c'est huit requêtes pour un mot.
 
+### R7 — Pas de frontière `loading.tsx`
+
+Une frontière de chargement envoie d'abord un squelette, puis le contenu —
+et c'est le **JavaScript du navigateur** qui remplace l'un par l'autre.
+Sans lui, la page reste un squelette pour toujours.
+
+Ce n'est pas une hypothèse : le projet avait un `loading.tsx` à la racine,
+et **cinq écrans sur sept ne montraient jamais leur contenu** sans
+JavaScript — le fil d'accueil compris. Personne ne l'avait vu parce que
+personne n'avait testé sans JavaScript. Les deux frontières sont retirées ;
+`scripts/parcours.mjs` teste désormais chaque parcours dans les deux
+conditions.
+
+Le composant `Skeleton` reste utilisable DANS une page, pour un bloc que
+l'on remplit réellement plus tard. C'est la frontière de route qui est
+interdite tant que « marche sans JavaScript » est un objectif.
+
+### R8 — Les contraintes de formulaire d'abord dans le navigateur
+
+`required`, `minLength`, `pattern`, `type="email"` : le navigateur refuse
+d'envoyer un formulaire fautif. La faute de frappe ne coûte alors **aucun
+aller-retour réseau**, le message s'affiche instantanément, dans la langue
+du téléphone, et les champs déjà remplis ne sont pas perdus — notamment le
+mot de passe, qui ne revient jamais du serveur.
+
+Le serveur revalide tout, sans exception : ces attributs se contournent en
+trois secondes. Ils sont un confort pour l'utilisateur, jamais une
+sécurité.
+
 ### R6 — Le réseau tombe : ce n'est pas une erreur, c'est un état normal
 
 - Toute page doit rester lisible si une image n'arrive pas.
@@ -170,7 +200,8 @@ formulaires écrits coûterait deux fois plus cher.
 ## 7. Vérifier
 
 ```
-npm run build && npm run poids
+npm run build && npm run poids     # le poids
+npm start & npm run parcours       # les parcours, avec ET sans JavaScript
 ```
 
 À faire avant chaque mise en ligne. Sur le terrain, la vraie mesure reste

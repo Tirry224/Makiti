@@ -3,35 +3,48 @@ import { cn } from "@/lib/cn";
 /**
  * Interrupteur.
  *
- * `role="switch"` et `aria-checked` sont ce qui le rend compréhensible :
- * sans eux, un lecteur d'écran annonce « bouton » et l'utilisateur ne sait
- * pas si l'option est active. La couleur seule ne le dit qu'aux voyants.
+ * C'est une VRAIE case à cocher, cachée sous un dessin. Un `<button>` avec
+ * `role="switch"` aurait exigé du JavaScript pour changer d'état et pour
+ * être envoyé avec le formulaire ; la case native fait les deux toute
+ * seule, se coche au clavier, s'annonce correctement à la voix, et pèse
+ * zéro octet (docs/PERFORMANCE.md, règle R3).
  *
- * Sans `onChange`, il n'est qu'un affichage — le comportement viendra avec
- * les actions.
+ * `sr-only` la rend invisible sans la retirer de la page — la retirer avec
+ * `display:none` la sortirait aussi du formulaire et du clavier.
  */
 export function Toggle({
-  checked,
+  name,
+  defaultChecked = false,
   label,
   className,
 }: {
-  checked: boolean;
+  name: string;
+  defaultChecked?: boolean;
   label: string;
   className?: string;
 }) {
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      className={cn(
-        "flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full p-0.5 transition-colors",
-        checked ? "justify-end bg-accent" : "justify-start bg-line",
-        className,
-      )}
-    >
-      <span className="size-6 rounded-full bg-surface" />
-    </button>
+    <label className={cn("relative inline-flex shrink-0 cursor-pointer", className)}>
+      <input
+        type="checkbox"
+        name={name}
+        defaultChecked={defaultChecked}
+        aria-label={label}
+        className="peer sr-only"
+      />
+      {/* Tout est porté par ce span, VOISIN de la case : `peer-checked`
+          ne descend pas dans les enfants, il ne vise que les frères. La
+          pastille se déplace donc par `justify-end`, pas par une
+          translation de l'enfant. */}
+      <span
+        aria-hidden
+        className={cn(
+          "flex h-7 w-12 items-center justify-start rounded-full bg-line p-0.5 transition-colors",
+          "peer-checked:justify-end peer-checked:bg-accent",
+        )}
+      >
+        <span className="size-6 rounded-full bg-surface" />
+      </span>
+    </label>
   );
 }

@@ -39,7 +39,10 @@ devra faire dans `REPRISE.md` (dette connue) et arrête-toi là.
 
 **Langue :** code, commentaires, commits, documentation, interface — français.
 
-**Avant de pousser :** `npm run typecheck`, `npm run build`, `npm run poids`.
+**Avant de pousser :** `npm run typecheck`, `npm run build`, `npm run poids`,
+et `npm run parcours` (serveur lancé) — il rejoue les parcours **avec et
+sans JavaScript**. C'est le passage sans JavaScript qui trouve les vrais
+défauts.
 
 ## Contrainte n°1 : réseau médiocre, données facturées
 
@@ -58,6 +61,12 @@ Au même rang que « ça marche ». Doctrine complète et budgets chiffrés dans
    frappe.** On rafraîchit à l'ouverture de l'écran.
 6. **La panne réseau est un état normal**, pas une erreur : toute page reste
    lisible sans ses images.
+7. **Jamais de `loading.tsx`** : la frontière de chargement exige le
+   JavaScript du navigateur pour livrer le contenu. Mesuré : cinq écrans
+   sur sept restaient des squelettes sans lui.
+8. **Contraintes de formulaire natives** (`required`, `minLength`,
+   `pattern`) : une faute de frappe ne doit coûter aucun aller-retour. Le
+   serveur revalide tout — elles se contournent en trois secondes.
 
 État mesuré : socle 169 Ko gzip, police 19,7 Ko, HTML 4 à 7 Ko par page.
 Tous les budgets sont tenus ; `npm run poids` échoue si l'un se met à céder.
@@ -70,6 +79,10 @@ Tous les budgets sont tenus ; `npm run poids` échoue si l'un se met à céder.
 | `src/components/ui/` | 19 composants génériques (Screen, TopBar, Chip, Sheet…). |
 | `src/components/product/`, `chat/` | Composants métier. |
 | `src/lib/mock.ts` | Toutes les données de démonstration. Un seul fichier. |
+| `src/lib/actions.ts` | Les Server Actions des formulaires : valident, orientent, refusent. **N'enregistrent rien** (étape 3). |
+| `src/lib/validation.ts` | Les règles de saisie, isolées pour être retraduites en contraintes SQL. |
+| `src/lib/recherche.ts` | Filtres, tri, hors périmètre. Partagé par le fil et la recherche. |
+| `scripts/` | `poids.mjs` (budgets), `parcours.mjs` (parcours avec et sans JavaScript). |
 | `src/lib/types.ts` | Types du domaine, à remplacer par les types générés. |
 | `design/` | Maquette : un `.dc.html` par écran, `canvas.json` pour la disposition. |
 | `supabase/` | 4 migrations écrites, **ni déployées ni branchées**. |
@@ -85,20 +98,28 @@ Tous les budgets sont tenus ; `npm run poids` échoue si l'un se met à céder.
 **Étape 1 — maquette : faite.** La recherche v2 (6 états) est dessinée ET
 codée ; ses artboards restent sur la page « Recherche v2 » du canvas.
 
-**Étape 2 — front et actions : à moitié.**
+**Étape 2 — front et actions : terminée.**
 
-- ✅ 32 des 33 écrans codés, tous atteignables depuis `/ecrans`.
-- ✅ **Recherche refaite** : quatre états servis par une seule page (repos,
-  résultats, hors périmètre, zéro-ici-mais-ailleurs), filtres ville /
-  catégorie / état / tri, pagination « Voir plus ». Zéro JavaScript : les
-  filtres sont des liens, les menus des `<details>` natifs, l'état vit dans
-  l'URL. Les règles sont isolées dans `src/lib/recherche.ts`, partagées avec
-  le fil, et calquées sur la future fonction SQL `search_products`.
-- ❌ **Écran 4 (fil hors ligne)** : maquetté, jamais codé. Seul écran
-  manquant — et il coûtera le premier `"use client"` du projet.
-- ❌ **Formulaires : rien.** Zéro `<form>`, zéro `onSubmit`. Inscription,
-  connexion, ajout de produit, envoi de message : les boutons ne font
-  toujours rien. **C'est le gros du travail restant**, en Server Actions.
+- ✅ Tous les écrans codés et atteignables depuis `/ecrans`, plus l'écran
+  32b (signaler une conversation) qui était maquetté sans être codé.
+- ✅ **Toutes les actions branchées** en Server Actions : inscription,
+  boutique, connexion, mot de passe oublié, profil, publication et
+  brouillon de produit, vendu/masquer/supprimer, envoi de message, citation
+  de produit, signalements, blocage. Elles valident, orientent et refusent ;
+  elles **n'enregistrent rien** — c'est l'étape 3, et chaque action porte
+  son `TODO étape 3` à la ligne près.
+- ✅ **Erreurs sans JavaScript** : l'action redirige avec `?erreur=code`, la
+  page affiche le message et réaffiche les valeurs saisies. **Jamais le mot
+  de passe** — une URL traîne dans l'historique et les journaux.
+- ✅ **Recherche** : quatre états, quatre filtres, champ de saisie réel
+  (formulaire GET), historique local, bandeau boutique.
+- ✅ **Écran 4** : bandeau « pas de connexion ». Le vrai fil hors ligne
+  exige un service worker — étape 3.
+- ✅ **Deux composants clients seulement**, et le socle n'a pas bougé :
+  `BandeauReseau` (l'état du réseau n'existe que dans le navigateur) et
+  `RecherchesRecentes` (`localStorage`).
+- ⚠️ **Photos** : les emplacements existent, l'envoi de fichier non. C'est
+  le seul morceau d'action qui attend le stockage (étape 3).
 
 **Étape 3 — Supabase : pas commencée, et c'est voulu.**
 4 migrations écrites et testées, jamais exécutées. Aucun client Supabase dans
@@ -106,6 +127,19 @@ codée ; ses artboards restent sur la page « Recherche v2 » du canvas.
 
 **Dette connue :** les catégories semées par `0003` sont celles d'avant le
 repositionnement. Correctif décrit dans `REPRISE.md`, à appliquer à l'étape 3.
+
+## Décisions prises (11 sept., délégation explicite)
+
+- **Formulaires en Server Actions**, erreurs par l'URL, aucun
+  `useActionState` : il exigerait un composant client, donc du JavaScript,
+  donc l'inverse du but.
+- **`loading.tsx` supprimés.** Ils rendaient cinq écrans sur sept
+  inutilisables sans JavaScript. Trouvé en testant, pas en relisant.
+- **Contraintes natives sur tous les champs**, `formNoValidate` sur le
+  bouton « brouillon » — sinon `required` interdit justement ce que le
+  brouillon permet.
+- **`scripts/parcours.mjs`** : 19 vérifications dans un vrai navigateur,
+  avec et sans JavaScript. Playwright reste hors du projet.
 
 ## Décisions prises (10 sept., délégation explicite)
 
@@ -127,15 +161,20 @@ repositionnement. Correctif décrit dans `REPRISE.md`, à appliquer à l'étape 
 
 | Sujet | Où | Ma proposition |
 |---|---|---|
-| Recherches récentes | Écran de recherche | Reporté : c'est le seul morceau de la recherche qui exige du JavaScript. À reprendre avec l'écran hors ligne, qui en demande aussi. |
-| Boutiques dans les résultats | Écran de recherche | Un bandeau « Boutique → » en tête de résultats. Ni dessiné ni codé. |
 | Vêtements enfant, chaussures | Catégories | Absents de la liste. Oubli ou choix ? |
+| Écran 3 (fil — chargement) | Retiré du code | À reposer autrement à l'étape 3, sans frontière de route. |
+| Envoi des photos | Écran 24 | Attend le stockage Supabase : compression sur l'appareil, deux tailles. |
 | Blocage entre personnes | Écran 32 | Aucune table ne le porte. |
 | Motif de refus d'une boutique | Écran 21 | `merchants.status` ne dit pas pourquoi. |
 | Suppression de compte | Écran 18 | Effacement réel ou anonymisation ? |
 
 ## Journal — cinq dernières entrées
 
+- **11 sept.** Étape 2 terminée : toutes les actions branchées en Server
+  Actions, contraintes natives, écran 32b codé, bandeau réseau, historique
+  de recherche. Les deux `loading.tsx` retirés — ils bloquaient cinq écrans
+  sur sept sans JavaScript. `npm run parcours` : 19 vérifications, avec et
+  sans JavaScript.
 - **10 sept.** Recherche v2 codée (4 états, 4 filtres, pagination), sans une
   ligne de JavaScript. Police unique (−40 Ko), `prefetch={false}` sur tous
   les liens de liste, `PAR_ECRAN` à 12, `Product.condition`. Budgets tenus.

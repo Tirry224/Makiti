@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { MapPin, Search, X } from "lucide-react";
+import { ChevronRight, MapPin, Search, Store, X } from "lucide-react";
 import { BottomNav } from "@/components/ui/BottomNav";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -9,8 +9,9 @@ import { SectionLabel } from "@/components/ui/SectionLabel";
 import { TopBar } from "@/components/ui/TopBar";
 import { CategorieGrille } from "@/components/product/CategorieGrille";
 import { ProductCard } from "@/components/product/ProductCard";
+import { RecherchesRecentes } from "@/components/product/RecherchesRecentes";
 import { PAR_ECRAN, categories, cities } from "@/lib/mock";
-import { chercher, horsPerimetre, lien, lireFiltres } from "@/lib/recherche";
+import { boutiques, chercher, horsPerimetre, lien, lireFiltres, normalize } from "@/lib/recherche";
 
 /** Ajoute le nombre de produits demandés à une URL de recherche. */
 function plus(url: string, n: number): string {
@@ -101,22 +102,57 @@ export default async function SearchPage({
 
   const repos = !q && !filtres.ville && !filtres.categorie && !filtres.etat;
 
+  /* La recherche porte aussi sur le nom de boutique (décision 14 de
+     SPEC.md). Taper « Tech Kaloum » sortait donc une liste de produits sans
+     qu'on comprenne pourquoi. Quand la requête désigne une boutique, on le
+     dit et on offre la porte d'entrée. */
+  const boutique = q
+    ? boutiques().find((m) => normalize(m.shopName).includes(normalize(q)))
+    : undefined;
+
   return (
     <Screen>
       <TopBar
         backHref="/"
         title={
-          <div className="flex h-tap flex-1 items-center gap-2.5 rounded-lg border border-line bg-surface px-3.5">
-            <Search size={18} strokeWidth={1.8} className="shrink-0 text-ink-soft" aria-hidden />
-            <span className={q ? "flex-1 truncate text-base font-medium" : "flex-1 text-base text-ink-soft"}>
-              {q || "Rechercher un produit"}
-            </span>
+          /* Un formulaire GET, pas un champ décoratif : la recherche part
+             avec la touche « Rechercher » du clavier du téléphone, la
+             requête atterrit dans l'URL (`?q=…`), donc elle se partage et
+             le bouton retour la défait. Et surtout : aucune recherche à la
+             frappe — une requête par recherche, pas huit par mot
+             (docs/PERFORMANCE.md, règle R5). */
+          <form
+            method="get"
+            action="/recherche"
+            className="flex h-tap flex-1 items-center gap-2.5 rounded-lg border border-line bg-surface px-3.5"
+          >
+            {/* Les autres filtres survivent à une nouvelle recherche. Sans
+                ces champs cachés, chercher un mot remettrait la ville et la
+                catégorie à zéro sans prévenir. */}
+            {filtres.ville ? <input type="hidden" name="ville" value={filtres.ville} /> : null}
+            {filtres.categorie ? <input type="hidden" name="categorie" value={filtres.categorie} /> : null}
+            {filtres.etat ? <input type="hidden" name="etat" value={filtres.etat} /> : null}
+            {filtres.tri !== "recent" ? <input type="hidden" name="tri" value={filtres.tri} /> : null}
+
+            <button type="submit" aria-label="Rechercher" className="shrink-0 cursor-pointer text-ink-soft">
+              <Search size={18} strokeWidth={1.8} aria-hidden />
+            </button>
+            <input
+              name="q"
+              type="search"
+              enterKeyHint="search"
+              autoComplete="off"
+              defaultValue={q}
+              placeholder="Rechercher un produit"
+              aria-label="Rechercher un produit"
+              className="min-w-0 flex-1 bg-transparent text-base font-medium outline-none placeholder:font-normal placeholder:text-ink-soft"
+            />
             {q ? (
               <Link href="/recherche" prefetch={false} aria-label="Effacer la recherche" className="shrink-0 text-ink-soft">
                 <X size={17} strokeWidth={2} aria-hidden />
               </Link>
             ) : null}
-          </div>
+          </form>
         }
       />
 
@@ -126,7 +162,8 @@ export default async function SearchPage({
              Aucun produit affiché ici, volontairement : le fil d'accueil
              est à un tap. Montrer des produits sur un écran de recherche
              vide ferait croire à des résultats. */
-          <Section className="gap-3">
+          <Section className="gap-4">
+            <RecherchesRecentes q="" afficher />
             <SectionLabel>Parcourir</SectionLabel>
             <CategorieGrille />
             <p className="pt-1 text-sm leading-relaxed text-ink-soft">
@@ -136,6 +173,10 @@ export default async function SearchPage({
           </Section>
         ) : (
           <Section className="gap-3">
+            {/* Le même composant, muet : c'est ici qu'une recherche mérite
+                d'être retenue, puisqu'elle a été réellement lancée. */}
+            <RecherchesRecentes q={q} afficher={false} />
+
             {/* Une seule rangée de filtres : chaque puce porte sa valeur
                 courante ET sert à la changer. Puce foncée = filtre appliqué.
                 Masquée hors périmètre : aucun filtre ne fera apparaître un
@@ -204,6 +245,23 @@ export default async function SearchPage({
               </EmptyState>
             ) : (
               <>
+                {boutique ? (
+                  <Link
+                    href={`/boutique/${boutique.id}`}
+                    prefetch={false}
+                    className="flex items-center gap-3 rounded-xl border border-line bg-surface p-3"
+                  >
+                    <Store size={20} strokeWidth={1.8} className="shrink-0 text-accent" aria-hidden />
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span className="truncate text-base font-semibold">{boutique.shopName}</span>
+                      <span className="text-2xs text-ink-soft">
+                        Boutique · {boutique.city}
+                      </span>
+                    </span>
+                    <ChevronRight size={18} strokeWidth={2} className="shrink-0 text-ink-soft" aria-hidden />
+                  </Link>
+                ) : null}
+
                 <p className="text-sm text-ink-soft">
                   <b className="text-ink">
                     {resultats.length} produit{resultats.length > 1 ? "s" : ""}

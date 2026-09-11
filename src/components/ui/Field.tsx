@@ -1,4 +1,6 @@
+import { Check, ChevronDown, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { MESSAGES, type CodeErreur } from "@/lib/validation";
 
 /**
  * Enveloppe d'un champ : intitulé au-dessus, aide en dessous.
@@ -40,6 +42,71 @@ export function Input({ className, ...props }: React.ComponentProps<"input">) {
 
 export function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
   return <textarea className={cn(CONTROL, "resize-none py-3 leading-normal", className)} {...props} />;
+}
+
+/**
+ * Liste déroulante NATIVE.
+ *
+ * Le `<select>` du système est laid, et c'est son seul défaut. En échange
+ * il ne coûte pas un octet de JavaScript, il s'ouvre en roue crantée sur
+ * un téléphone, il se navigue au clavier, il se lit à la voix, et il
+ * fonctionne avant que la page soit « réanimée ». Un sélecteur maison
+ * ferait l'inverse sur tous les points (docs/PERFORMANCE.md, règle R3).
+ */
+export function Select({
+  className,
+  children,
+  ...props
+}: React.ComponentProps<"select">) {
+  return (
+    <div className="relative">
+      <select
+        className={cn(CONTROL, "h-control w-full appearance-none pr-10", className)}
+        {...props}
+      >
+        {children}
+      </select>
+      <ChevronDown
+        size={18}
+        strokeWidth={2}
+        aria-hidden
+        className="pointer-events-none absolute top-1/2 right-3.5 -translate-y-1/2 text-ink-soft"
+      />
+    </div>
+  );
+}
+
+/**
+ * Le message d'erreur d'un formulaire, lu depuis l'URL.
+ *
+ * `role="alert"` le fait annoncer par un lecteur d'écran à l'arrivée sur
+ * la page — sans quoi une personne aveugle ne saurait pas pourquoi son
+ * formulaire est revenu vide de sens.
+ */
+export function MessageErreur({ code }: { code?: string }) {
+  if (!code || !(code in MESSAGES)) return null;
+  return (
+    <p
+      role="alert"
+      className="flex items-start gap-2.5 rounded-lg bg-danger-soft px-3.5 py-3 text-sm leading-normal text-danger"
+    >
+      <TriangleAlert size={17} strokeWidth={2} className="mt-px shrink-0" aria-hidden />
+      {MESSAGES[code as CodeErreur]}
+    </p>
+  );
+}
+
+/** Confirmation après une action réussie. Même mécanique, autre couleur. */
+export function MessageSucces({ children }: { children: React.ReactNode }) {
+  return (
+    <p
+      role="status"
+      className="flex items-start gap-2.5 rounded-lg bg-success-soft px-3.5 py-3 text-sm leading-normal text-success-ink"
+    >
+      <Check size={18} strokeWidth={2.4} className="mt-px shrink-0 text-success" aria-hidden />
+      {children}
+    </p>
+  );
 }
 
 /**

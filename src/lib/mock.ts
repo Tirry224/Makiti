@@ -262,6 +262,16 @@ export const clientThreads: Thread[] = [
 /** Les produits d'une seule boutique, côté commerçant (brouillons compris). */
 export const myProducts: Product[] = products.filter((p) => p.merchant.id === "m-aissatou");
 
+/** Motifs de signalement d'une CONVERSATION. Une personne ne se signale
+    pas pour « photo trompeuse » : la liste des produits ne convient pas. */
+export const conversationReportReasons = [
+  "Insultes ou menaces",
+  "Tentative d'arnaque",
+  "Messages répétés non désirés",
+  "Demande d'argent à l'avance",
+  "Autre",
+];
+
 export const reportReasons = [
   "Produit interdit ou illégal",
   "Photo trompeuse",

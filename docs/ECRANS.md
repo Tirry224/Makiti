@@ -9,7 +9,7 @@ Liste exhaustive. Elle sert de plan de construction : chaque ligne est un
 |---|-------|------|
 | 1 | Fil d'accueil | À la une, populaires, récents |
 | 2 | Fil — ville sans produit | État vide, propose de changer de ville |
-| 3 | Fil — chargement | Squelette, jamais d'écran blanc |
+| 3 | Fil — chargement | **Retiré du code.** Une frontière `loading.tsx` exige le JavaScript du navigateur pour livrer le contenu : sans lui, la page restait un squelette. À reposer autrement à l'étape 3. Voir PERFORMANCE.md, R7. |
 | 4 | Fil — hors ligne | Bandeau + produits déjà consultés |
 | 5 | Recherche & filtres | Ville, catégorie, tri |
 | 6 | Recherche — aucun résultat | Propose d'élargir la zone |
@@ -54,6 +54,7 @@ Liste exhaustive. Elle sert de plan de construction : chaque ligne est un
 | 30 | Fil de discussion | Produits cités, produit vendu grisé |
 | 31 | Citer un produit | Rend viable « un fil par client » |
 | 32 | Actions conversation | Signaler, bloquer |
+| 32b | Signaler une conversation | Motifs propres aux personnes, pas ceux des produits. Maquetté dès le début, codé seulement maintenant. |
 
 ## Transverse — 1
 

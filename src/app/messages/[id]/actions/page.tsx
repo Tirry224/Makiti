@@ -3,6 +3,7 @@ import { Ban, Flag, User } from "lucide-react";
 import { ActionRow } from "@/components/ui/ActionRow";
 import { Sheet } from "@/components/ui/Sheet";
 import { threads } from "@/lib/mock";
+import { bloquer } from "@/lib/actions";
 
 /**
  * Écran 32 — actions sur une conversation.
@@ -19,7 +20,11 @@ export default async function ThreadActionsPage({ params }: { params: Promise<{ 
 
   return (
     <Sheet title={thread.peerName} closeHref={`/messages/${thread.id}`}>
-      <div>
+      <form action={bloquer}>
+        <input type="hidden" name="fil" value={thread.id} />
+        {/* Sans fiche publique pour une PERSONNE — seules les boutiques en
+            ont une — cette ligne reste inerte. Mieux vaut une ligne qui
+            n'agit pas qu'un lien vers une page qui n'existe pas. */}
         <ActionRow
           icon={User}
           label="Voir sa fiche"
@@ -30,14 +35,17 @@ export default async function ThreadActionsPage({ params }: { params: Promise<{ 
           label="Signaler cette conversation"
           description="Insultes, arnaque, spam. Notre équipe la lira."
           tone="danger"
+          href={`/messages/${thread.id}/signaler`}
         />
         <ActionRow
           icon={Ban}
           label="Bloquer cette personne"
           description="Elle ne pourra plus vous écrire. Le fil reste consultable."
           tone="danger"
+          name="action"
+          value="bloquer"
         />
-      </div>
+      </form>
     </Sheet>
   );
 }

@@ -63,6 +63,18 @@ const catalogue = () => [featuredProduct, ...products];
 /** Un produit est visible s'il est publié : ni brouillon, ni masqué. */
 const publie = (p: Product) => p.status === "active" || p.status === "sold";
 
+/**
+ * Les boutiques qui ont au moins un produit publié.
+ *
+ * Déduites du catalogue plutôt que listées à part : une boutique sans
+ * produit visible n'a aucune raison d'apparaître dans des résultats.
+ */
+export function boutiques(): Product["merchant"][] {
+  const vues = new Map<string, Product["merchant"]>();
+  for (const p of catalogue().filter(publie)) vues.set(p.merchant.id, p.merchant);
+  return [...vues.values()];
+}
+
 function correspond(p: Product, mot: string): boolean {
   if (!mot) return true;
   return [p.title, p.description ?? "", p.merchant.shopName].some((champ) =>

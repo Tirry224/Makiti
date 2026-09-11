@@ -1,22 +1,32 @@
-import { ChevronDown } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
-import { Field, FakeInput, Input, Textarea } from "@/components/ui/Field";
-import { Screen, ScreenBody, Section } from "@/components/ui/Screen";
+import { Button } from "@/components/ui/Button";
+import { Field, Input, MessageErreur, Select, Textarea } from "@/components/ui/Field";
+import { Screen, ScreenBody, ScreenFooter, Section } from "@/components/ui/Screen";
 import { TopBar } from "@/components/ui/TopBar";
-import { merchantAissatou } from "@/lib/mock";
+import { modifierBoutique } from "@/lib/actions";
+import { cities, merchantAissatou } from "@/lib/mock";
 
 /** Écran 26 — modifier ma boutique. */
-export default function EditShopPage() {
+export default async function EditShopPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
+  const { erreur, boutique, ville, adresse, whatsapp, description } = await searchParams;
+
   return (
     <Screen>
-      <TopBar
-        title="Ma boutique"
-        backHref="/vendeur"
-        right={<span className="text-base font-semibold text-accent">Enregistrer</span>}
-      />
+      {/* « Enregistrer » a quitté la barre du haut pour devenir un vrai
+          bouton d'envoi en pied d'écran. Un lien en haut à droite ne peut
+          pas envoyer un formulaire sans JavaScript, et il était de toute
+          façon hors de portée du pouce. */}
+      <TopBar title="Ma boutique" backHref="/vendeur" />
 
+      <form action={modifierBoutique} className="flex min-h-0 flex-1 flex-col">
       <ScreenBody>
         <Section className="gap-4">
+          <MessageErreur code={erreur} />
+
           <div className="flex items-center gap-3.5">
             <Avatar name={merchantAissatou.shopName} kind="shop" size={64} />
             <button type="button" className="cursor-pointer text-base font-semibold text-accent">
@@ -24,26 +34,32 @@ export default function EditShopPage() {
             </button>
           </div>
 
-          <Field label="Nom de la boutique" htmlFor="shop">
-            <Input id="shop" defaultValue={merchantAissatou.shopName} />
+          <Field label="Nom de la boutique" htmlFor="boutique">
+            <Input id="boutique" name="boutique" required minLength={2} defaultValue={boutique ?? merchantAissatou.shopName} />
           </Field>
 
-          <Field label="Ville">
-            <FakeInput trailing={<ChevronDown size={18} strokeWidth={2} className="text-ink-soft" />}>
-              {merchantAissatou.city}
-            </FakeInput>
+          <Field label="Ville" htmlFor="ville">
+            <Select id="ville" name="ville" defaultValue={ville ?? merchantAissatou.city} required>
+              {cities
+                .filter((v) => v !== "Toutes les villes")
+                .map((v) => (
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
+                ))}
+            </Select>
           </Field>
 
-          <Field label="Où vous trouver" htmlFor="address">
-            <Input id="address" defaultValue={merchantAissatou.addressHint ?? ""} />
+          <Field label="Où vous trouver" htmlFor="adresse">
+            <Input id="adresse" name="adresse" required minLength={4} defaultValue={adresse ?? merchantAissatou.addressHint ?? ""} />
           </Field>
 
           <Field label="Numéro WhatsApp" htmlFor="whatsapp">
-            <Input id="whatsapp" type="tel" inputMode="tel" defaultValue="622 33 44 55" />
+            <Input id="whatsapp" name="whatsapp" type="tel" inputMode="tel" pattern="[\s.\-()+0-9]{9,20}" title="Un numéro guinéen à 9 chiffres, commençant par 6." defaultValue={whatsapp ?? "622 33 44 55"} />
           </Field>
 
           <Field label="Description" htmlFor="description">
-            <Textarea id="description" rows={3} defaultValue={merchantAissatou.description ?? ""} />
+            <Textarea id="description" name="description" rows={3} defaultValue={description ?? merchantAissatou.description ?? ""} />
           </Field>
 
           {/* Prévenir avant, pas après : un commerçant qui découvre sa
@@ -55,6 +71,11 @@ export default function EditShopPage() {
           </p>
         </Section>
       </ScreenBody>
+
+      <ScreenFooter>
+        <Button type="submit">Enregistrer</Button>
+      </ScreenFooter>
+      </form>
     </Screen>
   );
 }
