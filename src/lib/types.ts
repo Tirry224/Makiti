@@ -1,11 +1,13 @@
 /**
- * Types du domaine.
+ * Types du domaine, lus par tous les écrans.
  *
- * Ils reproduisent le schéma de `supabase/migrations/`. Quand le projet
- * Supabase existera, ce fichier sera REMPLACÉ par des types générés
- * automatiquement depuis la base (`supabase gen types typescript`), ce qui
- * garantit qu'ils ne pourront plus se désynchroniser du schéma réel.
- * En attendant, ils servent à typer les données de démonstration.
+ * Ce fichier ne disparaît PAS quand Supabase existe (contrairement à ce que
+ * disait ce commentaire avant le 2026-09-11) : la base réelle est en
+ * snake_case (`price_gnf`), ces types en camelCase (`priceGnf`) — les deux
+ * conventions naturelles de chaque monde. Réécrire ~30 écrans pour suivre
+ * la casse de la base aurait été un chantier mécanique sans vrai bénéfice.
+ * `src/lib/database.types.ts` (généré) et `src/lib/data/` (la traduction
+ * entre les deux) sont les seuls endroits qui connaissent le schéma réel.
  */
 
 export type ProductStatus = "draft" | "active" | "sold" | "hidden";

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Image as ImageIcon, X } from "lucide-react";
-import { findProduct } from "@/lib/mock";
+import { createClient } from "@/lib/supabase/server";
+import { getProduct } from "@/lib/data/products";
 import { cn } from "@/lib/cn";
 
 /**
@@ -22,10 +23,11 @@ export default async function GalleryPage({
 }) {
   const { id } = await params;
   const { photo = "1" } = await searchParams;
-  const product = findProduct(id);
+  const supabase = await createClient();
+  const product = await getProduct(supabase, id);
   if (!product) notFound();
 
-  const current = Math.min(Math.max(Number(photo) || 1, 1), product.photoCount);
+  const current = Math.min(Math.max(Number(photo) || 1, 1), product.photoCount || 1);
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-app flex-col bg-[#12100e]">

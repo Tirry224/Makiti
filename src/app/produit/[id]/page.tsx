@@ -6,7 +6,8 @@ import { Photo } from "@/components/ui/Photo";
 import { Screen, ScreenBody, ScreenFooter, Section } from "@/components/ui/Screen";
 import { PriceTag } from "@/components/product/PriceTag";
 import { MerchantCard } from "@/components/product/MerchantCard";
-import { findProduct } from "@/lib/mock";
+import { createClient } from "@/lib/supabase/server";
+import { getProduct } from "@/lib/data/products";
 import Link from "next/link";
 
 /** Fiche produit — écrans 7 et 8 de docs/ECRANS.md. */
@@ -14,7 +15,8 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
   /* Depuis Next 15, `params` est une promesse : la page peut commencer à
      s'afficher avant que le routeur ait fini de résoudre l'URL. */
   const { id } = await params;
-  const product = findProduct(id);
+  const supabase = await createClient();
+  const product = await getProduct(supabase, id);
   if (!product) notFound();
 
   const sold = product.status === "sold";

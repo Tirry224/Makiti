@@ -6,25 +6,21 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Screen, ScreenBody, Section } from "@/components/ui/Screen";
 import { TopBar } from "@/components/ui/TopBar";
 import { ProductCard } from "@/components/product/ProductCard";
-import { categories, featuredProduct, products } from "@/lib/mock";
+import { createClient } from "@/lib/supabase/server";
+import { getCategories, getCities } from "@/lib/data/reference";
+import { searchProducts } from "@/lib/data/products";
 import Link from "next/link";
-
-/** Sans accents et sans majuscules : « telephone » doit trouver « Téléphone ». */
-function normalize(value: string): string {
-  return value
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .toLowerCase();
-}
 
 /**
  * Recherche — écrans 5 et 6 de docs/ECRANS.md.
  *
- * La même règle qu'en base de données est appliquée ici : la recherche
- * porte sur le titre, la description et le nom de la boutique, et ignore
- * accents et majuscules. Ce code disparaîtra quand la page appellera la
- * fonction `search_products` de Supabase — mais le comportement, lui, ne
- * changera pas.
+ * `search_products` (0003_search_and_seed.sql) porte déjà toute la
+ * logique — texte sans accent/casse, ville, catégorie — donc cette page
+ * ne fait que résoudre les noms de l'URL en identifiants et afficher le
+ * résultat. Le comportement décrit dans le commentaire d'origine du
+ * fichier (recherche sur titre/description/boutique, insensible aux
+ * accents) n'a pas changé : il vit maintenant dans la fonction SQL,
+ * vérifié par les tests de `supabase/tests/security_test.sql`.
  */
 export default async function SearchPage({
   searchParams,
@@ -32,17 +28,15 @@ export default async function SearchPage({
   searchParams: Promise<{ q?: string; ville?: string; categorie?: string }>;
 }) {
   const { q = "", ville = "Conakry", categorie = "Tout" } = await searchParams;
-  const needle = normalize(q.trim());
+  const supabase = await createClient();
 
-  const results = [...products, featuredProduct].filter((p) => {
-    if (p.status === "draft" || p.status === "hidden") return false;
-    if (p.merchant.city !== ville) return false;
-    if (categorie !== "Tout" && p.category !== categorie) return false;
-    if (!needle) return true;
-    return [p.title, p.description ?? "", p.merchant.shopName].some((field) =>
-      normalize(field).includes(needle),
-    );
-  });
+  const [cities, categories] = await Promise.all([getCities(supabase), getCategories(supabase)]);
+  const city = cities.find((c) => c.name === ville) ?? cities.find((c) => c.name === "Conakry");
+  const category = categorie !== "Tout" ? categories.find((c) => c.name === categorie) : undefined;
+
+  const results = city
+    ? await searchProducts(supabase, { query: q, cityId: city.id, categoryId: category?.id ?? null, limit: 50 })
+    : [];
 
   const activeFilterCount = (ville !== "Conakry" ? 1 : 0) + (categorie !== "Tout" ? 1 : 0);
 
@@ -99,12 +93,15 @@ export default async function SearchPage({
           <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5">
             <Chip selected>{ville}</Chip>
             <Chip selected>Récents</Chip>
+            <Link href={`/recherche?q=${encodeURIComponent(q)}&ville=${encodeURIComponent(ville)}&categorie=Tout`}>
+              <Chip selected={categorie === "Tout"}>Toutes catégories</Chip>
+            </Link>
             {categories.map((c) => (
               <Link
-                key={c}
-                href={`/recherche?q=${encodeURIComponent(q)}&ville=${encodeURIComponent(ville)}&categorie=${encodeURIComponent(c)}`}
+                key={c.id}
+                href={`/recherche?q=${encodeURIComponent(q)}&ville=${encodeURIComponent(ville)}&categorie=${encodeURIComponent(c.name)}`}
               >
-                <Chip selected={c === categorie}>{c === "Tout" ? "Toutes catégories" : c}</Chip>
+                <Chip selected={c.name === categorie}>{c.name}</Chip>
               </Link>
             ))}
           </div>

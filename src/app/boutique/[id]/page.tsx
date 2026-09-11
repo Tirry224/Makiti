@@ -7,17 +7,17 @@ import { Screen, ScreenBody, Section } from "@/components/ui/Screen";
 import { SectionLabel } from "@/components/ui/SectionLabel";
 import { TopBar } from "@/components/ui/TopBar";
 import { ProductCard } from "@/components/product/ProductCard";
-import { merchantAissatou, products } from "@/lib/mock";
+import { createClient } from "@/lib/supabase/server";
+import { getMerchant, getMerchantProducts } from "@/lib/data/merchants";
 
 /** Boutique publique — écran 11 de docs/ECRANS.md. */
 export default async function ShopPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const merchant = id === merchantAissatou.id ? merchantAissatou : undefined;
+  const supabase = await createClient();
+  const merchant = await getMerchant(supabase, id);
   if (!merchant) notFound();
 
-  const catalogue = products.filter(
-    (p) => p.merchant.id === merchant.id && p.status !== "draft",
-  );
+  const catalogue = await getMerchantProducts(supabase, merchant);
 
   return (
     <Screen>

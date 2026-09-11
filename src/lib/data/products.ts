@@ -37,6 +37,68 @@ function mapRow(row: SearchRow): Product {
  * côté app. `cityId` est obligatoire : contrairement à la catégorie, il n'y
  * a pas de fil « toutes villes » — décision 9 de docs/SPEC.md.
  */
+type ProductDetailRow = {
+  id: string;
+  title: string;
+  description: string | null;
+  price_gnf: number;
+  is_negotiable: boolean;
+  status: Database["public"]["Enums"]["product_status"];
+  is_featured: boolean;
+  contact_count: number;
+  categories: { name: string } | null;
+  merchants: {
+    id: string;
+    shop_name: string;
+    address_hint: string | null;
+    cities: { name: string } | null;
+  } | null;
+};
+
+function mapDetailRow(row: ProductDetailRow, photoCount: number): Product {
+  return {
+    id: row.id,
+    merchant: {
+      id: row.merchants?.id ?? "",
+      shopName: row.merchants?.shop_name ?? "",
+      city: row.merchants?.cities?.name ?? "",
+      addressHint: row.merchants?.address_hint ?? null,
+    },
+    category: row.categories?.name ?? "",
+    title: row.title,
+    description: row.description,
+    priceGnf: row.price_gnf,
+    isNegotiable: row.is_negotiable,
+    status: row.status,
+    isFeatured: row.is_featured,
+    contactCount: row.contact_count,
+    photoCount,
+  };
+}
+
+/**
+ * Fiche produit (écrans 7, 8, 9). Deux requêtes plutôt qu'un embed
+ * `product_images(count)` : plus simple à lire, et une fiche produit n'est
+ * jamais consultée en liste — le coût d'un aller-retour de plus est
+ * invisible ici, contrairement à `search_products` qui, elle, sert une
+ * grille de vingt cartes.
+ */
+export async function getProduct(supabase: SupabaseClient<Database>, id: string): Promise<Product | null> {
+  const [{ data: row, error }, { count }] = await Promise.all([
+    supabase
+      .from("products")
+      .select(
+        "id, title, description, price_gnf, is_negotiable, status, is_featured, contact_count, categories(name), merchants(id, shop_name, address_hint, cities(name))",
+      )
+      .eq("id", id)
+      .maybeSingle<ProductDetailRow>(),
+    supabase.from("product_images").select("id", { count: "exact", head: true }).eq("product_id", id),
+  ]);
+  if (error) throw error;
+  if (!row) return null;
+  return mapDetailRow(row, count ?? 0);
+}
+
 export async function searchProducts(
   supabase: SupabaseClient<Database>,
   opts: {

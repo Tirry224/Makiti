@@ -615,5 +615,38 @@ end $$;
 
 reset role;
 
+
+-- =====================================================================
+-- 20. Catalogue public : un visiteur non connecté voit les produits
+-- vendus (grisés côté écran), jamais les brouillons
+-- =====================================================================
+-- Piège trouvé en branchant l'écran d'accueil sur la vraie base : la
+-- policy « products: catalogue public » ne laissait passer que 'active'.
+-- Un produit marqué 'sold' — que les écrans 8 et « boutique publique »
+-- affichent grisé depuis le début — devenait invisible même à un
+-- acheteur légitime. `set role anon` ici, sans connexion : c'est
+-- délibéré, c'est le rôle qu'utilise un visiteur qui n'a jamais tapé de
+-- mot de passe.
+update public.products set status = 'sold' where id = 'cccccccc-0000-0000-0000-000000000003';
+
+set role anon;
+select pg_temp.check('un visiteur non connecté voit un produit vendu',
+  (select count(*) from public.products
+    where id = 'cccccccc-0000-0000-0000-000000000003' and status = 'sold') = 1);
+reset role;
+
+update public.products set status = 'active' where id = 'cccccccc-0000-0000-0000-000000000003';
+
+-- À l'inverse, un brouillon fraîchement créé reste invisible pour ce même
+-- visiteur — un produit précis, pas juste « aucun brouillon nulle part »,
+-- qui serait vrai même si la policy avait un trou.
+insert into public.products (id, merchant_id, category_id, title, price_gnf)
+values ('cccccccc-0000-0000-0000-000000000004', 'aaaaaaaa-0000-0000-0000-000000000001', 3, 'Brouillon test', 10000);
+
+set role anon;
+select pg_temp.check('un visiteur non connecté ne voit pas un brouillon précis',
+  (select count(*) from public.products where id = 'cccccccc-0000-0000-0000-000000000004') = 0);
+reset role;
+
 \echo ''
 \echo '===== TOUS LES TESTS SONT PASSES ====='

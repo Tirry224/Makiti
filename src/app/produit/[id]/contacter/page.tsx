@@ -4,7 +4,8 @@ import { Card } from "@/components/ui/Card";
 import { Photo } from "@/components/ui/Photo";
 import { PriceTag } from "@/components/product/PriceTag";
 import { Sheet } from "@/components/ui/Sheet";
-import { findProduct } from "@/lib/mock";
+import { createClient } from "@/lib/supabase/server";
+import { getProduct } from "@/lib/data/products";
 
 /**
  * Écran 16 — compte requis.
@@ -16,7 +17,8 @@ import { findProduct } from "@/lib/mock";
  */
 export default async function ContactPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const product = findProduct(id);
+  const supabase = await createClient();
+  const product = await getProduct(supabase, id);
   if (!product) notFound();
 
   return (

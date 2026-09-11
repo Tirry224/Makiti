@@ -42,7 +42,7 @@ production dans l'ordre :
   12 villes
 - `0004_storage.sql` — stockage des photos
 
-`supabase/tests/` — 44 tests de sécurité, rejouables sur un PostgreSQL
+`supabase/tests/` — 46 tests de sécurité, rejouables sur un PostgreSQL
 local. Ils vérifient que les actions **interdites** échouent. Ils ont déjà
 trouvé deux vraies failles pendant l'écriture.
 
@@ -147,7 +147,7 @@ données de démonstration, en cohérence avec ce que fera plus tard la
 fonction `search_products`. Le branchement à la vraie base attend l'étape 9.
 
 ### Étape 7 — Sécurité, en continu
-Ne rien casser du RLS ni des 44 tests de `supabase/tests/` en avançant sur
+Ne rien casser du RLS ni des 46 tests de `supabase/tests/` en avançant sur
 les étapes précédentes. Pas une étape isolée : un réflexe à chaque
 modification de schéma envisagée.
 
@@ -206,29 +206,47 @@ dernière étape, une fois le front stabilisé :
    à la main) sert uniquement à la couche de lecture (`src/lib/data/`),
    qui traduit vers les types applicatifs de `src/lib/types.ts`, inchangés.
    Un seul endroit connaît les deux formes.
-7. **En cours** — brancher les données en lecture, écran par écran, à la
-   place de `src/lib/mock.ts`.
-   - `src/lib/data/reference.ts` (villes, catégories) et
-     `src/lib/data/products.ts` (`search_products`, déjà corrigée pour
-     inclure les produits `sold` et le nom de catégorie — elle ne
-     renvoyait que `active` et pas le nom, un écart avec l'écran 8 trouvé
-     en branchant `/`).
-   - `/` (accueil) branché et vérifié — voir note de vérification plus bas.
-   - Tout le reste (`/recherche`, fiche produit, boutique publique, `/vendeur`,
-     messagerie…) reste sur `src/lib/mock.ts` pour l'instant.
+7. ~~Brancher les données en lecture~~ **Fait pour tout ce qui est public
+   (catalogue, sans compte) — le reste attend l'étape 8 (authentification),
+   voir plus bas pourquoi.**
+   - `src/lib/data/reference.ts` (villes, catégories), `src/lib/data/products.ts`
+     (`search_products` pour les listes, `getProduct` pour une fiche) et
+     `src/lib/data/merchants.ts` (`getMerchant`, `getMerchantProducts`).
+   - Écrans branchés : `/` (accueil), `/recherche`, fiche produit (écrans 7
+     et 8), galerie photo, signaler un produit, compte requis, boutique
+     publique.
+   - Deux écarts réels trouvés en branchant, pas supposés :
+     `search_products` ne renvoyait que les produits `active` (pas
+     `sold`, pourtant affiché grisé depuis l'écran 8) ni le nom de la
+     catégorie — corrigée en 0003. Plus grave : la policy RLS `products:
+     catalogue public` avait le MÊME trou, invisible tant que je testais
+     avec un outil qui contourne le RLS. Retesté en simulant un vrai
+     visiteur anonyme (`set role anon`, sans connexion) plutôt qu'en
+     `execute_sql` brut — deux nouveaux tests dans
+     `supabase/tests/security_test.sql` (46 contre 44) couvrent
+     maintenant ce cas précisément.
+   - Écrans encore sur `src/lib/mock.ts`, et pourquoi ce n'est pas un
+     oubli : « Mon compte », « Mes produits », les messages, les actions
+     commerçant… affichent tous des données qui appartiennent à UNE
+     personne connectée. Sans authentification (étape 8, pas encore
+     faite), il n'existe aucune vraie session à qui rattacher ces
+     données — les brancher maintenant aurait forcé soit une session
+     inventée, soit un formulaire de connexion qui ne connecte
+     personne. Les deux auraient été un simulacre, pas un branchement.
 
    **Note de vérification** — le bac à sable de cette session ne peut pas
    joindre `*.supabase.co` en HTTPS direct (politique réseau de
    l'environnement, hors de mon contrôle : « host not in allowlist »).
-   Vérifié autrement : des données de test insérées dans la vraie base
-   confirment que `search_products` renvoie exactement ce qui était
-   attendu (produit vendu inclus, nom de catégorie inclus), `npm run
-   build` passe, et les données de test ont été supprimées après coup
-   (le `on delete cascade` en a profité pour se vérifier lui aussi : les
-   4 tables concernées sont revenues à zéro ligne). Ce qui n'est PAS
-   vérifié : le rendu réel dans un navigateur avec de vraies données. À
-   confirmer par le porteur du projet en lançant `npm run dev` sur sa
-   machine, ou une fois déployé sur Vercel.
+   Vérifié autrement, à chaque écran branché : des données de test
+   insérées dans la vraie base (puis supprimées après coup — le `on
+   delete cascade` en a profité pour se vérifier lui aussi à chaque fois)
+   confirment que les requêtes renvoient exactement la forme attendue,
+   testées **en tant qu'anonyme réel** (`set role anon`) et non via un
+   outil qui contourne le RLS — c'est cette différence qui a trouvé le
+   trou sur les produits vendus. `npm run build` passe. Ce qui n'est PAS
+   vérifié : le rendu réel dans un navigateur. À confirmer par le porteur
+   du projet en lançant `npm run dev` sur sa machine, ou une fois déployé
+   sur Vercel.
 8. Brancher l'authentification (inscription, connexion, mot de passe
    oublié, déconnexion, écran « compte requis », bascule entre comptes liés)
 9. Écrire l'Edge Function de suppression de compte (`service_role`) :

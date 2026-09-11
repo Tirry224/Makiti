@@ -582,10 +582,14 @@ create policy "merchants: je modifie ma boutique"
 -- `using` filtre ce qu'on peut LIRE ou modifier ; `with check` valide ce
 -- qu'on tente d'ÉCRIRE. Ici, un commerçant en attente peut créer et
 -- modifier ses brouillons, mais le trigger 3.2 lui refusera la publication.
+-- `status in ('active', 'sold')`, pas seulement 'active' : un produit
+-- vendu reste visible (grisé, prix barré côté écran) — voir la même
+-- décision dans search_products (0003). Seuls 'draft' et 'hidden'
+-- disparaissent du public.
 create policy "products: catalogue public"
   on public.products for select
   using (
-    (status = 'active' and exists (
+    (status in ('active', 'sold') and exists (
       select 1 from public.merchants m
       where m.id = public.products.merchant_id and m.status = 'approved'
     ))
@@ -606,7 +610,7 @@ create policy "product_images: visibles avec le produit"
       select 1 from public.products p
       where p.id = public.product_images.product_id
         and (
-          (p.status = 'active' and exists (
+          (p.status in ('active', 'sold') and exists (
              select 1 from public.merchants m
              where m.id = p.merchant_id and m.status = 'approved'))
           or p.merchant_id = public.my_merchant_id()
