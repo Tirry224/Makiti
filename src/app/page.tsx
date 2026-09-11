@@ -22,18 +22,24 @@ import Link from "next/link";
  * Le filtre de ville passe par l'URL (`/?ville=Boké`) et non par un état
  * caché dans la page. Conséquence : le fil filtré se partage par lien, le
  * bouton « retour » du téléphone défait le filtre, et l'écran vide est
- * atteignable pour de vrai — pas seulement en imagination.
+ * atteignable pour de vrai — pas seulement en imagination. La catégorie
+ * suit la même règle (`&categorie=...`).
  */
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ ville?: string }>;
+  searchParams: Promise<{ ville?: string; categorie?: string }>;
 }) {
-  const { ville = "Conakry" } = await searchParams;
-  const visible = products.filter(
+  const { ville = "Conakry", categorie = "Tout" } = await searchParams;
+  const inCity = products.filter(
     (p) => (p.status === "active" || p.status === "sold") && p.merchant.city === ville,
   );
-  const featuredHere = featuredProduct.merchant.city === ville ? featuredProduct : null;
+  const visible = inCity.filter((p) => categorie === "Tout" || p.category === categorie);
+  const featuredHere =
+    featuredProduct.merchant.city === ville &&
+    (categorie === "Tout" || featuredProduct.category === categorie)
+      ? featuredProduct
+      : null;
 
   return (
     <Screen>
@@ -44,22 +50,32 @@ export default async function HomePage({
 
       <ScreenBody>
         <Section className="gap-3 pb-1">
-          <FakeInput className="text-ink-soft">
-            <Search size={19} strokeWidth={1.8} aria-hidden />
-            Rechercher un produit
-          </FakeInput>
+          <Link href="/recherche">
+            <FakeInput className="text-ink-soft">
+              <Search size={19} strokeWidth={1.8} aria-hidden />
+              Rechercher un produit
+            </FakeInput>
+          </Link>
           {/* `overflow-x-auto` : la rangée de catégories défile au doigt
               plutôt que de passer à la ligne et de manger l'écran. */}
           <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5">
             {categories.map((c) => (
-              <Chip key={c} selected={c === "Tout"}>
-                {c}
-              </Chip>
+              <Link key={c} href={`/?ville=${encodeURIComponent(ville)}&categorie=${encodeURIComponent(c)}`}>
+                <Chip selected={c === categorie}>{c}</Chip>
+              </Link>
             ))}
           </div>
         </Section>
 
-        {visible.length === 0 ? (
+        {visible.length === 0 && categorie !== "Tout" && inCity.length > 0 ? (
+          <EmptyState
+            icon={Package}
+            title={`Aucun produit « ${categorie} » à ${ville}`}
+            description="Essayez une autre catégorie, ou regardez tout ce qui est en vente dans cette ville."
+          >
+            <Button href={`/?ville=${encodeURIComponent(ville)}`}>Voir toutes les catégories</Button>
+          </EmptyState>
+        ) : visible.length === 0 ? (
           <EmptyState
             icon={Package}
             title={`Aucun produit à ${ville} pour le moment`}
@@ -72,26 +88,28 @@ export default async function HomePage({
           </EmptyState>
         ) : (
           <>
-        <Section className="gap-2 pt-2 pb-0">
-          <SectionLabel>À la une</SectionLabel>
-          <Link href={`/produit/${featuredHere?.id ?? featuredProduct.id}`}>
-            <Card className="flex">
-              <Photo ratio="free" className="w-26 shrink-0" />
-              <div className="flex flex-col justify-center gap-1 px-3 py-3">
-                <h3 className="text-base font-semibold">{featuredProduct.title}</h3>
-                <PriceTag amount={featuredProduct.priceGnf} size="md" />
-                <p className="text-2xs text-ink-soft">
-                  {featuredProduct.merchant.shopName} · {featuredProduct.merchant.city}
-                </p>
-                {featuredProduct.isNegotiable ? (
-                  <Badge tone="accent" className="self-start">
-                    Négociable
-                  </Badge>
-                ) : null}
-              </div>
-            </Card>
-          </Link>
-        </Section>
+        {featuredHere ? (
+          <Section className="gap-2 pt-2 pb-0">
+            <SectionLabel>À la une</SectionLabel>
+            <Link href={`/produit/${featuredHere.id}`}>
+              <Card className="flex">
+                <Photo ratio="free" className="w-26 shrink-0" />
+                <div className="flex flex-col justify-center gap-1 px-3 py-3">
+                  <h3 className="text-base font-semibold">{featuredHere.title}</h3>
+                  <PriceTag amount={featuredHere.priceGnf} size="md" />
+                  <p className="text-2xs text-ink-soft">
+                    {featuredHere.merchant.shopName} · {featuredHere.merchant.city}
+                  </p>
+                  {featuredHere.isNegotiable ? (
+                    <Badge tone="accent" className="self-start">
+                      Négociable
+                    </Badge>
+                  ) : null}
+                </div>
+              </Card>
+            </Link>
+          </Section>
+        ) : null}
 
         <Section className="gap-2 pt-3.5">
           <div className="flex items-baseline justify-between">

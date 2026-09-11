@@ -108,9 +108,36 @@ deux profils à une seule connexion Supabase) reste à trancher à l'étape 9
 
 ### Étape 5 — Performance
 Compression forte des photos avant envoi, attention au poids des pages sur
-mobile. La compression elle-même ne peut être branchée qu'avec un vrai
-stockage (étape 9), mais l'UI de sélection/prévisualisation des photos et
-le choix de la librairie de compression peuvent être préparés avant.
+mobile.
+
+*Correction du 2026-09-11 : la phrase d'origine proposait de préparer dès
+maintenant « l'UI de sélection/prévisualisation des photos ». C'est faux —
+`src/components/README.md` est explicite : aucun composant ne bascule côté
+client avant d'avoir une vraie action à brancher (« un par un, pas avant »).
+Un sélecteur de photos avec aperçu est déjà de l'interactivité réelle ; sans
+stockage où envoyer le fichier, ce serait exactement l'inverse de la règle
+du projet. Cette UI attend l'étape 9, comme la compression elle-même.*
+
+Ce qui PEUT se décider avant, sans écrire de code client prématuré :
+
+- **Librairie retenue : [`browser-image-compression`](https://www.npmjs.com/package/browser-image-compression).**
+  Alternative envisagée : Canvas API native (zéro dépendance), écartée
+  parce qu'elle ne gère pas seule l'orientation EXIF des photos prises au
+  téléphone — un produit qui apparaît de travers dans son propre catalogue
+  est le genre de défaut qui ruine la confiance d'un commerçant dès son
+  premier envoi. La librairie s'en charge, et tourne dans un web worker
+  (ne bloque pas l'interface sur un téléphone d'entrée de gamme).
+- **Paramètres cibles** : dimension max ~1280 px, qualité JPEG ~0,75,
+  taille visée sous 300–500 Ko par photo. À ajuster une fois les premières
+  vraies photos de commerçants vues.
+- **Affichage** : utiliser `next/image` pour les vraies photos (pas de
+  `<img>` brut) — redimensionnement responsive et lazy loading inclus,
+  sans travail supplémentaire.
+
+Le reste de la « performance » (poids du bundle, nombre de composants
+client) n'est pas un problème aujourd'hui : l'app est encore 100 % rendue
+côté serveur avec des données factices, donc rien à optimiser tant que les
+vraies photos n'existent pas. Le vrai risque de poids arrive avec elles.
 
 ### Étape 6 — Recherche (UX, sur le mock)
 Affiner l'expérience de recherche et de filtre (catégories, villes) sur les
@@ -146,7 +173,8 @@ dernière étape, une fois le front stabilisé :
    `src/lib/mock.ts`
 8. Brancher l'authentification (inscription, connexion, mot de passe
    oublié, déconnexion, écran « compte requis », bascule entre comptes liés)
-9. Brancher les actions du commerçant (produit, photos avec compression,
+9. Brancher les actions du commerçant (produit, photos avec compression
+   via `browser-image-compression` puis affichage en `next/image`,
    marquer vendu, masquer, supprimer, modifier la boutique)
 10. Brancher la messagerie (Supabase Realtime) : ouvrir un fil, envoyer,
     citer un produit, marquer comme lu, signaler, bloquer

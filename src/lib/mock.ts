@@ -125,13 +125,20 @@ export function findProduct(id: string): Product | undefined {
   return [...products, featuredProduct].find((p) => p.id === id);
 }
 
+/**
+ * Les 5 catégories qu'utilisent les produits de démonstration ci-dessus —
+ * PAS la liste définitive des 10 catégories de la décision 3 de SPEC.md,
+ * qui reste une question ouverte (voir REPRISE.md, section 5). Les valeurs
+ * doivent rester identiques à `Product["category"]` : un libellé raccourci
+ * ici ne correspondrait plus à rien côté filtre.
+ */
 export const categories = [
   "Tout",
-  "Alimentation",
-  "Vêtements",
-  "Électronique",
-  "Beauté",
-  "Maison",
+  "Alimentation & Boissons",
+  "Vêtements & Chaussures",
+  "Électronique & Téléphones",
+  "Beauté & Cosmétiques",
+  "Maison & Meubles",
 ];
 
 export const threads: Thread[] = [

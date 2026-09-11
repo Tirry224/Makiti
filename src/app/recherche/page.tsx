@@ -6,7 +6,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Screen, ScreenBody, Section } from "@/components/ui/Screen";
 import { TopBar } from "@/components/ui/TopBar";
 import { ProductCard } from "@/components/product/ProductCard";
-import { featuredProduct, products } from "@/lib/mock";
+import { categories, featuredProduct, products } from "@/lib/mock";
 import Link from "next/link";
 
 /** Sans accents et sans majuscules : « telephone » doit trouver « Téléphone ». */
@@ -29,19 +29,29 @@ function normalize(value: string): string {
 export default async function SearchPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; ville?: string }>;
+  searchParams: Promise<{ q?: string; ville?: string; categorie?: string }>;
 }) {
-  const { q = "", ville = "Conakry" } = await searchParams;
+  const { q = "", ville = "Conakry", categorie = "Tout" } = await searchParams;
   const needle = normalize(q.trim());
 
   const results = [...products, featuredProduct].filter((p) => {
     if (p.status === "draft" || p.status === "hidden") return false;
     if (p.merchant.city !== ville) return false;
+    if (categorie !== "Tout" && p.category !== categorie) return false;
     if (!needle) return true;
     return [p.title, p.description ?? "", p.merchant.shopName].some((field) =>
       normalize(field).includes(needle),
     );
   });
+
+  const activeFilterCount = (ville !== "Conakry" ? 1 : 0) + (categorie !== "Tout" ? 1 : 0);
+
+  /* Ces deux liens gardent la recherche tapée — sinon on efface aussi ce
+     que la personne cherchait, ce qui n'est pas ce que « filtres » veut
+     dire. Deux boutons parce que ce sont deux gestes différents : changer
+     de ville en gardant la catégorie choisie, ou tout remettre à zéro. */
+  const searchInConakryHref = `/recherche?q=${encodeURIComponent(q)}&ville=Conakry&categorie=${encodeURIComponent(categorie)}`;
+  const clearFiltersHref = `/recherche?q=${encodeURIComponent(q)}&ville=Conakry`;
 
   return (
     <Screen>
@@ -54,7 +64,11 @@ export default async function SearchPage({
               {q || "Rechercher un produit"}
             </span>
             {q ? (
-              <Link href="/recherche" aria-label="Effacer la recherche" className="shrink-0 text-ink-soft">
+              <Link
+                href={`/recherche?ville=${encodeURIComponent(ville)}&categorie=${encodeURIComponent(categorie)}`}
+                aria-label="Effacer la recherche"
+                className="shrink-0 text-ink-soft"
+              >
                 <X size={17} strokeWidth={2} aria-hidden />
               </Link>
             ) : null}
@@ -71,18 +85,28 @@ export default async function SearchPage({
               </b>{" "}
               trouvé{results.length > 1 ? "s" : ""}
             </p>
-            <Chip selected icon={SlidersHorizontal}>
-              Filtres · 2
+            <Chip selected={activeFilterCount > 0} icon={SlidersHorizontal}>
+              Filtres{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ""}
             </Chip>
           </div>
 
           {/* Les filtres actifs restent visibles : un résultat vide sans
               filtre affiché est incompréhensible — on croit le catalogue
-              vide alors qu'on a simplement trop filtré. */}
+              vide alors qu'on a simplement trop filtré. Ville et tri sont
+              pour l'instant seulement affichés, pas encore choisissables
+              depuis cet écran (pas de sélecteur de ville ni de second tri
+              codé) — la catégorie, elle, l'est. */}
           <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5">
             <Chip selected>{ville}</Chip>
             <Chip selected>Récents</Chip>
-            <Chip>Toutes catégories</Chip>
+            {categories.map((c) => (
+              <Link
+                key={c}
+                href={`/recherche?q=${encodeURIComponent(q)}&ville=${encodeURIComponent(ville)}&categorie=${encodeURIComponent(c)}`}
+              >
+                <Chip selected={c === categorie}>{c === "Tout" ? "Toutes catégories" : c}</Chip>
+              </Link>
+            ))}
           </div>
 
           {results.length === 0 ? (
@@ -91,10 +115,8 @@ export default async function SearchPage({
               title={q ? `Aucun résultat pour « ${q} »` : "Aucun produit ici"}
               description="Essayez un mot plus court, ou retirez le filtre de ville pour chercher dans toute la Guinée."
             >
-              <Button href={`/recherche?q=${encodeURIComponent(q)}&ville=Conakry`}>
-                Chercher à Conakry
-              </Button>
-              <Button variant="secondary" href="/recherche">
+              <Button href={searchInConakryHref}>Chercher à Conakry</Button>
+              <Button variant="secondary" href={clearFiltersHref}>
                 Effacer les filtres
               </Button>
             </EmptyState>
