@@ -1,49 +1,60 @@
+import { redirect } from "next/navigation";
 import { Trash2 } from "lucide-react";
+import Link from "next/link";
 import { Field, Input } from "@/components/ui/Field";
 import { Screen, ScreenBody, Section } from "@/components/ui/Screen";
 import { TopBar } from "@/components/ui/TopBar";
+import { ProfileForm } from "@/components/auth/ProfileForm";
+import { UpdatePasswordForm } from "@/components/auth/UpdatePasswordForm";
+import { createClient } from "@/lib/supabase/server";
+import { getMyProfile, getSessionUser } from "@/lib/data/session";
 
-/** Mes informations — écran 18 de docs/ECRANS.md. */
-export default function ProfilePage() {
+/**
+ * Mes informations — écran 18. Deux champs de la maquette n'ont pas de
+ * colonne réelle : la ville (aucune table ne porte celle d'un CLIENT — les
+ * villes de la base sont attachées aux boutiques) et le mot de passe
+ * affiché en clair (Supabase ne le rend jamais lisible, avec raison).
+ * Retirés plutôt que simulés avec une fausse valeur.
+ */
+export default async function ProfilePage() {
+  const supabase = await createClient();
+  const [profile, user] = await Promise.all([getMyProfile(supabase, "client"), getSessionUser(supabase)]);
+  if (!profile || !user) redirect("/connexion");
+
   return (
     <Screen>
       <TopBar
         title="Mes informations"
         backHref="/compte"
-        right={<span className="text-base font-semibold text-accent">Enregistrer</span>}
+        right={
+          <button type="submit" form="profile-form" className="cursor-pointer text-base font-semibold text-accent">
+            Enregistrer
+          </button>
+        }
       />
       <ScreenBody>
         <Section className="gap-4">
-          <Field label="Nom complet" htmlFor="name">
-            <Input id="name" autoComplete="name" defaultValue="Mariama Diallo" />
-          </Field>
-          <Field label="Téléphone" htmlFor="phone">
-            <Input id="phone" type="tel" inputMode="tel" defaultValue="620 45 12 87" />
-          </Field>
-          <Field label="Ville" htmlFor="city">
-            <Input id="city" defaultValue="Ratoma" />
-          </Field>
+          <ProfileForm id="profile-form" fullName={profile.fullName} phone={profile.phone} />
+
           <Field
             label="Email"
             htmlFor="email"
             hint="L'email sert à vous connecter. Contactez-nous pour le changer."
           >
-            <Input id="email" type="email" defaultValue="mariama@exemple.com" disabled />
+            <Input id="email" type="email" defaultValue={user.email ?? ""} disabled />
           </Field>
 
           <div className="my-1 h-px bg-line" />
 
-          <Field label="Mot de passe" htmlFor="password">
-            <Input id="password" type="password" defaultValue="••••••••" />
-          </Field>
+          <UpdatePasswordForm />
 
-          <button
-            type="button"
+          <Link
+            href="/compte/informations/supprimer"
             className="mt-1 flex cursor-pointer items-center gap-2.5 text-base font-semibold text-danger"
           >
             <Trash2 size={19} strokeWidth={2} aria-hidden />
             Supprimer mon compte
-          </button>
+          </Link>
         </Section>
       </ScreenBody>
     </Screen>

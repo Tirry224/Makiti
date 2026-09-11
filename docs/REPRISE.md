@@ -172,20 +172,26 @@ Next.js 16, React 19, TypeScript, Tailwind 4. 27 routes, ~33 composants.
   session à chaque requête). **Un seul client global serait une faille** :
   deux visiteurs partageraient la même session.
 - `src/lib/data/` — lecture : `products.ts`, `merchants.ts`,
-  `reference.ts`, `session.ts`. Seul endroit qui connaît la forme de la
-  base ; traduit vers les types de `src/lib/types.ts`.
+  `reference.ts`, `session.ts`, `messages.ts`. Seul endroit qui connaît la
+  forme de la base ; traduit vers les types de `src/lib/types.ts`.
 - `src/lib/actions/` — écriture : `auth.ts` (inscription, connexion,
   déconnexion, mot de passe oublié et réinitialisation, création du second
-  compte lié), `merchants.ts` (création de boutique).
-- `src/lib/mock.ts` — **encore utilisé** par les écrans qui n'ont pas de
-  données réelles derrière : messagerie, espace vendeur, « mon compte ».
-  Voir section 3.
+  compte lié), `merchants.ts` (boutique), `products.ts` (produits),
+  `messages.ts` (messagerie), `account.ts` (profil, suppression de
+  compte — client `service_role` dans `src/lib/supabase/admin.ts`).
+- `src/lib/mock.ts` — **ne sert plus que `/styleguide`** (galerie de
+  composants) et la liste fixe des motifs de signalement
+  (`reportReasons`). Plus aucun écran de l'application ne lit de fausses
+  données pour fonctionner.
 
 **Authentification : faite.** Inscription client et commerçant, connexion,
 déconnexion, mot de passe oublié, réinitialisation, comptes liés.
 
-**Catalogue public : branché sur la vraie base.** `/`, `/recherche`, fiche
-produit, galerie photo, boutique publique, contacter, signaler.
+**Toute l'application est branchée sur la vraie base** : catalogue public,
+espace vendeur (étape 2), messagerie (étape 3), compte et suppression de
+compte (étape 4). Il ne reste plus d'écran qui affiche des données
+inventées — voir « Ce qui n'a JAMAIS été vérifié » ci-dessous : jamais vu
+dans un navigateur ne veut pas dire jamais vérifié.
 
 Deux adresses de travail : **`/ecrans`** liste les écrans avec un lien vers
 chacun ; **`/styleguide`** affiche tous les composants et tous les tokens.
@@ -281,27 +287,74 @@ vers le bon écran selon `merchants.status` réel, plutôt que d'être trois
    (`Toggle`) exigent du JavaScript : aucun des deux n'a d'équivalent
    fonctionnel sans script pour l'instant.
 
-### Étape 3 — Messagerie
-Quatre écrans sur `mock.ts` : `/messages`, `/messages/[id]`, `+/citer`,
-`+/actions`. Ouvrir un fil, envoyer un message, citer un produit, marquer
-comme lu, signaler, bloquer (`conversations.blocked_by`, déjà en base —
-section 4, point 1). Temps réel via Supabase Realtime.
+### Étape 3 — Messagerie — FAIT le 2026-09-11
 
-Rappel des règles que la base fait déjà respecter, inutile de les
-redupliquer dans l'interface : un seul fil par couple (client, boutique),
-le premier message cite obligatoirement un produit, le produit cité
-appartient à la boutique destinataire, quotas de 20 boutiques contactées
-et 100 messages par jour.
+Branché : liste des fils (client ET commerçant, `?vue=` seulement quand les
+deux comptes liés existent), fil de discussion, citer un produit, marquer
+comme lu, bloquer, signaler (conversation et produit — ce dernier était
+resté un bouton mort depuis le début, corrigé au passage). « Contacter le
+vendeur » ouvre directement le fil pour une connexion déjà cliente
+(trouvé ou créé), au lieu de toujours proposer un compte.
 
-### Étape 4 — « Mon compte » et la suppression de compte
-`/compte` est encore sur `mock.ts`. Et il manque l'**Edge Function de
-suppression** (`service_role`) : elle doit anonymiser `profiles`
-(`full_name`, `phone`, `is_deleted`, `deleted_at`) **et** couper l'accès à
-`auth.users` dans la MÊME opération — sinon un profil se retrouve marqué
-supprimé avec une connexion encore active. Voir section 4, point 3.
+**Pas de temps réel.** Le fil se recharge à la navigation, pas à
+l'arrivée d'un message pendant qu'on le lit. Supabase Realtime reste à
+brancher — non fait faute de pouvoir le tester (voir la note sur
+`*.supabase.co`, section 2).
 
-À trancher à ce moment-là : est-ce que `merchants.status` doit sortir de
-`'approved'` quand le commerçant supprimé avait une boutique publique ?
+**Un seul aller-retour pour toute la liste des fils**, jamais un par fil :
+`getMyThreadsAsClient`/`AsMerchant` lisent tous les messages de tous les
+fils d'un coup et agrègent en mémoire — même réflexe que la correction de
+`auth.getUser()` de l'étape 2 (section 7).
+
+**Le formulaire d'envoi exige du JavaScript**, contrairement aux actions
+produit de l'étape 2 : sans `useActionState`, un message refusé (quota
+dépassé, blocage) échouerait en silence — la page se rafraîchirait sans
+rien dire. Le compromis choisi : le composant `Composer` seul est client,
+tout le reste du fil reste serveur.
+
+Rappel des règles que la base fait déjà respecter, pas redupliquées dans
+l'interface : un seul fil par couple (client, boutique), le premier
+message cite obligatoirement un produit, le produit cité appartient à la
+boutique destinataire, quotas de 20 boutiques contactées et 100 messages
+par jour — les messages d'erreur de ces triggers sont déjà en français,
+écrits pour être affichés tels quels.
+
+### Étape 4 — « Mon compte » et la suppression de compte — FAIT le 2026-09-11
+
+Branché : nom et téléphone modifiables, mot de passe, suppression de
+compte (feuille de confirmation ajoutée, absente de la maquette), bascule
+vers l'espace commerçant seulement si ce compte lié existe.
+
+**Deux champs de la maquette retirés, pas simulés** : la ville d'un
+CLIENT (aucune colonne — les villes de la base n'appartiennent qu'aux
+boutiques) et le mot de passe affiché en clair (Supabase ne le rend
+jamais lisible). Le motif de suspension affiché sur `/compte/suspendu`
+(« à la suite de signalements ») a été retiré pour la même raison :
+`profiles` n'a que `suspended_at`, pas de colonne de motif.
+
+**Pas d'Edge Function : une action serveur Next.js avec un client
+`service_role`** (`src/lib/supabase/admin.ts`, `src/lib/actions/account.ts`).
+Le code ne quitte pas plus le serveur qu'avec une Edge Function séparée,
+avec un aller-retour réseau de moins et un seul système à déployer.
+
+**Piège évité en écrivant cette fonction** : le plan initial parlait de
+« couper l'accès à `auth.users` », lu d'abord comme « supprimer la ligne ».
+Or `profiles.auth_user_id` référence `auth.users(id) on delete cascade`
+(0001_schema.sql) : supprimer `auth.users` aurait tenté de supprimer aussi
+`profiles`, que `messages.sender_id` référence SANS cascade — la
+suppression aurait échoué sur une contrainte de clé étrangère, au moment
+précis où quelqu'un clique sur « Supprimer mon compte ». La bonne
+opération est un **bannissement** (`admin.auth.admin.updateUserById` avec
+`ban_duration`) : la connexion devient inutilisable, la ligne survit,
+`profiles` aussi. Trouvé en lisant les contraintes avant d'écrire la
+fonction, pas en la cassant d'abord.
+
+Décision prise sur le point resté ouvert (merchants.status au moment de
+la suppression) : **les produits passent à `hidden`, `merchants.status`
+ne bouge pas.** Aucune valeur de l'énumération (`pending`/`approved`/
+`rejected`) ne veut dire « fermée par son propriétaire », et masquer les
+produits suffit à vider le catalogue public de cette boutique (la policy
+"products: catalogue public" exige déjà `status = 'active'`).
 
 ### Étape 5 — Emails
 Deux besoins distincts, un seul fournisseur (Resend) :

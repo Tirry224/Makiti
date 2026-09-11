@@ -1,14 +1,29 @@
-import { FileText, LogOut, MapPin, MessageCircle, User } from "lucide-react";
+import { redirect } from "next/navigation";
+import { FileText, LogOut, MessageCircle, User } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { BottomNav } from "@/components/ui/BottomNav";
 import { MenuItem, MenuList } from "@/components/ui/MenuList";
 import { Screen, ScreenBody, Section } from "@/components/ui/Screen";
 import { SwitchSpaceCard } from "@/components/ui/SwitchSpaceCard";
 import { TopBar } from "@/components/ui/TopBar";
-import { merchantAissatou } from "@/lib/mock";
+import { createClient } from "@/lib/supabase/server";
+import { getMyProfile, getSessionUser } from "@/lib/data/session";
+import { getMyMerchant } from "@/lib/data/merchants";
+import { signOutAction } from "@/lib/actions/auth";
 
-/** Mon compte — écran 17 de docs/ECRANS.md. */
-export default function AccountPage() {
+/**
+ * Mon compte — écran 17. « Ma ville » de la maquette a disparu : aucune
+ * colonne ne porte la ville d'un CLIENT (les villes de la base
+ * n'appartiennent qu'aux boutiques) — retirée plutôt que simulée.
+ */
+export default async function AccountPage() {
+  const supabase = await createClient();
+  const [profile, user] = await Promise.all([getMyProfile(supabase, "client"), getSessionUser(supabase)]);
+  if (!profile) redirect("/connexion");
+  if (profile.isSuspended) redirect("/compte/suspendu");
+
+  const merchant = await getMyMerchant(supabase);
+
   return (
     <Screen>
       <TopBar title="Mon compte" />
@@ -16,36 +31,35 @@ export default function AccountPage() {
       <ScreenBody>
         <Section className="gap-4">
           <div className="flex items-center gap-3.5">
-            <Avatar name="Mariama Diallo" size={58} />
+            <Avatar name={profile.fullName} size={58} />
             <div className="flex flex-col gap-0.5">
-              <span className="text-lg font-bold">Mariama Diallo</span>
-              <span className="text-sm text-ink-soft">mariama@exemple.com</span>
+              <span className="text-lg font-bold">{profile.fullName}</span>
+              <span className="text-sm text-ink-soft">{user?.email}</span>
             </div>
           </div>
 
           <MenuList>
             <MenuItem icon={User} label="Mes informations" href="/compte/informations" />
-            {/* Sans `href` : ces entrées ouvriront une feuille au moment des
-                actions. Un lien vers une page qui n'existe pas est un cul-de-sac. */}
-            <MenuItem icon={MapPin} label="Ma ville" value="Ratoma" />
-            <MenuItem icon={MessageCircle} label="Mes messages" value="3" href="/messages" />
+            <MenuItem icon={MessageCircle} label="Mes messages" href="/messages" />
           </MenuList>
 
           {/* Bascule vers le compte commerçant lié : jamais un item de menu
               parmi d'autres, toujours une action à part (voir docs/SPEC.md,
-              décision 8). */}
-          <SwitchSpaceCard
-            label="Basculer vers mon espace commerçant"
-            target={merchantAissatou.shopName}
-            href="/vendeur"
-          />
+              décision 8). N'apparaît que si ce compte lié existe déjà. */}
+          {merchant ? (
+            <SwitchSpaceCard
+              label="Basculer vers mon espace commerçant"
+              target={merchant.shopName}
+              href="/vendeur"
+            />
+          ) : null}
 
           <MenuList>
             <MenuItem icon={FileText} label="Conditions d'utilisation" />
           </MenuList>
 
           <MenuList>
-            <MenuItem icon={LogOut} label="Se déconnecter" tone="danger" />
+            <MenuItem icon={LogOut} label="Se déconnecter" tone="danger" action={signOutAction} />
           </MenuList>
         </Section>
       </ScreenBody>
