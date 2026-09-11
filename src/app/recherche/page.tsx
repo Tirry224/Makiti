@@ -25,17 +25,18 @@ import Link from "next/link";
 export default async function SearchPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; ville?: string; categorie?: string }>;
+  searchParams: Promise<{ q?: string; ville?: string; categorie?: string; tri?: string }>;
 }) {
-  const { q = "", ville = "Conakry", categorie = "Tout" } = await searchParams;
+  const { q = "", ville = "Conakry", categorie = "Tout", tri = "recent" } = await searchParams;
   const supabase = await createClient();
 
   const [cities, categories] = await Promise.all([getCities(supabase), getCategories(supabase)]);
   const city = cities.find((c) => c.name === ville) ?? cities.find((c) => c.name === "Conakry");
   const category = categorie !== "Tout" ? categories.find((c) => c.name === categorie) : undefined;
+  const sort = tri === "populaire" ? "popular" : "recent";
 
   const results = city
-    ? await searchProducts(supabase, { query: q, cityId: city.id, categoryId: category?.id ?? null, limit: 50 })
+    ? await searchProducts(supabase, { query: q, cityId: city.id, categoryId: category?.id ?? null, sort, limit: 50 })
     : [];
 
   const activeFilterCount = (ville !== "Conakry" ? 1 : 0) + (categorie !== "Tout" ? 1 : 0);
@@ -44,7 +45,7 @@ export default async function SearchPage({
      que la personne cherchait, ce qui n'est pas ce que « filtres » veut
      dire. Deux boutons parce que ce sont deux gestes différents : changer
      de ville en gardant la catégorie choisie, ou tout remettre à zéro. */
-  const searchInConakryHref = `/recherche?q=${encodeURIComponent(q)}&ville=Conakry&categorie=${encodeURIComponent(categorie)}`;
+  const searchInConakryHref = `/recherche?q=${encodeURIComponent(q)}&ville=Conakry&categorie=${encodeURIComponent(categorie)}&tri=${encodeURIComponent(tri)}`;
   const clearFiltersHref = `/recherche?q=${encodeURIComponent(q)}&ville=Conakry`;
 
   return (
@@ -93,14 +94,31 @@ export default async function SearchPage({
               s'affiche plus en rangée complète (dix puces à faire défiler) :
               elle se choisit dans la feuille « Filtres », et seule celle
               retenue apparaît ici, avec de quoi la retirer d'un tap. Ville
-              et tri restent pour l'instant seulement affichés, pas encore
-              choisissables depuis cet écran. */}
+              ouvre sa propre feuille ; Récents/Populaires sont deux puces
+              mutuellement exclusives, un choix binaire n'a pas besoin d'une
+              feuille pour se faire. */}
           <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5">
-            <Chip selected>{ville}</Chip>
-            <Chip selected>Récents</Chip>
+            <Chip
+              href={`/recherche/ville?q=${encodeURIComponent(q)}&ville=${encodeURIComponent(ville)}&categorie=${encodeURIComponent(categorie)}&tri=${encodeURIComponent(tri)}`}
+              selected
+            >
+              {ville}
+            </Chip>
+            <Chip
+              href={`/recherche?q=${encodeURIComponent(q)}&ville=${encodeURIComponent(ville)}&categorie=${encodeURIComponent(categorie)}&tri=recent`}
+              selected={tri !== "populaire"}
+            >
+              Récents
+            </Chip>
+            <Chip
+              href={`/recherche?q=${encodeURIComponent(q)}&ville=${encodeURIComponent(ville)}&categorie=${encodeURIComponent(categorie)}&tri=populaire`}
+              selected={tri === "populaire"}
+            >
+              Populaires
+            </Chip>
             {categorie !== "Tout" ? (
               <Chip
-                href={`/recherche?q=${encodeURIComponent(q)}&ville=${encodeURIComponent(ville)}&categorie=Tout`}
+                href={`/recherche?q=${encodeURIComponent(q)}&ville=${encodeURIComponent(ville)}&categorie=Tout&tri=${encodeURIComponent(tri)}`}
                 selected
                 icon={X}
               >

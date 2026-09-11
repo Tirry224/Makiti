@@ -17,14 +17,14 @@ import { getCategories } from "@/lib/data/reference";
 export default async function SearchFiltersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; ville?: string; categorie?: string }>;
+  searchParams: Promise<{ q?: string; ville?: string; categorie?: string; tri?: string }>;
 }) {
-  const { q = "", ville = "Conakry", categorie = "Tout" } = await searchParams;
+  const { q = "", ville = "Conakry", categorie = "Tout", tri = "recent" } = await searchParams;
   const supabase = await createClient();
   const categories = await getCategories(supabase);
 
   function hrefFor(name: string) {
-    return `/recherche?q=${encodeURIComponent(q)}&ville=${encodeURIComponent(ville)}&categorie=${encodeURIComponent(name)}`;
+    return `/recherche?q=${encodeURIComponent(q)}&ville=${encodeURIComponent(ville)}&categorie=${encodeURIComponent(name)}&tri=${encodeURIComponent(tri)}`;
   }
 
   const options = [
