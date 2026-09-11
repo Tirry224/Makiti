@@ -67,8 +67,8 @@ Trois besoins qui n'existaient nulle part dans la spécification et qu'il
 faudra ajouter à la base de données :
 
 1. **Blocage entre personnes** — écran 32. Aucune table ne le porte.
-2. **Motif de refus d'une boutique** — écran 21. `merchants.status` vaut
-   `rejected` mais ne dit pas pourquoi.
+2. ~~**Motif de refus d'une boutique**~~ — écran 21. Résolu :
+   `merchants.rejection_reason` (voir `docs/REPRISE.md`, section 4).
 3. **Suppression de compte** — écran 18. À décider : effacement réel ou
    anonymisation, sachant que les conversations de l'autre partie doivent
    rester lisibles.

@@ -37,6 +37,25 @@ export const merchantAissatou: Merchant = {
   description: "Alimentation générale : riz, huile, sucre, lait.",
   whatsappPhone: "622334455",
   status: "approved",
+  rejectionReason: null,
+};
+
+/**
+ * Boutique refusée — écran 21 uniquement. Un second objet plutôt qu'un
+ * champ ignoré sur `merchantAissatou`, qui elle est approuvée dans toute
+ * la démo : les deux statuts ne doivent jamais se mélanger sur un même
+ * commerçant, même fictif.
+ */
+export const merchantRejected: Merchant = {
+  id: "m-rejected-demo",
+  shopName: "Chez Aïssatou",
+  city: "Conakry",
+  addressHint: "Marché de Madina, allée 3",
+  description: "Alimentation générale : riz, huile, sucre, lait.",
+  whatsappPhone: "622334455",
+  status: "rejected",
+  rejectionReason:
+    "Le numéro de téléphone indiqué ne répond pas. Nous devons pouvoir vous joindre avant d'ouvrir votre boutique aux clients.",
 };
 
 function product(p: Omit<Product, "status" | "isFeatured" | "contactCount" | "photoCount"> &

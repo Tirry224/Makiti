@@ -69,16 +69,22 @@ create table public.profiles (
 -- `status` démarre à 'pending' : le commerçant prépare, tu valides.
 
 create table public.merchants (
-  id             uuid primary key default gen_random_uuid(),
-  profile_id     uuid not null unique references public.profiles(id) on delete cascade,
-  shop_name      text not null,
-  description    text,
-  whatsapp_phone text,               -- filet de sécurité si le chat reste sans réponse
-  city_id        int  not null references public.cities(id),
-  address_hint   text,               -- ex. « Marché Madina, allée 3 »
-  status         public.merchant_status not null default 'pending',
-  approved_at    timestamptz,
-  created_at     timestamptz not null default now()
+  id               uuid primary key default gen_random_uuid(),
+  profile_id       uuid not null unique references public.profiles(id) on delete cascade,
+  shop_name        text not null,
+  description      text,
+  whatsapp_phone   text,               -- filet de sécurité si le chat reste sans réponse
+  city_id          int  not null references public.cities(id),
+  address_hint     text,               -- ex. « Marché Madina, allée 3 »
+  status           public.merchant_status not null default 'pending',
+  approved_at      timestamptz,
+  -- Rempli par l'administrateur quand `status = 'rejected'`. Un refus sans
+  -- motif est un vendeur perdu définitivement (voir docs/REPRISE.md,
+  -- section 4) : l'écran « boutique refusée » a besoin de ce texte pour
+  -- dire au commerçant ce qu'il doit corriger avant de renvoyer sa
+  -- boutique.
+  rejection_reason text,
+  created_at       timestamptz not null default now()
 );
 
 create index merchants_city_idx   on public.merchants(city_id);

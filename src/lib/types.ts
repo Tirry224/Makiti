@@ -20,6 +20,8 @@ export type Merchant = {
   addressHint: string | null;
   whatsappPhone: string | null;
   status: MerchantStatus;
+  /** Rempli par l'administrateur quand `status` vaut `"rejected"`. */
+  rejectionReason: string | null;
 };
 
 export type Product = {

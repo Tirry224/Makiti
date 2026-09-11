@@ -95,6 +95,18 @@ exception when insufficient_privilege then
   raise notice 'OK    auto-validation refusée (colonne non accordée)';
 end $$;
 
+-- Même logique pour le motif de refus : lui aussi n'appartient qu'à
+-- l'administrateur. Sinon un commerçant refusé pourrait effacer la trace
+-- de son propre refus, ou en inventer une plus flatteuse.
+do $$
+begin
+  update public.merchants set rejection_reason = 'raison inventée'
+   where id = 'aaaaaaaa-0000-0000-0000-000000000001';
+  raise exception 'ECHEC un commerçant a pu écrire son motif de refus';
+exception when insufficient_privilege then
+  raise notice 'OK    écriture du motif de refus réservée à l''admin';
+end $$;
+
 reset role;
 update public.merchants set status = 'approved', approved_at = now()
  where id in ('aaaaaaaa-0000-0000-0000-000000000001', 'bbbbbbbb-0000-0000-0000-000000000002');

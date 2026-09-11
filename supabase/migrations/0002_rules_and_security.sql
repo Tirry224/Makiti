@@ -358,6 +358,12 @@ revoke update on public.merchants from authenticated, anon;
 grant  update (shop_name, description, whatsapp_phone, city_id, address_hint)
   on public.merchants to authenticated;
 
+-- `status`, `approved_at` et `rejection_reason` restent hors de cette liste
+-- blanche, volontairement : ce sont les trois colonnes que SEUL
+-- l'administrateur écrit, depuis le tableau de bord (avec `service_role`,
+-- qui ignore le RLS). Un commerçant qui pourrait écrire son propre motif
+-- de refus pourrait tout aussi bien l'effacer.
+
 -- `status` reste modifiable par le commerçant : c'est lui qui publie, retire
 -- ou marque son produit comme vendu. Le trigger 3.2 encadre ce qu'il a le
 -- droit d'en faire. En revanche `is_featured`, `contact_count` et

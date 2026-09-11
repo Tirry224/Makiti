@@ -40,7 +40,7 @@ Marché : Guinée · Devise : franc guinéen (GNF), en entiers · Langue : fran�
   12 villes
 - `0004_storage.sql` — stockage des photos
 
-`supabase/tests/` — 34 tests de sécurité, rejouables sur un PostgreSQL
+`supabase/tests/` — 35 tests de sécurité, rejouables sur un PostgreSQL
 local. Ils vérifient que les actions **interdites** échouent. Ils ont déjà
 trouvé deux vraies failles pendant l'écriture.
 
@@ -145,7 +145,7 @@ données de démonstration, en cohérence avec ce que fera plus tard la
 fonction `search_products`. Le branchement à la vraie base attend l'étape 9.
 
 ### Étape 7 — Sécurité, en continu
-Ne rien casser du RLS ni des 34 tests de `supabase/tests/` en avançant sur
+Ne rien casser du RLS ni des 35 tests de `supabase/tests/` en avançant sur
 les étapes précédentes. Pas une étape isolée : un réflexe à chaque
 modification de schéma envisagée.
 
@@ -189,16 +189,18 @@ dernière étape, une fois le front stabilisé :
 
 ---
 
-## 4. Trois manques dans la base de données
+## 4. Manques dans la base de données
 
-Découverts en dessinant les écrans, jamais corrigés. À trancher avant
-l'étape 5 :
+Découverts en dessinant les écrans. Les trois premiers restent à trancher
+avant l'étape 9 (Supabase réel) ; le deuxième est déjà résolu ci-dessous.
 
 1. **Le blocage entre personnes.** L'écran 32 propose « bloquer cette
    personne », mais aucune table ne porte cette information.
-2. **Le motif de refus d'une boutique.** `merchants.status` peut valoir
-   `rejected` mais ne dit pas pourquoi. Un refus sans explication est un
-   vendeur perdu définitivement.
+2. ~~**Le motif de refus d'une boutique.**~~ **Résolu le 2026-09-11** :
+   `merchants.rejection_reason` (colonne texte, écriture réservée à
+   l'administrateur — voir `0001_schema.sql` et `0002_rules_and_security.sql`).
+   Un refus sans explication est un vendeur perdu définitivement ; ça reste
+   à brancher côté écran (`/vendeur/refusee`) quand la vraie base existera.
 3. **La suppression de compte.** Effacement réel ou anonymisation ? Si on
    efface vraiment, les conversations de l'autre partie deviennent
    illisibles.

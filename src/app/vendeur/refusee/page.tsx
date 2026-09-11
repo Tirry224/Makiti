@@ -5,14 +5,15 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Screen, ScreenBody, Section } from "@/components/ui/Screen";
 import { TopBar, Wordmark } from "@/components/ui/TopBar";
+import { merchantRejected } from "@/lib/mock";
 
 /**
  * Écran 21 — boutique refusée.
  *
  * Un refus sans motif est un vendeur perdu définitivement. L'écran dit
  * POURQUOI, dit CE QU'IL FAUT FAIRE, et rassure sur ce qui est conservé.
- * Le motif viendra d'une colonne qui n'existe pas encore dans la base :
- * c'est l'un des trois manques relevés dans docs/ECRANS.md.
+ * Le motif vient de `merchants.rejection_reason` (voir docs/REPRISE.md,
+ * section 4) — `merchantRejected.rejectionReason` en attendant la vraie base.
  */
 export default function RejectedShopPage() {
   return (
@@ -27,10 +28,7 @@ export default function RejectedShopPage() {
 
           <div className="flex flex-col gap-2.5">
             <h1 className="text-2xl font-bold">Votre boutique n&apos;a pas été validée</h1>
-            <p className="text-base leading-relaxed text-ink-soft">
-              Le numéro de téléphone indiqué ne répond pas. Nous devons pouvoir vous joindre
-              avant d&apos;ouvrir votre boutique aux clients.
-            </p>
+            <p className="text-base leading-relaxed text-ink-soft">{merchantRejected.rejectionReason}</p>
           </div>
 
           <Card padded className="flex flex-col gap-2">
