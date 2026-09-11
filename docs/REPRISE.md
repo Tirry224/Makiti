@@ -29,20 +29,41 @@ Marché : Guinée · Devise : franc guinéen (GNF), en entiers · Langue : fran�
 `docs/SPEC.md` — 18 décisions tranchées et figées.
 `docs/ECRANS.md` — inventaire des 33 écrans.
 
-### Base de données — écrite et testée, PAS déployée
-`supabase/migrations/` — 4 fichiers SQL à exécuter dans l'ordre :
+### Base de données — écrite, testée, ET DÉPLOYÉE
+Projet Supabase `Makiti` (région eu-west-3) créé et migré le 2026-09-11.
+`supabase/migrations/` — 9 fichiers SQL, à exécuter dans l'ordre sur un
+projet neuf :
 
 - `0001_schema.sql` — 9 tables : profiles, merchants, cities, categories,
-  products, product_images, conversations, messages, reports
+  products, product_images, conversations, messages, reports. Porte
+  aussi, depuis une reprise de session, la décision des **comptes liés**
+  (voir plus bas) : `profiles.id` n'est plus la clé de `auth.users`.
 - `0002_rules_and_security.sql` — **le fichier le plus important** :
   triggers métier et règles de sécurité au niveau des lignes (RLS)
 - `0003_search_and_seed.sql` — fonction `search_products`, 10 catégories,
   12 villes
 - `0004_storage.sql` — stockage des photos
+- `0005_advisor_fixes.sql` à `0009_profile_suspension_date.sql` — corrections
+  postérieures (advisors Supabase, performance, produits vendus visibles,
+  date de suspension). Voir le fichier de chaque migration pour le détail.
+
+**Piège vécu, à ne pas reproduire** : ces 5 dernières migrations, et la
+décision des comptes liés dans 0001/0002, avaient été appliquées
+directement sur le projet Supabase (SQL Editor) sans jamais être commitées
+dans `supabase/migrations/`. Le dépôt Git décrivait donc une base qui
+n'existait plus. Reconstitué depuis `supabase_migrations.schema_migrations`
+et revérifié migration par migration contre le SQL réellement en base —
+voir section 7. **Règle à partir de maintenant : toute migration appliquée
+au tableau de bord Supabase est commitée dans la même session, jamais
+après.**
 
 `supabase/tests/` — 34 tests de sécurité, rejouables sur un PostgreSQL
-local. Ils vérifient que les actions **interdites** échouent. Ils ont déjà
-trouvé deux vraies failles pendant l'écriture.
+local (voir `supabase/tests/README.md`). Ils vérifient que les actions
+**interdites** échouent. Ils ont déjà trouvé deux vraies failles pendant
+l'écriture, et une troisième plus tard : le fichier de test lui-même
+supposait encore l'ancien modèle (`profiles.id = auth.users.id`) et ne
+tournait plus depuis le passage aux comptes liés. Corrigé et rejoué
+intégralement (34/34 OK) le 2026-09-11.
 
 ### Maquette
 Publiée : https://claude.ai/code/artifact/5640888b-3a8e-4f07-aa50-4da03a76aef2
@@ -78,17 +99,13 @@ un badge étiré — aucun de ces défauts ne produisait d'erreur.
 
 Ouvrir `/ecrans`, parcourir les 33, corriger ce qui cloche.
 
-### Étape 1 — Créer le projet Supabase
-Bloque tout le reste.
-
-1. Créer un projet sur supabase.com (offre gratuite, région Europe de l'Ouest)
-2. Exécuter les 4 migrations dans l'ordre, dans l'éditeur SQL
-3. Vérifier dans Database → Tables que **chaque** table affiche « RLS enabled »
-4. Mettre `NEXT_PUBLIC_SUPABASE_URL` et `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   dans `.env.local`
-
-La clé `service_role` ne doit jamais entrer dans le code du navigateur ni
-dans Git : elle ignore le RLS et donne un accès total à la base.
+### Étape 1 — Créer le projet Supabase — FAIT (2026-09-11)
+Projet `Makiti` créé, 9 migrations exécutées, RLS activé sur chaque table
+(vérifié via les advisors Supabase). Reste à faire, si ce n'est déjà en
+place : mettre `NEXT_PUBLIC_SUPABASE_URL` et `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+dans `.env.local` (jamais dans Git). La clé `service_role` ne doit jamais
+entrer dans le code du navigateur ni dans Git : elle ignore le RLS et donne
+un accès total à la base.
 
 ### Étape 2 — Générer les types depuis la base
 `supabase gen types typescript` remplace `src/lib/types.ts`. Les types ne
@@ -130,19 +147,35 @@ Puis **supprimer la page `/ecrans`**, qui est une page de travail.
 
 ---
 
-## 4. Trois manques dans la base de données
+## 4. Trois manques dans la base de données — RÉSOLUS (2026-09-11)
 
-Découverts en dessinant les écrans, jamais corrigés. À trancher avant
-l'étape 5 :
+Découverts en dessinant les écrans. Les trois ont depuis été tranchés et
+sont dans le schéma déployé (0001/0002) ; ce qui suit documente la décision
+prise pour chacun, pas un travail restant.
 
-1. **Le blocage entre personnes.** L'écran 32 propose « bloquer cette
-   personne », mais aucune table ne porte cette information.
-2. **Le motif de refus d'une boutique.** `merchants.status` peut valoir
-   `rejected` mais ne dit pas pourquoi. Un refus sans explication est un
-   vendeur perdu définitivement.
-3. **La suppression de compte.** Effacement réel ou anonymisation ? Si on
-   efface vraiment, les conversations de l'autre partie deviennent
-   illisibles.
+1. **Le blocage entre personnes.** Résolu par `conversations.blocked_by` :
+   avec un seul fil par couple (client, boutique), il n'existe qu'UN
+   endroit où bloquer a un sens. `blocked_by` dit qui a bloqué ; l'AUTRE
+   participant perd le droit d'écrire (RLS), le fil reste lisible pour les
+   deux. Pas de déblocage en v1. **Reste un trou mineur** : rien n'empêche
+   qu'un participant retiré du fil (aucun cas prévu en v1) laisse
+   `blocked_by` pointer vers un profil qui n'est plus partie prenante — non
+   bloquant, à surveiller si un jour on ajoute le départ d'un participant.
+2. **Le motif de refus d'une boutique.** Résolu par
+   `merchants.rejection_reason`, rempli par l'administrateur. **Reste un
+   trou réel, pas juste cosmétique** : aucune contrainte n'empêche de
+   passer `status = 'rejected'` en laissant `rejection_reason` vide — la
+   base accepte un refus sans motif, exactement le problème que la colonne
+   devait éviter. Un `check` (`status <> 'rejected' or rejection_reason is
+   not null`) le fermerait proprement ; pas fait faute d'avoir un vrai
+   parcours de refus à tester dessus.
+3. **La suppression de compte.** Résolu : anonymisation, jamais un vrai
+   `delete`. `profiles.is_deleted` / `deleted_at` marquent le compte ;
+   `full_name` et `phone` sont écrasés par une Edge Function avec
+   `service_role` au moment de la suppression (étape 9) plutôt que par une
+   colonne séparée. Les conversations de l'autre partie restent lisibles.
+   **Cette Edge Function n'existe pas encore** — c'est elle, pas le schéma,
+   qui reste à écrire.
 
 ---
 
@@ -162,8 +195,11 @@ l'étape 5 :
 - Catalogue **ouvert sans compte** ; compte exigé uniquement pour écrire.
 - **Un seul fil par couple (client, boutique)** ; chaque message peut citer
   un produit, et le premier message d'un fil en cite obligatoirement un.
-- **Un compte = un seul rôle**, client ou commerçant, modifiable
-  uniquement à la main par l'administrateur.
+- **Comptes liés** (révise une décision antérieure, voir docs/SPEC.md,
+  décision 8) : une connexion peut porter un profil client ET un profil
+  commerçant, chacun modéré indépendamment (suspendre l'un ne gèle pas
+  l'autre). Le second compte se crée depuis l'app, sans re-passer par
+  l'inscription — pas d'intervention admin nécessaire.
 - **Validation manuelle des boutiques**, depuis le tableau de bord Supabase.
   Aucune page d'administration en v1.
 - **Publication immédiate des produits**, avec bouton « signaler » et
@@ -194,7 +230,20 @@ l'étape 5 :
 - **Quand un modèle de données change, les protections écrites pour
   l'ancien deviennent souvent décoratives** sans qu'aucun test ne le
   signale. C'est arrivé au quota anti-spam lors du passage à un fil unique
-  par client.
+  par client, et une seconde fois au fichier de test lui-même lors du
+  passage aux comptes liés (section 4) : `security_test.sql` continuait à
+  utiliser l'UUID de connexion comme s'il était aussi l'identifiant du
+  profil, et ne tournait plus du tout depuis ce changement.
+- **Une migration appliquée au tableau de bord Supabase n'existe nulle
+  part tant qu'elle n'est pas commitée.** Le SQL Editor de Supabase
+  n'écrit dans aucun fichier du dépôt : cinq migrations (0005 à 0009) et
+  une décision d'architecture entière (comptes liés) ont vécu uniquement
+  dans `supabase_migrations.schema_migrations`, invisibles depuis Git,
+  pendant que `docs/SPEC.md` et `docs/REPRISE.md` continuaient de décrire
+  l'ancien modèle comme la vérité « figée ». Reconstitué en lisant le SQL
+  réellement stocké côté serveur (`select statements from
+  supabase_migrations.schema_migrations`) et en le comparant fichier par
+  fichier à ce qui était commité.
 
 ---
 

@@ -22,14 +22,38 @@
 -- PARTIE 1 — Fonctions utilitaires
 -- =====================================================================
 
--- Un utilisateur suspendu ne doit plus rien pouvoir écrire.
+-- Depuis la décision des comptes liés (2026-09-11), `auth.uid()` identifie
+-- une CONNEXION, plus un profil : la même connexion peut porter un profil
+-- client et un profil commerçant. Chaque policy plus bas a donc besoin de
+-- savoir « lequel de MES profils est concerné », pas juste « est-ce moi ».
+-- Ces fonctions sont le seul endroit qui traduit auth.uid() en identifiants
+-- de profil — si cette traduction devait changer un jour, il y a UN seul
+-- endroit à corriger, pas une recherche dans tout le fichier.
 -- `security definer` : la fonction s'exécute avec les droits de son
 -- propriétaire, donc elle contourne le RLS. C'est indispensable ici, sinon
 -- une règle posée SUR la table profiles qui interroge la table profiles
 -- tournerait en boucle infinie. C'est un outil puissant et donc dangereux :
 -- on ne l'utilise que sur des fonctions courtes et vérifiées, et on fige
 -- toujours `search_path` pour empêcher le détournement de noms.
-create or replace function public.is_active_user()
+
+-- Le profil (client OU commerçant) de la connexion active, pour le rôle
+-- demandé. NULL si cette connexion n'a pas (encore) ce compte-là.
+create or replace function public.my_profile_id(want_role public.user_role)
+returns uuid
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select id from public.profiles
+  where auth_user_id = auth.uid() and role = want_role;
+$$;
+
+-- Un profil donné appartient-il à la connexion active ? Sert à valider
+-- `sender_id` sur les messages, qui peut être mon profil client OU mon
+-- profil commerçant selon le fil concerné — `my_profile_id` seul ne
+-- suffit pas puisqu'il faut choisir un rôle à l'avance.
+create or replace function public.owns_profile(pid uuid)
 returns boolean
 language sql
 stable
@@ -38,11 +62,30 @@ set search_path = ''
 as $$
   select exists (
     select 1 from public.profiles
-    where id = auth.uid() and is_suspended = false
+    where id = pid and auth_user_id = auth.uid()
   );
 $$;
 
--- Renvoie l'identifiant de la boutique de l'utilisateur connecté, ou NULL.
+-- Ce profil précis est-il actif (ni suspendu, ni supprimé) ? Volontairement
+-- paramétrée par profil et non par connexion : les deux comptes liés d'une
+-- même personne sont modérés indépendamment (voir docs/SPEC.md, décision
+-- 8) — suspendre le compte client d'un fauteur de troubles ne doit pas
+-- geler sa boutique, qui n'a rien à y voir.
+create or replace function public.is_active_profile(pid uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1 from public.profiles
+    where id = pid and is_suspended = false and is_deleted = false
+  );
+$$;
+
+-- Renvoie l'identifiant de la boutique du profil COMMERÇANT de la
+-- connexion active, ou NULL si elle n'en a pas.
 create or replace function public.my_merchant_id()
 returns uuid
 language sql
@@ -50,16 +93,21 @@ stable
 security definer
 set search_path = ''
 as $$
-  select id from public.merchants where profile_id = auth.uid();
+  select id from public.merchants
+  where profile_id = public.my_profile_id('merchant');
 $$;
 
 
 -- =====================================================================
--- PARTIE 2 — Création automatique du profil à l'inscription
+-- PARTIE 2 — Création automatique du PREMIER profil à l'inscription
 -- =====================================================================
--- Supabase crée la ligne dans `auth.users`. Ce trigger crée la ligne
--- correspondante dans `profiles`, à partir des métadonnées envoyées au
--- moment de l'inscription.
+-- Supabase crée la ligne dans `auth.users`. Ce trigger crée le profil
+-- correspondant dans `profiles`, à partir des métadonnées envoyées au
+-- moment de l'inscription. Il ne s'exécute qu'à la création de la
+-- CONNEXION elle-même — donc une seule fois par personne, pour son premier
+-- compte (client ou commerçant). Le second compte lié, s'il est créé plus
+-- tard, passe par la policy « profiles: je cree mon second compte »
+-- (partie 6), pas par ce trigger : à ce moment-là `auth.users` existe déjà.
 --
 -- Point de sécurité à comprendre : `role` vient du navigateur, donc de
 -- l'utilisateur. Il peut donc mentir et s'inscrire comme 'merchant'. Est-ce
@@ -75,7 +123,7 @@ security definer
 set search_path = ''
 as $$
 begin
-  insert into public.profiles (id, role, full_name, phone)
+  insert into public.profiles (auth_user_id, role, full_name, phone)
   values (
     new.id,
     coalesce(new.raw_user_meta_data ->> 'role', 'client')::public.user_role,
@@ -354,9 +402,30 @@ revoke update on public.profiles  from authenticated, anon;
 grant  update (full_name, phone)
   on public.profiles to authenticated;
 
+-- `is_suspended`, `is_deleted` et `deleted_at` restent hors de cette liste
+-- blanche. `is_suspended` est déjà admin-only ; `is_deleted`/`deleted_at`
+-- le sont pour une autre raison : « supprimer mon compte » doit aussi
+-- couper l'accès à `auth.users`, ce que RLS ne peut pas faire — ça
+-- suppose une fonction serveur avec `service_role` (voir docs/REPRISE.md,
+-- étape 9). Laisser le client écrire `is_deleted` directement ouvrirait
+-- une fenêtre où le profil est marqué supprimé mais la connexion reste
+-- active — un état incohérent qu'une seule opération atomique évite.
+--
+-- `auth_user_id` et `role` non plus : le premier ferait basculer un profil
+-- vers une autre connexion (vol de compte), le second transformerait un
+-- profil client en commerçant sans repasser par la validation d'une
+-- boutique. Vouloir « l'autre rôle » crée un SECOND profil (policy plus
+-- bas), ça ne mute jamais le premier.
+
 revoke update on public.merchants from authenticated, anon;
 grant  update (shop_name, description, whatsapp_phone, city_id, address_hint)
   on public.merchants to authenticated;
+
+-- `status`, `approved_at` et `rejection_reason` restent hors de cette liste
+-- blanche, volontairement : ce sont les trois colonnes que SEUL
+-- l'administrateur écrit, depuis le tableau de bord (avec `service_role`,
+-- qui ignore le RLS). Un commerçant qui pourrait écrire son propre motif
+-- de refus pourrait tout aussi bien l'effacer.
 
 -- `status` reste modifiable par le commerçant : c'est lui qui publie, retire
 -- ou marque son produit comme vendu. Le trigger 3.2 encadre ce qu'il a le
@@ -377,9 +446,12 @@ grant  update (category_id, title, description, price_gnf, is_negotiable, status
 revoke update on public.messages from authenticated, anon;
 grant  update (read_at) on public.messages to authenticated;
 
--- Une conversation n'est jamais modifiée par un utilisateur : sa date de
--- dernier message est tenue à jour par un trigger.
+-- Une conversation n'est presque jamais modifiée par un utilisateur : sa
+-- date de dernier message est tenue à jour par un trigger. La seule
+-- exception est `blocked_by` (écran 32, policy 6.6 bis plus bas) : un
+-- participant peut s'y désigner lui-même comme bloqueur, rien d'autre.
 revoke update on public.conversations from authenticated, anon;
+grant  update (blocked_by) on public.conversations to authenticated;
 
 -- Rien ne s'efface : on masque (voir `status`). Supprimer une fiche
 -- détruirait le contexte des conversations qui y renvoient.
@@ -428,12 +500,13 @@ create policy "categories: lecture publique"
   on public.categories for select using (true);
 
 
--- 6.2 Profils : chacun voit le sien. Un interlocuteur voit le nom de la
--- personne avec qui il discute — et rien de plus, ce qui suppose de ne
--- jamais sélectionner `phone` côté client sans raison.
-create policy "profiles: je vois mon profil"
+-- 6.2 Profils : chacun voit LES SIENS — au pluriel, une connexion peut en
+-- porter deux (voir partie 1). Un interlocuteur voit le nom de la personne
+-- avec qui il discute — et rien de plus, ce qui suppose de ne jamais
+-- sélectionner `phone` côté client sans raison.
+create policy "profiles: je vois mes profils"
   on public.profiles for select
-  using (id = auth.uid());
+  using (auth_user_id = auth.uid());
 
 create policy "profiles: je vois mes interlocuteurs"
   on public.profiles for select
@@ -442,38 +515,48 @@ create policy "profiles: je vois mes interlocuteurs"
       select 1
         from public.conversations c
         join public.merchants m on m.id = c.merchant_id
-       where (c.client_id = public.profiles.id and m.profile_id = auth.uid())
-          or (m.profile_id  = public.profiles.id and c.client_id  = auth.uid())
+       where (c.client_id = public.profiles.id and m.profile_id = public.my_profile_id('merchant'))
+          or (m.profile_id  = public.profiles.id and c.client_id  = public.my_profile_id('client'))
     )
   );
 
 create policy "profiles: je modifie mon profil"
   on public.profiles for update
-  using (id = auth.uid())
-  with check (id = auth.uid());
+  using (auth_user_id = auth.uid())
+  with check (auth_user_id = auth.uid());
+
+-- Créer le SECOND compte lié (écran 12 : « vous pourrez créer l'autre
+-- compte plus tard »). Le premier passe par le trigger `handle_new_user`
+-- (partie 2), pas par cette policy — à l'inscription, `auth.uid()` dans une
+-- policy RLS n'est pas encore utilisable de la même transaction. Rien
+-- n'empêche ici de redemander un rôle déjà possédé : la contrainte
+-- `unique (auth_user_id, role)` s'en charge, avec un message d'erreur
+-- réseau plutôt qu'une policy qui devrait dupliquer la même logique.
+create policy "profiles: je cree mon second compte"
+  on public.profiles for insert
+  with check (auth_user_id = auth.uid());
 
 
 -- 6.3 Boutiques : les boutiques approuvées sont publiques ; un commerçant
 -- voit toujours la sienne, même en attente de validation.
 create policy "merchants: boutiques approuvees publiques"
   on public.merchants for select
-  using (status = 'approved' or profile_id = auth.uid());
+  using (status = 'approved' or profile_id = public.my_profile_id('merchant'));
 
+-- `profile_id = my_profile_id('merchant')` suffit à vérifier à la fois la
+-- propriété ET le rôle : cette fonction ne renvoie que l'id d'un profil de
+-- rôle 'merchant' appartenant à la connexion active (partie 1).
 create policy "merchants: je cree ma boutique"
   on public.merchants for insert
   with check (
-    profile_id = auth.uid()
-    and public.is_active_user()
-    and exists (
-      select 1 from public.profiles
-      where id = auth.uid() and role = 'merchant'
-    )
+    profile_id = public.my_profile_id('merchant')
+    and public.is_active_profile(profile_id)
   );
 
 create policy "merchants: je modifie ma boutique"
   on public.merchants for update
-  using (profile_id = auth.uid() and public.is_active_user())
-  with check (profile_id = auth.uid());
+  using (profile_id = public.my_profile_id('merchant') and public.is_active_profile(profile_id))
+  with check (profile_id = public.my_profile_id('merchant'));
 
 
 -- 6.4 Produits.
@@ -492,8 +575,8 @@ create policy "products: catalogue public"
 
 create policy "products: je gere mes produits"
   on public.products for all
-  using (merchant_id = public.my_merchant_id() and public.is_active_user())
-  with check (merchant_id = public.my_merchant_id() and public.is_active_user());
+  using (merchant_id = public.my_merchant_id() and public.is_active_profile(public.my_profile_id('merchant')))
+  with check (merchant_id = public.my_merchant_id() and public.is_active_profile(public.my_profile_id('merchant')));
 
 
 -- 6.5 Photos : elles suivent exactement la visibilité du produit.
@@ -518,13 +601,13 @@ create policy "product_images: je gere les photos de mes produits"
     exists (select 1 from public.products p
             where p.id = public.product_images.product_id
               and p.merchant_id = public.my_merchant_id())
-    and public.is_active_user()
+    and public.is_active_profile(public.my_profile_id('merchant'))
   )
   with check (
     exists (select 1 from public.products p
             where p.id = public.product_images.product_id
               and p.merchant_id = public.my_merchant_id())
-    and public.is_active_user()
+    and public.is_active_profile(public.my_profile_id('merchant'))
   );
 
 
@@ -534,28 +617,41 @@ create policy "product_images: je gere les photos de mes produits"
 create policy "conversations: reservees aux participants"
   on public.conversations for select
   using (
-    client_id = auth.uid()
+    client_id = public.my_profile_id('client')
     or merchant_id = public.my_merchant_id()
   );
 
 -- Seul un client peut ouvrir une conversation, et seulement vers une
 -- boutique validée. Le contrôle du produit ne se fait plus ici — il a suivi
 -- le produit là où il vit maintenant, c'est-à-dire sur le message
--- (trigger 3.4 bis).
+-- (trigger 3.4 bis). `client_id = my_profile_id('client')` vérifie à la
+-- fois la propriété et le rôle, comme pour les boutiques plus haut.
 create policy "conversations: un client contacte un commercant"
   on public.conversations for insert
   with check (
-    client_id = auth.uid()
-    and public.is_active_user()
-    and exists (
-      select 1 from public.profiles
-      where id = auth.uid() and role = 'client'
-    )
+    client_id = public.my_profile_id('client')
+    and public.is_active_profile(client_id)
     and exists (
       select 1 from public.merchants m
       where m.id = public.conversations.merchant_id
         and m.status = 'approved'
     )
+  );
+
+-- 6.6 bis Blocage (écran 32) : un participant se désigne lui-même comme
+-- bloqueur — jamais l'autre. Écrit en deux branches (je suis le client /
+-- je suis le commerçant) plutôt qu'un `owns_profile(blocked_by)` seul :
+-- une connexion avec ses deux comptes liés pourrait sinon désigner son
+-- AUTRE profil (non participant à CE fil) comme bloqueur, une valeur
+-- possédée mais dénuée de sens ici.
+create policy "conversations: je bloque mon interlocuteur"
+  on public.conversations for update
+  using (client_id = public.my_profile_id('client') or merchant_id = public.my_merchant_id())
+  with check (
+    (client_id = public.my_profile_id('client') and blocked_by = client_id)
+    or
+    (merchant_id = public.my_merchant_id()
+     and blocked_by = (select profile_id from public.merchants where id = merchant_id))
   );
 
 
@@ -566,44 +662,59 @@ create policy "messages: lecture par les participants"
     exists (
       select 1 from public.conversations c
       where c.id = public.messages.conversation_id
-        and (c.client_id = auth.uid() or c.merchant_id = public.my_merchant_id())
+        and (c.client_id = public.my_profile_id('client') or c.merchant_id = public.my_merchant_id())
     )
   );
 
+-- `sender_id` peut être mon profil client OU mon profil commerçant selon
+-- le fil : `owns_profile` vérifie qu'il est bien à moi, puis l'`exists`
+-- vérifie qu'il correspond au bon participant de CE fil précis — pas
+-- seulement « un de mes profils », qui pourrait être mon AUTRE compte, pas
+-- participant à ce fil. `blocked_by is null or blocked_by = sender_id` : si
+-- personne n'a bloqué personne, les deux écrivent normalement ; sinon SEUL
+-- le bloqueur garde le droit d'écrire — l'autre, visé par « elle ne pourra
+-- plus vous écrire » sur l'écran 32, en est privé.
 create policy "messages: envoi par les participants"
   on public.messages for insert
   with check (
-    sender_id = auth.uid()
-    and public.is_active_user()
+    public.owns_profile(sender_id)
+    and public.is_active_profile(sender_id)
     and exists (
       select 1 from public.conversations c
       where c.id = public.messages.conversation_id
-        and (c.client_id = auth.uid() or c.merchant_id = public.my_merchant_id())
+        and (
+          c.client_id = sender_id
+          or exists (select 1 from public.merchants m where m.id = c.merchant_id and m.profile_id = sender_id)
+        )
+        and (c.blocked_by is null or c.blocked_by = sender_id)
     )
   );
 
 -- Marquer comme lu : uniquement les messages reçus, jamais ceux qu'on a
--- envoyés soi-même. La partie 4 a restreint l'écriture à la seule colonne
--- `read_at` : c'est cette restriction, et non cette policy, qui empêche de
--- réécrire le texte d'autrui. Les deux mécanismes sont nécessaires.
+-- envoyés soi-même (sous AUCUN de ses deux profils). La partie 4 a
+-- restreint l'écriture à la seule colonne `read_at` : c'est cette
+-- restriction, et non cette policy, qui empêche de réécrire le texte
+-- d'autrui. Les deux mécanismes sont nécessaires.
 create policy "messages: marquer comme lu"
   on public.messages for update
   using (
-    sender_id <> auth.uid()
+    not public.owns_profile(sender_id)
     and exists (
       select 1 from public.conversations c
       where c.id = public.messages.conversation_id
-        and (c.client_id = auth.uid() or c.merchant_id = public.my_merchant_id())
+        and (c.client_id = public.my_profile_id('client') or c.merchant_id = public.my_merchant_id())
     )
   )
   with check (true);
 
 
--- 6.8 Signalements : on crée le sien, on relit le sien. Toi seul les traites.
+-- 6.8 Signalements : on crée le sien, on relit le sien. Toi seul les
+-- traites. `reporter_id` peut être mon profil client ou commerçant : les
+-- deux peuvent signaler (un produit, une conversation, une boutique).
 create policy "reports: je signale"
   on public.reports for insert
-  with check (reporter_id = auth.uid() and public.is_active_user());
+  with check (public.owns_profile(reporter_id) and public.is_active_profile(reporter_id));
 
 create policy "reports: je relis mes signalements"
   on public.reports for select
-  using (reporter_id = auth.uid());
+  using (public.owns_profile(reporter_id));

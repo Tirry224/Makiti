@@ -48,18 +48,43 @@ create table public.categories (
 -- ---------------------------------------------------------------------
 -- Supabase gère les identifiants et mots de passe dans la table `auth.users`,
 -- à laquelle tu n'as pas accès en écriture. `profiles` est TA table : elle
--- porte les informations métier et partage la même clé primaire.
--- `on delete cascade` : si le compte d'authentification disparaît, le profil
--- disparaît avec lui. Pas d'orphelins.
+-- porte les informations métier.
+--
+-- `id` NE PARTAGE PLUS la clé de `auth.users` (contrairement à une app
+-- Supabase classique) : une personne peut avoir un compte client ET un
+-- compte commerçant derrière UNE SEULE connexion (décision du 2026-09-11,
+-- bascule sans reconnexion — voir docs/SPEC.md, décision 8). Une connexion
+-- ne peut porter qu'UNE ligne par rôle : `auth_user_id` fait le lien, et
+-- `unique (auth_user_id, role)` empêche d'avoir deux fois le même rôle sur
+-- la même connexion — pas d'avoir les deux rôles, c'est le but.
+-- `on delete cascade` : si le compte d'authentification disparaît, TOUS
+-- ses profils disparaissent avec lui. Pas d'orphelins. En pratique un
+-- compte n'est jamais vraiment supprimé (voir `is_deleted` plus bas) : ce
+-- cascade protège surtout contre un nettoyage manuel malencontreux.
 
 create table public.profiles (
-  id           uuid primary key references auth.users(id) on delete cascade,
+  id           uuid primary key default gen_random_uuid(),
+  auth_user_id uuid not null references auth.users(id) on delete cascade,
   role         public.user_role not null,
   full_name    text not null,
   phone        text not null,        -- non vérifié : ce n'est PAS une preuve d'identité
   is_suspended boolean not null default false,
-  created_at   timestamptz not null default now()
+  -- Suppression de compte = ANONYMISATION, jamais un vrai DELETE. Avec les
+  -- `on delete cascade` de ce fichier, effacer un profil effacerait aussi
+  -- ses messages dans TOUTES ses conversations — y compris ceux que lit
+  -- encore l'autre participant. Un commerçant qui supprime son compte ne
+  -- doit pas rendre illisible l'historique de ses anciens clients.
+  -- `full_name`/`phone` sont écrasés au moment de la suppression (par une
+  -- Edge Function, voir 0002 et docs/REPRISE.md étape 9) plutôt que
+  -- protégés par une colonne séparée : la donnée personnelle disparaît
+  -- vraiment, seule la ligne et son historique de messages survivent.
+  is_deleted   boolean not null default false,
+  deleted_at   timestamptz,
+  created_at   timestamptz not null default now(),
+  unique (auth_user_id, role)
 );
+
+create index profiles_auth_user_idx on public.profiles(auth_user_id);
 
 
 -- ---------------------------------------------------------------------
@@ -69,16 +94,22 @@ create table public.profiles (
 -- `status` démarre à 'pending' : le commerçant prépare, tu valides.
 
 create table public.merchants (
-  id             uuid primary key default gen_random_uuid(),
-  profile_id     uuid not null unique references public.profiles(id) on delete cascade,
-  shop_name      text not null,
-  description    text,
-  whatsapp_phone text,               -- filet de sécurité si le chat reste sans réponse
-  city_id        int  not null references public.cities(id),
-  address_hint   text,               -- ex. « Marché Madina, allée 3 »
-  status         public.merchant_status not null default 'pending',
-  approved_at    timestamptz,
-  created_at     timestamptz not null default now()
+  id               uuid primary key default gen_random_uuid(),
+  profile_id       uuid not null unique references public.profiles(id) on delete cascade,
+  shop_name        text not null,
+  description      text,
+  whatsapp_phone   text,               -- filet de sécurité si le chat reste sans réponse
+  city_id          int  not null references public.cities(id),
+  address_hint     text,               -- ex. « Marché Madina, allée 3 »
+  status           public.merchant_status not null default 'pending',
+  approved_at      timestamptz,
+  -- Rempli par l'administrateur quand `status = 'rejected'`. Un refus sans
+  -- motif est un vendeur perdu définitivement (voir docs/REPRISE.md,
+  -- section 4) : l'écran « boutique refusée » a besoin de ce texte pour
+  -- dire au commerçant ce qu'il doit corriger avant de renvoyer sa
+  -- boutique.
+  rejection_reason text,
+  created_at       timestamptz not null default now()
 );
 
 create index merchants_city_idx   on public.merchants(city_id);
@@ -162,6 +193,14 @@ create table public.conversations (
   merchant_id     uuid not null references public.merchants(id) on delete cascade,
   created_at      timestamptz not null default now(),
   last_message_at timestamptz not null default now(),
+  -- Blocage entre les deux participants (écran 32). Porté par la
+  -- conversation et non par une table à part : avec un seul fil possible
+  -- par couple (client, boutique), il n'existe déjà qu'UN endroit où
+  -- bloquer quelqu'un aurait un sens. `blocked_by` dit QUI a bloqué ; c'est
+  -- donc l'AUTRE participant qui perd le droit d'écrire (RLS, voir 0002).
+  -- Le fil reste lisible pour les deux : bloquer ferme l'écriture, pas la
+  -- lecture. Pas de déblocage en v1 — aucun écran ne le propose.
+  blocked_by      uuid references public.profiles(id),
   unique (client_id, merchant_id)
 );
 

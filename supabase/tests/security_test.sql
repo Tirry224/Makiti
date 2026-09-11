@@ -42,9 +42,27 @@ insert into auth.users (id, email, raw_user_meta_data) values
   ('55555555-5555-5555-5555-555555555555', 'e@test.gn', '{"role":"client","full_name":"Client E","phone":"620000005"}'),
   ('66666666-6666-6666-6666-666666666666', 'f@test.gn', '{"role":"client","full_name":"Client F","phone":"620000006"}');
 
+-- Depuis la décision des comptes liés (voir 0001/0002), `profiles.id` n'est
+-- PLUS l'identifiant de connexion : il est généré par la base au moment où
+-- le trigger `handle_new_user` crée le profil. Le test ne peut donc plus se
+-- servir des UUID ci-dessus comme s'ils étaient aussi des `profiles.id` —
+-- il doit d'abord demander à la base les identifiants qu'elle a réellement
+-- attribués, et les garder dans des variables psql (`\gset`) pour tout le
+-- reste du fichier. `pg_temp.login(...)` continue, lui, à prendre l'UUID de
+-- CONNEXION (`auth.users.id`) : c'est ce que Supabase place dans le jeton,
+-- et c'est ce que lisent `my_profile_id()` / `owns_profile()`.
+select
+  (select id from public.profiles where auth_user_id = '11111111-1111-1111-1111-111111111111') as profile_a,
+  (select id from public.profiles where auth_user_id = '22222222-2222-2222-2222-222222222222') as profile_b,
+  (select id from public.profiles where auth_user_id = '33333333-3333-3333-3333-333333333333') as profile_c,
+  (select id from public.profiles where auth_user_id = '44444444-4444-4444-4444-444444444444') as profile_d,
+  (select id from public.profiles where auth_user_id = '55555555-5555-5555-5555-555555555555') as profile_e,
+  (select id from public.profiles where auth_user_id = '66666666-6666-6666-6666-666666666666') as profile_f
+\gset
+
 insert into public.merchants (id, profile_id, shop_name, city_id) values
-  ('aaaaaaaa-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'Chez A', 1),
-  ('bbbbbbbb-0000-0000-0000-000000000002', '22222222-2222-2222-2222-222222222222', 'Chez B', 1);
+  ('aaaaaaaa-0000-0000-0000-000000000001', :'profile_a', 'Chez A', 1),
+  ('bbbbbbbb-0000-0000-0000-000000000002', :'profile_b', 'Chez B', 1);
 
 
 -- =====================================================================
@@ -54,7 +72,7 @@ select pg_temp.check('profils créés à l''inscription',
   (select count(*) from public.profiles) = 6);
 
 select pg_temp.check('le rôle envoyé à l''inscription est respecté',
-  (select role from public.profiles where id = '33333333-3333-3333-3333-333333333333') = 'client');
+  (select role from public.profiles where id = :'profile_c') = 'client');
 
 
 -- =====================================================================
@@ -188,28 +206,34 @@ select pg_temp.login('33333333-3333-3333-3333-333333333333');   -- Client C
 
 insert into public.conversations (id, client_id, merchant_id)
 values ('dddddddd-0000-0000-0000-000000000001',
-        '33333333-3333-3333-3333-333333333333',
+        :'profile_c',
         'aaaaaaaa-0000-0000-0000-000000000001');
 
 do $$
 begin
   insert into public.conversations (client_id, merchant_id)
-  values ('33333333-3333-3333-3333-333333333333',
+  values ((select id from public.profiles where auth_user_id = '33333333-3333-3333-3333-333333333333'),
           'aaaaaaaa-0000-0000-0000-000000000001');
   raise exception 'ECHEC un second fil a été ouvert vers la même boutique';
 exception when unique_violation then
   raise notice 'OK    un seul fil par couple (client, boutique)';
 end $$;
 
+reset role;
+
 
 -- =====================================================================
 -- 8. Le premier message doit préciser le produit
 -- =====================================================================
+set role authenticated;
+select pg_temp.login('33333333-3333-3333-3333-333333333333');   -- Client C
+
 do $$
 begin
   insert into public.messages (conversation_id, sender_id, body)
   values ('dddddddd-0000-0000-0000-000000000001',
-          '33333333-3333-3333-3333-333333333333', 'Bonjour, c''est combien ?');
+          (select id from public.profiles where auth_user_id = '33333333-3333-3333-3333-333333333333'),
+          'Bonjour, c''est combien ?');
   raise exception 'ECHEC premier message accepté sans produit';
 exception when others then
   if sqlerrm like 'ECHEC%' then raise; end if;
@@ -218,21 +242,21 @@ end $$;
 
 insert into public.messages (conversation_id, sender_id, product_id, body)
 values ('dddddddd-0000-0000-0000-000000000001',
-        '33333333-3333-3333-3333-333333333333',
+        :'profile_c',
         'cccccccc-0000-0000-0000-000000000001',
         'Bonjour, le sac de riz est-il disponible ?');
 
 -- La suite de l'échange n'a plus besoin de répéter le produit.
 insert into public.messages (conversation_id, sender_id, body)
 values ('dddddddd-0000-0000-0000-000000000001',
-        '33333333-3333-3333-3333-333333333333', 'Et vous livrez ?');
+        :'profile_c', 'Et vous livrez ?');
 select pg_temp.check('les messages suivants peuvent omettre le produit',
   (select count(*) from public.messages where product_id is null) = 1);
 
 -- On peut changer de sujet dans le même fil : c'est tout l'intérêt.
 insert into public.messages (conversation_id, sender_id, product_id, body)
 values ('dddddddd-0000-0000-0000-000000000001',
-        '33333333-3333-3333-3333-333333333333',
+        :'profile_c',
         'cccccccc-0000-0000-0000-000000000002',
         'Et le téléphone Tecno, il est neuf ?');
 select pg_temp.check('un même fil couvre plusieurs produits',
@@ -247,7 +271,7 @@ do $$
 begin
   insert into public.messages (conversation_id, sender_id, product_id, body)
   values ('dddddddd-0000-0000-0000-000000000001',
-          '33333333-3333-3333-3333-333333333333',
+          (select id from public.profiles where auth_user_id = '33333333-3333-3333-3333-333333333333'),
           'cccccccc-0000-0000-0000-000000000003',   -- produit de la boutique B
           'Ce chargeur ?');
   raise exception 'ECHEC produit d''une autre boutique accepté';
@@ -272,7 +296,7 @@ select pg_temp.check('le commerçant destinataire voit les messages',
   (select count(*) from public.messages) = 3);
 select pg_temp.check('le commerçant voit le nom de son interlocuteur',
   (select full_name from public.profiles
-    where id = '33333333-3333-3333-3333-333333333333') = 'Client C');
+    where id = :'profile_c') = 'Client C');
 
 reset role; set role authenticated;
 select pg_temp.login('44444444-4444-4444-4444-444444444444');   -- Client D, étranger
@@ -282,7 +306,7 @@ select pg_temp.check('un tiers ne voit AUCUN message',
   (select count(*) from public.messages) = 0);
 select pg_temp.check('un tiers ne voit pas le nom des autres clients',
   (select count(*) from public.profiles
-    where id = '33333333-3333-3333-3333-333333333333') = 0);
+    where id = :'profile_c') = 0);
 
 reset role; set role authenticated;
 select pg_temp.login('22222222-2222-2222-2222-222222222222');   -- Concurrent
@@ -304,14 +328,14 @@ select pg_temp.login('11111111-1111-1111-1111-111111111111');
 do $$
 begin
   update public.messages set body = 'Je m''engage à payer le double'
-   where sender_id = '33333333-3333-3333-3333-333333333333';
+   where sender_id = (select id from public.profiles where auth_user_id = '33333333-3333-3333-3333-333333333333');
   raise exception 'ECHEC un participant a pu falsifier le message de l''autre';
 exception when insufficient_privilege then
   raise notice 'OK    falsification du message d''autrui refusée';
 end $$;
 
 update public.messages set read_at = now()
- where sender_id = '33333333-3333-3333-3333-333333333333';
+ where sender_id = :'profile_c';
 select pg_temp.check('marquage « lu » autorisé',
   (select count(*) from public.messages where read_at is not null) = 3);
 
@@ -327,7 +351,7 @@ select pg_temp.login('22222222-2222-2222-2222-222222222222');
 do $$
 begin
   insert into public.conversations (client_id, merchant_id)
-  values ('22222222-2222-2222-2222-222222222222',
+  values ((select id from public.profiles where auth_user_id = '22222222-2222-2222-2222-222222222222'),
           'aaaaaaaa-0000-0000-0000-000000000001');
   raise exception 'ECHEC un commerçant a pu ouvrir un fil';
 exception when insufficient_privilege then
@@ -341,7 +365,7 @@ reset role;
 -- 13. Un compte suspendu ne peut plus écrire
 -- =====================================================================
 update public.profiles set is_suspended = true
- where id = '33333333-3333-3333-3333-333333333333';
+ where id = :'profile_c';
 
 set role authenticated;
 select pg_temp.login('33333333-3333-3333-3333-333333333333');
@@ -350,7 +374,7 @@ do $$
 begin
   insert into public.messages (conversation_id, sender_id, product_id, body)
   values ('dddddddd-0000-0000-0000-000000000001',
-          '33333333-3333-3333-3333-333333333333',
+          (select id from public.profiles where auth_user_id = '33333333-3333-3333-3333-333333333333'),
           'cccccccc-0000-0000-0000-000000000001', 'Encore moi');
   raise exception 'ECHEC un compte suspendu a pu écrire';
 exception when insufficient_privilege then
@@ -359,7 +383,7 @@ end $$;
 
 reset role;
 update public.profiles set is_suspended = false
- where id = '33333333-3333-3333-3333-333333333333';
+ where id = :'profile_c';
 
 
 -- =====================================================================
@@ -375,11 +399,11 @@ set role authenticated;
 select pg_temp.login('44444444-4444-4444-4444-444444444444');
 insert into public.conversations (id, client_id, merchant_id)
 values ('dddddddd-0000-0000-0000-000000000002',
-        '44444444-4444-4444-4444-444444444444',
+        :'profile_d',
         'aaaaaaaa-0000-0000-0000-000000000001');
 insert into public.messages (conversation_id, sender_id, product_id, body)
 values ('dddddddd-0000-0000-0000-000000000002',
-        '44444444-4444-4444-4444-444444444444',
+        :'profile_d',
         'cccccccc-0000-0000-0000-000000000001', 'Toujours dispo ?');
 reset role;
 
@@ -397,12 +421,17 @@ select gen_random_uuid(), 'spam' || i || '@test.gn',
        '{"role":"merchant","full_name":"Boutique","phone":"620"}'::jsonb
   from generate_series(1, 30) i;
 
+-- On exclut A et B par leur CONNEXION (`auth_user_id`), pas par
+-- `profiles.id` : avec les comptes liés, plus rien ne garantit qu'un
+-- `profiles.id` ressemble à un `auth.users.id`, alors que l'exclusion par
+-- connexion, elle, reste vraie quel que soit le schéma de génération des
+-- identifiants.
 insert into public.merchants (profile_id, shop_name, city_id, status)
 select p.id, 'Boutique ' || p.id, 1, 'approved'
   from public.profiles p
  where p.role = 'merchant'
-   and p.id not in ('11111111-1111-1111-1111-111111111111',
-                    '22222222-2222-2222-2222-222222222222');
+   and p.auth_user_id not in ('11111111-1111-1111-1111-111111111111',
+                               '22222222-2222-2222-2222-222222222222');
 
 do $$
 declare m record; n int := 0;
@@ -410,7 +439,7 @@ begin
   for m in select id from public.merchants loop
     begin
       insert into public.conversations (client_id, merchant_id)
-      values ('55555555-5555-5555-5555-555555555555', m.id);
+      values ((select id from public.profiles where auth_user_id = '55555555-5555-5555-5555-555555555555'), m.id);
       n := n + 1;
     exception
       when unique_violation then null;   -- fil déjà existant, on passe
@@ -427,14 +456,14 @@ do $$
 declare conv uuid; n int := 0;
 begin
   insert into public.conversations (client_id, merchant_id)
-  values ('66666666-6666-6666-6666-666666666666',
+  values ((select id from public.profiles where auth_user_id = '66666666-6666-6666-6666-666666666666'),
           'aaaaaaaa-0000-0000-0000-000000000001')
   returning id into conv;
 
   for i in 1..120 loop
     begin
       insert into public.messages (conversation_id, sender_id, product_id, body)
-      values (conv, '66666666-6666-6666-6666-666666666666',
+      values (conv, (select id from public.profiles where auth_user_id = '66666666-6666-6666-6666-666666666666'),
               'cccccccc-0000-0000-0000-000000000002', 'message ' || i);
       n := n + 1;
     exception when others then

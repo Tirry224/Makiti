@@ -21,7 +21,7 @@ Marché : Guinée · Devise : franc guinéen (GNF) · Langue : français.
 | 5b | Structure des fils | **Un seul fil par couple (client, boutique).** Chaque message référence le produit dont il parle ; le premier message d'un fil en porte obligatoirement un. |
 | 6 | Modération produits | Publication immédiate, bouton « signaler », masquage possible par l'admin. |
 | 7 | Volume cible | 500 commerçants **à un an**. Densité avant volume au lancement. |
-| 8 | Rôles | Un compte = un seul rôle (client **ou** commerçant). Rôle modifiable à la main par l'admin. |
+| 8 | Rôles | **Comptes liés** (décision du 2026-09-11, révise ce tableau) : une même connexion (email + mot de passe) peut porter un profil client **et** un profil commerçant, chacun avec son propre historique et sa propre modération. Le second compte se crée depuis l'application, sans repasser par l'inscription. Remplace l'ancienne règle « un compte = un seul rôle, modifiable à la main par l'admin ». |
 | 9 | Ville | Filtre **manuel** choisi par le client. Jamais de filtrage automatique. |
 | 10 | Disponibilité | Binaire (disponible / vendu). **Pas de gestion de stock.** |
 | 11 | Validation commerçant | Manuelle, via le tableau de bord Supabase. Aucune page admin en v1. |
