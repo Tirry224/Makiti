@@ -15,6 +15,7 @@ import { Package } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCategories, getCities } from "@/lib/data/reference";
+import { getMyProfile } from "@/lib/data/session";
 import { searchProducts } from "@/lib/data/products";
 
 /**
@@ -25,6 +26,15 @@ import { searchProducts } from "@/lib/data/products";
  * bouton « retour » du téléphone défait le filtre, et l'écran vide est
  * atteignable pour de vrai — pas seulement en imagination. La catégorie
  * suit la même règle (`&categorie=...`).
+ *
+ * Sans `?ville=` dans l'URL, le défaut est la ville de résidence du
+ * client connecté (`profiles.city_id`) plutôt que "Conakry" en dur —
+ * décision du 2026-09-11 (voir docs/REPRISE.md, étape 4). Un visiteur non
+ * connecté, un compte sans profil client, ou un client qui n'a pas encore
+ * renseigné sa ville retombent sur "Conakry". Une fois `ville` présent
+ * dans l'URL (l'utilisateur a changé de ville depuis l'écran de
+ * recherche), il gagne toujours : ceci ne fixe qu'un point de départ, pas
+ * un filtre permanent — un client peut chercher ailleurs que chez lui.
  *
  * Un seul appel réseau : `inCity` (toute la ville, sans filtre de
  * catégorie) est déjà tout ce dont l'écran a besoin — la catégorie choisie
@@ -38,10 +48,16 @@ export default async function HomePage({
 }: {
   searchParams: Promise<{ ville?: string; categorie?: string }>;
 }) {
-  const { ville = "Conakry", categorie = "Tout" } = await searchParams;
+  const { ville: villeParam, categorie = "Tout" } = await searchParams;
   const supabase = await createClient();
 
-  const [cities, categories] = await Promise.all([getCities(supabase), getCategories(supabase)]);
+  const [cities, categories, profile] = await Promise.all([
+    getCities(supabase),
+    getCategories(supabase),
+    getMyProfile(supabase, "client"),
+  ]);
+  const profileCityName = cities.find((c) => c.id === profile?.cityId)?.name;
+  const ville = villeParam ?? profileCityName ?? "Conakry";
   const city = cities.find((c) => c.name === ville) ?? cities.find((c) => c.name === "Conakry");
 
   const inCity = city ? await searchProducts(supabase, { cityId: city.id, limit: 50 }) : [];
