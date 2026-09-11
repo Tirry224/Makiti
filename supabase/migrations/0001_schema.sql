@@ -48,12 +48,23 @@ create table public.categories (
 -- ---------------------------------------------------------------------
 -- Supabase gère les identifiants et mots de passe dans la table `auth.users`,
 -- à laquelle tu n'as pas accès en écriture. `profiles` est TA table : elle
--- porte les informations métier et partage la même clé primaire.
--- `on delete cascade` : si le compte d'authentification disparaît, le profil
--- disparaît avec lui. Pas d'orphelins.
+-- porte les informations métier.
+--
+-- `id` NE PARTAGE PLUS la clé de `auth.users` (contrairement à une app
+-- Supabase classique) : une personne peut avoir un compte client ET un
+-- compte commerçant derrière UNE SEULE connexion (décision du 2026-09-11,
+-- bascule sans reconnexion — voir docs/SPEC.md, décision 8). Une connexion
+-- ne peut porter qu'UNE ligne par rôle : `auth_user_id` fait le lien, et
+-- `unique (auth_user_id, role)` empêche d'avoir deux fois le même rôle sur
+-- la même connexion — pas d'avoir les deux rôles, c'est le but.
+-- `on delete cascade` : si le compte d'authentification disparaît, TOUS
+-- ses profils disparaissent avec lui. Pas d'orphelins. En pratique un
+-- compte n'est jamais vraiment supprimé (voir `is_deleted` plus bas) : ce
+-- cascade protège surtout contre un nettoyage manuel malencontreux.
 
 create table public.profiles (
-  id           uuid primary key references auth.users(id) on delete cascade,
+  id           uuid primary key default gen_random_uuid(),
+  auth_user_id uuid not null references auth.users(id) on delete cascade,
   role         public.user_role not null,
   full_name    text not null,
   phone        text not null,        -- non vérifié : ce n'est PAS une preuve d'identité
@@ -69,8 +80,11 @@ create table public.profiles (
   -- vraiment, seule la ligne et son historique de messages survivent.
   is_deleted   boolean not null default false,
   deleted_at   timestamptz,
-  created_at   timestamptz not null default now()
+  created_at   timestamptz not null default now(),
+  unique (auth_user_id, role)
 );
+
+create index profiles_auth_user_idx on public.profiles(auth_user_id);
 
 
 -- ---------------------------------------------------------------------

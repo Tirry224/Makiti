@@ -40,7 +40,7 @@ Marché : Guinée · Devise : franc guinéen (GNF), en entiers · Langue : fran�
   12 villes
 - `0004_storage.sql` — stockage des photos
 
-`supabase/tests/` — 40 tests de sécurité, rejouables sur un PostgreSQL
+`supabase/tests/` — 44 tests de sécurité, rejouables sur un PostgreSQL
 local. Ils vérifient que les actions **interdites** échouent. Ils ont déjà
 trouvé deux vraies failles pendant l'écriture.
 
@@ -145,7 +145,7 @@ données de démonstration, en cohérence avec ce que fera plus tard la
 fonction `search_products`. Le branchement à la vraie base attend l'étape 9.
 
 ### Étape 7 — Sécurité, en continu
-Ne rien casser du RLS ni des 40 tests de `supabase/tests/` en avançant sur
+Ne rien casser du RLS ni des 44 tests de `supabase/tests/` en avançant sur
 les étapes précédentes. Pas une étape isolée : un réflexe à chaque
 modification de schéma envisagée.
 
@@ -158,11 +158,11 @@ refus d'une boutique, point 2 de la section précédente).
 Tout ce qui suit était avant en tête de liste ; c'est maintenant la toute
 dernière étape, une fois le front stabilisé :
 
-1. Trancher le schéma des comptes liés (point 4 de la section précédente)
+1. ~~Trancher le schéma des comptes liés~~ **Fait le 2026-09-11** (point 4
+   de la section précédente) — les migrations sont déjà à jour.
 2. Créer un projet sur supabase.com (offre gratuite, région Europe de
    l'Ouest)
-3. Exécuter les migrations dans l'ordre, dans l'éditeur SQL (mettre à jour
-   `0001_schema.sql` avec la décision du point 1 avant de les exécuter)
+3. Exécuter les migrations dans l'ordre, dans l'éditeur SQL
 4. Vérifier dans Database → Tables que **chaque** table affiche « RLS enabled »
 5. Mettre `NEXT_PUBLIC_SUPABASE_URL` et `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    dans `.env.local` (la clé `service_role` ne doit jamais entrer dans le
@@ -197,10 +197,9 @@ dernière étape, une fois le front stabilisé :
 
 ## 4. Manques dans la base de données
 
-Découverts en dessinant les écrans. Seul le quatrième reste ouvert — les
-trois autres sont tranchés et écrits dans `0001_schema.sql` /
-`0002_rules_and_security.sql`, vérifiés par les tests 17 et 18 de
-`supabase/tests/security_test.sql` (blocage) et 18 (suppression). Décisions
+Découverts en dessinant les écrans. Les quatre sont maintenant tranchés et
+écrits dans `0001_schema.sql` / `0002_rules_and_security.sql`, vérifiés
+par les tests 17 à 19 de `supabase/tests/security_test.sql`. Décisions
 prises le 2026-09-11, à la demande du porteur du projet.
 
 1. ~~**Le blocage entre personnes.**~~ **Résolu.** `conversations.blocked_by`
@@ -229,15 +228,20 @@ prises le 2026-09-11, à la demande du porteur du projet.
    aussi décider si `merchants.status` doit sortir de `'approved'` quand
    son commerçant supprime son compte (sinon la boutique resterait visible
    dans le catalogue public) — pas tranché ici, à faire à ce moment-là.
-4. **Le lien entre les deux comptes d'une même personne.** Décision prise
-   le 2026-09-11 (une connexion, deux comptes liés, bascule sans
-   reconnexion) mais pas encore traduite en schéma. `profiles.id`
-   référence aujourd'hui `auth.users.id` en 1:1 — une connexion ne peut
-   porter qu'un seul profil. À concevoir avant l'étape Supabase : soit
-   `profiles` référence un `auth_user_id` (plusieurs profils par
-   connexion, unique sur `(auth_user_id, role)`), soit une table de
-   liaison séparée. Choix à faire à ce moment-là, pas avant — inutile de
-   trancher un détail de schéma tant que la base réelle n'existe pas.
+4. ~~**Le lien entre les deux comptes d'une même personne.**~~ **Résolu.**
+   `profiles.id` ne partage plus la clé de `auth.users` : `auth_user_id`
+   fait le lien, `unique (auth_user_id, role)` limite à un profil par rôle
+   et par connexion. Option retenue plutôt qu'une table de liaison séparée
+   — celle-ci n'aurait eu de sens qu'avec deux connexions distinctes,
+   contraire à « une seule connexion, bascule sans reconnexion » déjà
+   décidé.
+   Conséquence dans TOUT `0002_rules_and_security.sql` : `auth.uid()`
+   identifie désormais une CONNEXION, plus un profil précis — chaque
+   policy qui comparait directement une colonne à `auth.uid()` est passée
+   par une fonction (`my_profile_id(role)`, `owns_profile(id)`,
+   `is_active_profile(id)`) qui résout « lequel de MES profils ». Testé de
+   bout en bout (44 tests, RLS activé, sur un PostgreSQL local recréé de
+   zéro) plutôt que déduit par lecture du code.
 
 ---
 

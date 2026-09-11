@@ -42,6 +42,15 @@ insert into auth.users (id, email, raw_user_meta_data) values
   ('55555555-5555-5555-5555-555555555555', 'e@test.gn', '{"role":"client","full_name":"Client E","phone":"620000005"}'),
   ('66666666-6666-6666-6666-666666666666', 'f@test.gn', '{"role":"client","full_name":"Client F","phone":"620000006"}');
 
+-- Le trigger handle_new_user vient de créer un profil par personne avec un
+-- id ALÉATOIRE : depuis la décision des comptes liés, profiles.id n'est
+-- plus égal à auth.users.id (voir 0001_schema.sql, partie « Profils »).
+-- On réaligne les deux pour garder tout le reste de ce fichier lisible
+-- avec les mêmes UUID que ceux utilisés pour se connecter (pg_temp.login).
+-- Sans risque de collision : chacune de ces six personnes n'a encore
+-- qu'un seul profil à ce stade du script.
+update public.profiles set id = auth_user_id;
+
 insert into public.merchants (id, profile_id, shop_name, city_id) values
   ('aaaaaaaa-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'Chez A', 1),
   ('bbbbbbbb-0000-0000-0000-000000000002', '22222222-2222-2222-2222-222222222222', 'Chez B', 1);
@@ -563,6 +572,47 @@ select pg_temp.login('11111111-1111-1111-1111-111111111111');   -- Boutique A
 select pg_temp.check('les messages du compte supprimé restent lisibles par l''autre partie',
   (select count(*) from public.messages
     where conversation_id = 'dddddddd-0000-0000-0000-000000000001') > 0);
+reset role;
+
+
+-- =====================================================================
+-- 19. Comptes liés : un second profil sur la même connexion
+-- =====================================================================
+set role authenticated;
+select pg_temp.login('33333333-3333-3333-3333-333333333333');   -- Client C, un seul compte pour l'instant
+
+insert into public.profiles (auth_user_id, role, full_name, phone)
+values ('33333333-3333-3333-3333-333333333333', 'merchant', 'Boutique de Mariama', '620000099');
+
+select pg_temp.check('un second compte lié est créé sur la même connexion',
+  (select count(*) from public.profiles
+    where auth_user_id = '33333333-3333-3333-3333-333333333333') = 2);
+
+select pg_temp.check('my_profile_id retrouve le bon profil selon le rôle demandé',
+  (select role from public.profiles where id = public.my_profile_id('merchant')) = 'merchant');
+
+-- Un seul profil par rôle et par connexion : la contrainte `unique`, pas
+-- une policy — inutile de dupliquer la même règle à deux endroits.
+do $$
+begin
+  insert into public.profiles (auth_user_id, role, full_name, phone)
+  values ('33333333-3333-3333-3333-333333333333', 'client', 'Mariama bis', '620000003');
+  raise exception 'ECHEC un second profil du même rôle a été créé sur la même connexion';
+exception when unique_violation then
+  raise notice 'OK    un seul profil par rôle et par connexion';
+end $$;
+
+-- Créer un profil pour la connexion d'un AUTRE, en revanche, doit échouer :
+-- ce n'est pas une histoire de rôle déjà pris, mais d'identité.
+do $$
+begin
+  insert into public.profiles (auth_user_id, role, full_name, phone)
+  values ('44444444-4444-4444-4444-444444444444', 'merchant', 'Usurpation', '620000000');
+  raise exception 'ECHEC un profil a pu être créé pour la connexion de quelqu''un d''autre';
+exception when insufficient_privilege then
+  raise notice 'OK    impossible de créer un profil pour une autre connexion';
+end $$;
+
 reset role;
 
 \echo ''
