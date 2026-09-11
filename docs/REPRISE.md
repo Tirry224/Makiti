@@ -32,8 +32,15 @@ requête, 46 tests). Y ont été portés :
   compte) ;
 - de `kind-thompson` : `docs/PERFORMANCE.md` et ses mesures
   (`npm run poids`, `npm run parcours`), six maquettes de recherche ;
-- de `wizardly-cannon` : `docs/ARCHITECTURE.md`, `npm run classes` ;
-- de `brave-pascal` : la maquette du compte commerçant.
+- de `wizardly-cannon` : `docs/ARCHITECTURE.md`, `npm run classes`, et le
+  vocabulaire d'espacements nommés (`src/styles/tokens.css` et son
+  README) — vérifié par `npm run classes`, qui vient de cette même
+  branche : aucune classe fantôme sur 79 fichiers ;
+- de `brave-pascal` : toutes ses maquettes, dont celle du compte
+  commerçant.
+
+`wizardly-cannon` et `brave-pascal` n'ont plus rien d'unique : elles sont
+supprimables sans perte. Seule `kind-thompson` reste à conserver.
 
 **Deux pièges rencontrés, qui valent pour toute consolidation future** :
 `prochaine-etape` avait réécrit `0001` et `0003` en y absorbant des

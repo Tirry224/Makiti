@@ -164,7 +164,7 @@
     },
     {
       "file": "CompteClient.dc.html",
-      "title": "Mon compte",
+      "title": "Mon compte — client",
       "page": "page-2",
       "x": 480,
       "y": 1000,
@@ -209,7 +209,7 @@
     },
     {
       "file": "MesProduits.dc.html",
-      "title": "Mes produits",
+      "title": "Ma boutique — accueil",
       "page": "page-3",
       "x": 960,
       "y": 0,
@@ -305,6 +305,15 @@
       "y": 1000,
       "w": 390,
       "h": 844
+    },
+    {
+      "file": "CompteCommercant.dc.html",
+      "title": "Mon compte — commerçant",
+      "page": "page-3",
+      "x": 1440,
+      "y": 1000,
+      "w": 390,
+      "h": 844
     }
   ],
   "annotations": [
@@ -341,14 +350,6 @@
       "text": "LE MOMENT DE L'INSCRIPTION\n\n« Compte requis » est l'écran le plus important de cette page : c'est le seul endroit où l'on demande un compte, et il rappelle le produit concerné pour que le client sache pourquoi il s'inscrit."
     },
     {
-      "id": "m-cycle",
-      "page": "page-3",
-      "x": -340,
-      "y": 20,
-      "w": 290,
-      "text": "CYCLE DE VIE DE LA BOUTIQUE\n\nEn attente → validée, ou refusée avec un motif et une sortie. Une boutique refusée sans explication est un vendeur perdu définitivement."
-    },
-    {
       "id": "m-prod",
       "page": "page-3",
       "x": -340,
@@ -357,24 +358,48 @@
       "text": "PRODUITS\n\n« Actions produit » contient la décision de conception : marquer vendu ne supprime rien, masquer est réversible, et supprimer conserve les conversations."
     },
     {
-      "id": "g-fils",
-      "page": "page-4",
-      "x": -340,
-      "y": 20,
-      "w": 290,
-      "text": "MESSAGERIE — DEUX POINTS DE VUE\n\nLe même écran côté client (des boutiques) et côté commerçant (des personnes). Un fil par interlocuteur, avec le produit rappelé sous chaque ligne."
-    },
-    {
       "id": "g-citer",
       "page": "page-4",
       "x": -340,
       "y": 1020,
       "w": 290,
       "text": "CITER UN PRODUIT\n\nC'est le mécanisme qui rend viable « un seul fil par client » : à tout moment on joint un produit au message. Sans cet écran, ta décision ne tient pas."
+    },
+    {
+      "id": "m-cycle",
+      "page": "page-3",
+      "x": -340,
+      "y": 20,
+      "w": 290,
+      "text": "CYCLE DE VIE DE LA BOUTIQUE\n\nEn attente → validée, ou refusée avec un motif et une sortie. Une boutique refusée sans explication est un vendeur perdu définitivement."
+    },
+    {
+      "id": "m-nav",
+      "page": "page-3",
+      "x": -340,
+      "y": 300,
+      "w": 290,
+      "text": "DEUX APPLICATIONS, PAS UNE\n\nLe commerçant n'a PAS la barre du client. Trois onglets au lieu de quatre : Ma boutique · Messages · Compte. Pas d'Accueil, pas de Recherche — un compte = un seul rôle (décision 8 de la SPEC), donc un commerçant n'achète pas.\n\nSon écran d'ouverture est sa boutique, pas le catalogue. C'est ce qui manquait : la maquette précédente donnait au commerçant la barre d'onglets d'un acheteur, et sa boutique était rangée à deux niveaux de profondeur dans « Compte »."
+    },
+    {
+      "id": "m-compte",
+      "page": "page-3",
+      "x": -340,
+      "y": 1020,
+      "w": 290,
+      "text": "PRODUITS & COMPTE\n\n« Actions produit » contient la décision de conception : marquer vendu ne supprime rien, masquer est réversible, et supprimer conserve les conversations.\n\n« Mon compte — commerçant » (à droite) est le nouvel écran. Comparez-le avec « Mon compte — client » page précédente : l'identité affichée est la BOUTIQUE et non la personne, il n'y a pas de « Ma ville » (la ville appartient à la boutique) ni de « Devenir vendeur », et il ouvre sur la vitrine publique — le seul moyen pour un vendeur de voir ce que voient ses clients."
+    },
+    {
+      "id": "g-fils",
+      "page": "page-4",
+      "x": -340,
+      "y": 20,
+      "w": 290,
+      "text": "MESSAGERIE — DEUX POINTS DE VUE\n\nLe même écran côté client (des boutiques) et côté commerçant (des personnes). Un fil par interlocuteur, avec le produit rappelé sous chaque ligne.\n\nCe qui les sépare maintenant : la barre du bas (3 onglets contre 4) et le sous-titre du commerçant, « 3 clients attendent une réponse ». Un vendeur qui ne répond pas tue la confiance — c'est le risque n°2 de la SPEC, autant le lui dire en haut de son écran."
     }
   ],
   "launch": {
     "view": "canvas",
-    "page": "page-1"
+    "page": "page-3"
   }
 }

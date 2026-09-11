@@ -81,6 +81,12 @@
   /* Voile posé sous une feuille modale */
   --color-overlay: oklch(0.245 0.018 60 / 0.45);
 
+  /* Fond de la galerie photo plein écran. Presque noir, mais chaud : un
+     noir pur à côté du papier de l'application ferait tache. Cette valeur
+     était écrite en dur (`bg-[#12100e]`) dans l'écran de la galerie — la
+     seule couleur de l'application qui échappait encore aux tokens. */
+  --color-viewer: oklch(0.17 0.008 70);
+
   /* ═══ TYPOGRAPHIE ═══════════════════════════════════════════════════
      Deux familles, pas trois. Bricolage Grotesque pour les titres et les
      prix : elle a du caractère et attire l'œil là où c'est utile. Figtree
@@ -140,10 +146,39 @@
   --radius-full: 999px;   /* pastilles, avatars */
 
   /* ═══ ESPACEMENTS ═══════════════════════════════════════════════════
-     On garde l'échelle de Tailwind, qui avance de 4 en 4 px : p-1 = 4px,
-     p-2 = 8px, p-4 = 16px. Quatre pixels sont l'unité de base de
-     l'interface ; s'y tenir suffit à faire paraître une application
-     rangée. On y ajoute seulement trois mesures propres à Makiti. */
+     SIX MARCHES, nommées par ce qu'elles SÉPARENT et non par un chiffre.
+
+     Avant ce vocabulaire, l'application utilisait 27 valeurs d'espacement
+     différentes, dont des demi-pas : gap-2.5 (10px), gap-3.5 (14px),
+     px-4.5 (18px), p-7 (28px). Personne ne pouvait choisir entre gap-2.5
+     et gap-3 sur un critère — et c'est exactement ce qui rend un projet
+     pénible à modifier plus tard : on ne sait plus ce qui est intentionnel.
+
+     Un nom, lui, se choisit sur un critère. « Est-ce que ces deux éléments
+     appartiennent au même bloc, ou à deux blocs différents ? » a une
+     réponse ; « est-ce 10 ou 12 pixels ? » n'en a pas.
+
+         gap-hair     px-gutter    py-section    p-snug
+
+     RÈGLE : ces six noms sont le vocabulaire NORMAL de Makiti. L'échelle
+     numérique de Tailwind (p-2, gap-5, mt-7…) reste active, mais elle est
+     réservée aux EXCEPTIONS — la géométrie d'un objet dessiné, comme la
+     poignée d'une feuille modale ou la course d'un interrupteur. Une
+     valeur numérique dans du code de mise en page doit porter un
+     commentaire qui dit pourquoi. C'est ce qui la rend visible dans un
+     diff au lieu de la laisser passer pour la norme. */
+
+  --spacing-hair: 0.25rem;     /*  4px — un cheveu : icône ↔ intitulé,
+                                  deux lignes d'une même étiquette */
+  --spacing-tight: 0.5rem;     /*  8px — éléments liés dans un même bloc */
+  --spacing-snug: 0.75rem;     /* 12px — intérieur d'une carte, hauteur
+                                  d'une ligne de liste */
+  --spacing-gutter: 1rem;      /* 16px — la gouttière : marge latérale de
+                                  tout écran, intérieur des grands blocs */
+  --spacing-section: 1.5rem;   /* 24px — entre deux sections d'un écran */
+  --spacing-air: 2rem;         /* 32px — respiration d'un écran vide */
+
+  /* ── Hauteurs de commande ────────────────────────────────────────── */
 
   --spacing-tap: 2.75rem;      /* 44px — HAUTEUR MINIMALE d'une zone
                                   tactile. En dessous, on rate la cible
@@ -151,6 +186,26 @@
                                   préférence, c'est une règle. */
   --spacing-control: 3.25rem;  /* 52px — hauteur des boutons et des champs */
   --spacing-nav: 4rem;         /* 64px — hauteur de la barre du bas */
+
+  /* ── Objets carrés ───────────────────────────────────────────────────
+     Mêmes causes, mêmes effets que pour les espacements : l'application
+     contenait size-4.5, size-5.5, size-6.5, size-9.5, size-11, size-14 et
+     size-16, sans qu'aucune de ces valeurs ne se justifie l'une par
+     rapport à l'autre. Cinq noms les remplacent. */
+
+  --spacing-mark: 1.5rem;      /* 24px — pastille de sélection, compteur */
+  --spacing-thumb-xs: 1.25rem; /* 20px — vignette dans une ligne de fil */
+  --spacing-thumb-sm: 2.25rem; /* 36px — vignette citée dans un message */
+  --spacing-thumb: 3.5rem;     /* 56px — vignette de « Mes produits » */
+  --spacing-thumb-lg: 4rem;   /* 64px — vignette de la galerie photo */
+  --spacing-emblem: 4rem;      /* 64px — icône ronde d'un écran vide */
+
+  /* ── Photos ──────────────────────────────────────────────────────────
+     Deux hauteurs, et pas une de plus : la vignette du fil et la photo de
+     la fiche produit. Toute autre photo est carrée (aspect-square). */
+
+  --spacing-photo-card: 8rem;  /* 128px — vignette du fil */
+  --spacing-photo-hero: 18rem; /* 288px — photo de la fiche produit */
 
   /* ═══ LARGEUR DE PAGE ═══════════════════════════════════════════════
      L'application est pensée pour le téléphone. Sur un grand écran, on ne

@@ -1,6 +1,6 @@
 # Maquette
 
-Onze écrans mobiles (390 × 844) plus deux directions visuelles alternatives.
+Trente-trois écrans mobiles (390 × 844), répartis en quatre pages de canvas.
 Chaque `.dc.html` est un écran ; `canvas.json` décrit la disposition.
 
 Ces fichiers sont la **source** de la maquette. Le fichier assemblé n'est pas
@@ -14,6 +14,9 @@ versionné : il se régénère à partir d'eux.
   ce choix est définitif.
 - Un commerçant en attente de validation a un écran qui lui donne quelque
   chose à faire, au lieu d'une page morte.
+- Le commerçant et le client n'ont pas la même barre d'onglets, ni le même
+  écran d'ouverture, ni le même écran « Mon compte ». C'est ce qui rendait la
+  maquette confuse : les deux rôles y voyaient exactement la même application.
 - Dans un fil de discussion, chaque message peut citer un produit, et un
   produit vendu apparaît grisé avec la mention « Vendu ».
 
