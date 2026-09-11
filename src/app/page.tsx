@@ -1,7 +1,6 @@
-import { MapPin, Search } from "lucide-react";
+import { MapPin } from "lucide-react";
 import { BottomNav } from "@/components/ui/BottomNav";
 import { Chip } from "@/components/ui/Chip";
-import { FakeInput } from "@/components/ui/Field";
 import { Screen, ScreenBody, Section } from "@/components/ui/Screen";
 import { SectionLabel } from "@/components/ui/SectionLabel";
 import { TopBar, Wordmark } from "@/components/ui/TopBar";
@@ -59,12 +58,6 @@ export default async function HomePage({
 
       <ScreenBody>
         <Section className="gap-3 pb-1">
-          <Link href="/recherche">
-            <FakeInput className="text-ink-soft">
-              <Search size={19} strokeWidth={1.8} aria-hidden />
-              Rechercher un produit
-            </FakeInput>
-          </Link>
           {/* `overflow-x-auto` : la rangée de catégories défile au doigt
               plutôt que de passer à la ligne et de manger l'écran. */}
           <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5">

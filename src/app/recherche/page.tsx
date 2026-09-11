@@ -50,7 +50,6 @@ export default async function SearchPage({
   return (
     <Screen>
       <TopBar
-        backHref="/"
         title={
           <div className="flex h-tap flex-1 items-center gap-2.5 rounded-lg border border-line bg-surface px-3.5">
             <Search size={18} strokeWidth={1.8} className="shrink-0 text-ink-soft" aria-hidden />
@@ -79,31 +78,35 @@ export default async function SearchPage({
               </b>{" "}
               trouvé{results.length > 1 ? "s" : ""}
             </p>
-            <Chip selected={activeFilterCount > 0} icon={SlidersHorizontal}>
+            <Chip
+              href={`/recherche/filtres?q=${encodeURIComponent(q)}&ville=${encodeURIComponent(ville)}&categorie=${encodeURIComponent(categorie)}`}
+              selected={activeFilterCount > 0}
+              icon={SlidersHorizontal}
+            >
               Filtres{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ""}
             </Chip>
           </div>
 
           {/* Les filtres actifs restent visibles : un résultat vide sans
               filtre affiché est incompréhensible — on croit le catalogue
-              vide alors qu'on a simplement trop filtré. Ville et tri sont
-              pour l'instant seulement affichés, pas encore choisissables
-              depuis cet écran (pas de sélecteur de ville ni de second tri
-              codé) — la catégorie, elle, l'est. */}
+              vide alors qu'on a simplement trop filtré. La catégorie ne
+              s'affiche plus en rangée complète (dix puces à faire défiler) :
+              elle se choisit dans la feuille « Filtres », et seule celle
+              retenue apparaît ici, avec de quoi la retirer d'un tap. Ville
+              et tri restent pour l'instant seulement affichés, pas encore
+              choisissables depuis cet écran. */}
           <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5">
             <Chip selected>{ville}</Chip>
             <Chip selected>Récents</Chip>
-            <Link href={`/recherche?q=${encodeURIComponent(q)}&ville=${encodeURIComponent(ville)}&categorie=Tout`}>
-              <Chip selected={categorie === "Tout"}>Toutes catégories</Chip>
-            </Link>
-            {categories.map((c) => (
-              <Link
-                key={c.id}
-                href={`/recherche?q=${encodeURIComponent(q)}&ville=${encodeURIComponent(ville)}&categorie=${encodeURIComponent(c.name)}`}
+            {categorie !== "Tout" ? (
+              <Chip
+                href={`/recherche?q=${encodeURIComponent(q)}&ville=${encodeURIComponent(ville)}&categorie=Tout`}
+                selected
+                icon={X}
               >
-                <Chip selected={c.name === categorie}>{c.name}</Chip>
-              </Link>
-            ))}
+                {categorie}
+              </Chip>
+            ) : null}
           </div>
 
           {results.length === 0 ? (
