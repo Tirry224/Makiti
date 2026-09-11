@@ -99,7 +99,7 @@ Tous les budgets sont tenus ; `npm run poids` échoue si l'un se met à céder.
 
 ---
 
-## État au 10 septembre 2026
+## État au 11 septembre 2026
 
 **Étape 1 — maquette : faite.** La recherche v2 (6 états) est dessinée ET
 codée ; ses artboards restent sur la page « Recherche v2 » du canvas.
@@ -128,6 +128,30 @@ codée ; ses artboards restent sur la page « Recherche v2 » du canvas.
   l'envoi — 2 920 Ko ramenés à 185 Ko, mesuré. Sans JavaScript, le champ de
   fichier fonctionne quand même : la photo part lourde, mais elle part.
   Reste à brancher le stockage et la vignette de 300 px (étape 3).
+
+## Prochain chantier retenu : le service worker
+
+**Choisi le 11 septembre.** C'est le plus gros levier restant pour les
+visites répétées sur un réseau médiocre : il garde la coquille de
+l'application et les fiches déjà vues, ce qui fait tomber le coût d'un
+retour sur Makiti à presque rien, et c'est la seule façon d'obtenir un vrai
+écran 4 (fil hors ligne rempli des produits déjà consultés) — le bandeau
+actuel prévient, il ne montre rien.
+
+**Ce qu'il faudra décider en le commençant**, et qui n'est pas tranché :
+sa place dans l'ordre. Ma recommandation : **après le branchement de
+Supabase**. Un service worker écrit contre `mock.ts` serait à refaire, et
+les vrais pièges — quoi mettre en cache, pour combien de temps, comment
+retirer une version périmée sans laisser des téléphones sur du contenu
+mort — ne se posent honnêtement qu'avec de vraies données. Le seul morceau
+qui pourrait passer avant : la mise en cache de la coquille, qui ne dépend
+d'aucune donnée.
+
+**Ce qu'il ne faudra pas oublier :** un service worker mal retiré survit à
+son application. Prévoir dès le premier jour comment le désinstaller.
+
+L'envoi de message optimiste (l'autre option) n'est pas abandonné, juste
+non retenu pour l'instant : moins de gain, moins de risque.
 
 **Étape 3 — Supabase : pas commencée, et c'est voulu.**
 4 migrations écrites et testées, jamais exécutées. Aucun client Supabase dans
@@ -171,13 +195,16 @@ repositionnement. Correctif décrit dans `REPRISE.md`, à appliquer à l'étape 
 |---|---|---|
 | Vêtements enfant, chaussures | Catégories | Absents de la liste. Oubli ou choix ? |
 | Écran 3 (fil — chargement) | Retiré du code | À reposer autrement à l'étape 3, sans frontière de route. |
-| Envoi des photos | Écran 24 | Attend le stockage Supabase : compression sur l'appareil, deux tailles. |
+| Envoi des photos | Écran 24 | La compression est faite et mesurée ; restent le stockage et la vignette de 300 px. |
+| Place du service worker | Chantier retenu | Après Supabase — un service worker écrit contre les données de démonstration serait à refaire. |
 | Blocage entre personnes | Écran 32 | Aucune table ne le porte. |
 | Motif de refus d'une boutique | Écran 21 | `merchants.status` ne dit pas pourquoi. |
 | Suppression de compte | Écran 18 | Effacement réel ou anonymisation ? |
 
 ## Journal — cinq dernières entrées
 
+- **11 sept.** Service worker retenu comme prochain chantier (fin de
+  session). Rien de commencé : la décision est ici pour ne pas se reperdre.
 - **11 sept.** Règle R3 corrigée : « pas de JavaScript » n'était pas la
   consigne, la performance l'est. Un composant client est justifié s'il
   rend plus qu'il ne coûte. Premier cas : `ChoixPhotos`, qui compresse
