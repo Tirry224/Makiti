@@ -4,7 +4,7 @@ Ce fichier est le point d'entrée pour continuer le projet dans une nouvelle
 conversation. Il dit ce qui est fait, ce qui reste, et ce qui a déjà été
 tranché pour ne pas rediscuter les mêmes choses deux fois.
 
-Branche de travail : `claude/ecstatic-wright-ed0bp3`.
+Branche de travail : `claude/prochaine-etape-08nw5c`.
 
 ---
 
@@ -69,64 +69,95 @@ npm install && npm run dev
 
 ## 3. Ce qui reste à faire, dans l'ordre
 
-### Étape 0 — Relire les 21 derniers écrans
-**À faire en premier.** Les 12 premiers écrans ont été vérifiés dans un
-navigateur ; les 21 derniers ne l'ont pas été, faute de temps. Le build et
-les types passent, mais cela ne dit rien du rendu. Les vérifications
-précédentes avaient trouvé une classe CSS inexistante, un prix illisible et
-un badge étiré — aucun de ces défauts ne produisait d'erreur.
+Ordre revu le 2026-09-11 avec le porteur du projet : on pousse le front
+(textes, parcours, architecture des comptes, performance) le plus loin
+possible sur le mock, et **Supabase réel passe en tout dernier** plutôt
+qu'en bloquant, comme c'était le cas avant. Raison : la plupart du travail
+qui reste est indépendant de la base, et repousser Supabase évite de
+déployer un schéma qu'on sait déjà incomplet (voir point 4 de la section
+précédente — le lien entre les deux comptes d'une même personne).
 
-Ouvrir `/ecrans`, parcourir les 33, corriger ce qui cloche.
+### Étape 1 — Corrections : relire les 21 derniers écrans
+Les 12 premiers écrans ont été vérifiés dans un navigateur ; les 21
+derniers ne l'ont pas été, faute de temps. Le build et les types passent,
+mais cela ne dit rien du rendu. Les vérifications précédentes avaient
+trouvé une classe CSS inexistante, un prix illisible et un badge étiré —
+aucun de ces défauts ne produisait d'erreur.
 
-### Étape 1 — Créer le projet Supabase
-Bloque tout le reste.
+Ouvrir `/ecrans`, parcourir les 33, corriger ce qui cloche. À faire avant
+tout le reste : inutile de soigner des textes ou un parcours sur un écran
+visuellement cassé.
 
-1. Créer un projet sur supabase.com (offre gratuite, région Europe de l'Ouest)
-2. Exécuter les 4 migrations dans l'ordre, dans l'éditeur SQL
-3. Vérifier dans Database → Tables que **chaque** table affiche « RLS enabled »
-4. Mettre `NEXT_PUBLIC_SUPABASE_URL` et `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   dans `.env.local`
+### Étape 2 — Positionnement et textes
+Makiti = trouver des produits et des commerçants (côté acheteur). Relire
+les textes de l'app avec cette phrase en tête ; corriger toute formulation
+ambiguë ou orientée « gestion / vente » sur les écrans côté acheteur.
 
-La clé `service_role` ne doit jamais entrer dans le code du navigateur ni
-dans Git : elle ignore le RLS et donne un accès total à la base.
+### Étape 3 — Parcours principal
+Découvrir → produit → commerçant → contacter. Vérifier que ce chemin est
+direct sur les 33 écrans : rien ne doit détourner l'utilisateur de cette
+suite d'actions.
 
-### Étape 2 — Générer les types depuis la base
-`supabase gen types typescript` remplace `src/lib/types.ts`. Les types ne
-peuvent alors plus se désynchroniser du schéma réel.
+### Étape 4 — Architecture des comptes liés
+Une personne peut avoir un compte client et un compte commerçant, liés à
+une seule connexion, avec bascule rapide et sans mélange à l'écran (voir
+section 6). Concevoir et intégrer aux maquettes/écrans le mécanisme de
+bascule (menu, indicateur de contexte actif). Le schéma réel (comment lier
+deux profils à une seule connexion Supabase) reste à trancher à l'étape 9
+— ne pas l'anticiper en base tant qu'elle n'existe pas.
 
-### Étape 3 — Brancher les données en lecture
-Remplacer `src/lib/mock.ts` écran par écran : fil d'accueil, fiche produit,
-boutique publique, recherche (via la fonction `search_products`).
+### Étape 5 — Performance
+Compression forte des photos avant envoi, attention au poids des pages sur
+mobile. La compression elle-même ne peut être branchée qu'avec un vrai
+stockage (étape 9), mais l'UI de sélection/prévisualisation des photos et
+le choix de la librairie de compression peuvent être préparés avant.
 
-### Étape 4 — Brancher l'authentification
-Inscription (avec le rôle dans les métadonnées, le trigger crée le profil),
-connexion, mot de passe oublié, déconnexion, écran « compte requis ».
+### Étape 6 — Recherche (UX, sur le mock)
+Affiner l'expérience de recherche et de filtre (catégories, villes) sur les
+données de démonstration, en cohérence avec ce que fera plus tard la
+fonction `search_products`. Le branchement à la vraie base attend l'étape 9.
 
-### Étape 5 — Brancher les actions du commerçant
-Créer et modifier un produit, envoyer les photos vers le stockage (avec
-compression côté navigateur avant l'envoi), marquer vendu, masquer,
-supprimer, modifier la boutique.
+### Étape 7 — Sécurité, en continu
+Ne rien casser du RLS ni des 34 tests de `supabase/tests/` en avançant sur
+les étapes précédentes. Pas une étape isolée : un réflexe à chaque
+modification de schéma envisagée.
 
-### Étape 6 — Brancher la messagerie
-Ouvrir un fil, envoyer un message, citer un produit, marquer comme lu,
-signaler, bloquer. Le temps réel passe par Supabase Realtime.
+### Étape 8 — Administration, anticiper sans construire
+Pas de page admin en v1, mais garder en tête qu'elle arrivera : éviter les
+choix qui la rendraient difficile à ajouter plus tard (ex. le motif de
+refus d'une boutique, point 2 de la section précédente).
 
-### Étape 7 — Notifier le commerçant
-**Sans cette étape, la messagerie est une boîte aux lettres que personne ne
-relève.** Plan retenu : compteur de non-lus dans l'application + email à
-chaque nouveau message (via Resend, offre gratuite suffisante). Le push web
-est reporté : il ne fonctionne pas de façon fiable sur iPhone sans
-installation de la PWA.
+### Étape 9 — Supabase réel (dernière étape)
+Tout ce qui suit était avant en tête de liste ; c'est maintenant la toute
+dernière étape, une fois le front stabilisé :
 
-### Étape 8 — Déployer
-Vercel, sur une adresse `.vercel.app` pour commencer.
-
-### Étape 9 — Avant le lancement
-Rédiger des conditions d'utilisation. Makiti est un intermédiaire technique
-et non une partie à la vente ; cette distinction doit être écrite avant le
-premier litige, pas après.
-
-Puis **supprimer la page `/ecrans`**, qui est une page de travail.
+1. Trancher le schéma des comptes liés (point 4 de la section précédente)
+2. Créer un projet sur supabase.com (offre gratuite, région Europe de
+   l'Ouest)
+3. Exécuter les migrations dans l'ordre, dans l'éditeur SQL (mettre à jour
+   `0001_schema.sql` avec la décision du point 1 avant de les exécuter)
+4. Vérifier dans Database → Tables que **chaque** table affiche « RLS enabled »
+5. Mettre `NEXT_PUBLIC_SUPABASE_URL` et `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   dans `.env.local` (la clé `service_role` ne doit jamais entrer dans le
+   code du navigateur ni dans Git : elle ignore le RLS)
+6. Générer les types (`supabase gen types typescript` remplace
+   `src/lib/types.ts`)
+7. Brancher les données en lecture, écran par écran, à la place de
+   `src/lib/mock.ts`
+8. Brancher l'authentification (inscription, connexion, mot de passe
+   oublié, déconnexion, écran « compte requis », bascule entre comptes liés)
+9. Brancher les actions du commerçant (produit, photos avec compression,
+   marquer vendu, masquer, supprimer, modifier la boutique)
+10. Brancher la messagerie (Supabase Realtime) : ouvrir un fil, envoyer,
+    citer un produit, marquer comme lu, signaler, bloquer
+11. Notifier le commerçant : badge de non-lus + email (Resend). **Sans
+    cette étape, la messagerie est une boîte aux lettres que personne ne
+    relève.**
+12. Déployer sur Vercel (`.vercel.app` pour commencer)
+13. Avant le lancement : rédiger des conditions d'utilisation — Makiti est
+    un intermédiaire technique, non une partie à la vente ; à écrire avant
+    le premier litige, pas après
+14. Supprimer la page `/ecrans`, qui est une page de travail
 
 ---
 
@@ -143,6 +174,15 @@ l'étape 5 :
 3. **La suppression de compte.** Effacement réel ou anonymisation ? Si on
    efface vraiment, les conversations de l'autre partie deviennent
    illisibles.
+4. **Le lien entre les deux comptes d'une même personne.** Décision prise
+   le 2026-09-11 (une connexion, deux comptes liés, bascule sans
+   reconnexion) mais pas encore traduite en schéma. `profiles.id`
+   référence aujourd'hui `auth.users.id` en 1:1 — une connexion ne peut
+   porter qu'un seul profil. À concevoir avant l'étape Supabase : soit
+   `profiles` référence un `auth_user_id` (plusieurs profils par
+   connexion, unique sur `(auth_user_id, role)`), soit une table de
+   liaison séparée. Choix à faire à ce moment-là, pas avant — inutile de
+   trancher un détail de schéma tant que la base réelle n'existe pas.
 
 ---
 
@@ -162,8 +202,12 @@ l'étape 5 :
 - Catalogue **ouvert sans compte** ; compte exigé uniquement pour écrire.
 - **Un seul fil par couple (client, boutique)** ; chaque message peut citer
   un produit, et le premier message d'un fil en cite obligatoirement un.
-- **Un compte = un seul rôle**, client ou commerçant, modifiable
-  uniquement à la main par l'administrateur.
+- **Une personne peut avoir deux comptes liés** (client et commerçant)
+  derrière **une seule connexion** (un email, un mot de passe). Bascule
+  rapide entre les deux depuis l'app, sans se reconnecter. **Jamais les
+  deux mélangés sur un même écran** : à tout instant, un seul contexte est
+  actif. *(Décision mise à jour le 2026-09-11 — remplace l'ancienne règle
+  « un compte = un seul rôle, changeable uniquement par l'admin ».)*
 - **Validation manuelle des boutiques**, depuis le tableau de bord Supabase.
   Aucune page d'administration en v1.
 - **Publication immédiate des produits**, avec bouton « signaler » et

@@ -1,4 +1,4 @@
-import { Package, Search, TriangleAlert } from "lucide-react";
+import { ArrowLeftRight, Package, Search } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
@@ -72,9 +72,10 @@ export default function SignupPage() {
               description="Je publie mes produits et je reçois les messages des clients."
               selected={false}
             />
-            <p className="flex items-start gap-2 rounded-lg bg-warn-soft px-3 py-2.5 text-xs leading-normal text-warn-ink">
-              <TriangleAlert size={16} strokeWidth={2} className="mt-px shrink-0" aria-hidden />
-              Ce choix est définitif : un compte est soit acheteur, soit vendeur.
+            <p className="flex items-start gap-2 rounded-lg bg-accent-soft px-3 py-2.5 text-xs leading-normal text-accent-hover">
+              <ArrowLeftRight size={16} strokeWidth={2} className="mt-px shrink-0" aria-hidden />
+              Vous pourrez créer l&apos;autre compte plus tard et basculer entre les deux : ce
+              choix n&apos;est pas définitif.
             </p>
           </div>
 

@@ -1,7 +1,10 @@
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, FileText, LogOut } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
+import { BottomNav } from "@/components/ui/BottomNav";
 import { Field, FakeInput, Input, Textarea } from "@/components/ui/Field";
+import { MenuItem, MenuList } from "@/components/ui/MenuList";
 import { Screen, ScreenBody, Section } from "@/components/ui/Screen";
+import { SwitchSpaceCard } from "@/components/ui/SwitchSpaceCard";
 import { TopBar } from "@/components/ui/TopBar";
 import { merchantAissatou } from "@/lib/mock";
 
@@ -53,8 +56,23 @@ export default function EditShopPage() {
             Changer le nom ou la ville de votre boutique déclenche une nouvelle vérification.
             Vos produits restent en ligne pendant ce temps.
           </p>
+
+          {/* Bascule vers le compte client lié : jamais un item de menu
+              parmi d'autres, toujours une action à part (voir docs/SPEC.md,
+              décision 8). */}
+          <SwitchSpaceCard label="Basculer vers mon espace client" target="Mariama Diallo" href="/compte" />
+
+          <MenuList>
+            <MenuItem icon={FileText} label="Conditions d'utilisation" />
+          </MenuList>
+
+          <MenuList>
+            <MenuItem icon={LogOut} label="Se déconnecter" tone="danger" />
+          </MenuList>
         </Section>
       </ScreenBody>
+
+      <BottomNav active="account" accountHref="/vendeur/boutique" />
     </Screen>
   );
 }

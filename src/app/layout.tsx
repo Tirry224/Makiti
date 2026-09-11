@@ -24,9 +24,9 @@ const body = Figtree({
 });
 
 export const metadata: Metadata = {
-  title: "Makiti — Achetez et vendez près de chez vous",
+  title: "Makiti — Trouvez des produits et des commerçants près de chez vous",
   description:
-    "Makiti met en relation les commerçants de Guinée et leurs clients. Publiez vos produits, contactez les vendeurs.",
+    "Makiti aide à trouver des produits et les commerçants qui les vendent, en Guinée. Parcourez le catalogue librement et contactez le vendeur pour conclure la vente.",
 };
 
 export const viewport: Viewport = {

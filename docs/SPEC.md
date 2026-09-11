@@ -21,7 +21,7 @@ Marché : Guinée · Devise : franc guinéen (GNF) · Langue : français.
 | 5b | Structure des fils | **Un seul fil par couple (client, boutique).** Chaque message référence le produit dont il parle ; le premier message d'un fil en porte obligatoirement un. |
 | 6 | Modération produits | Publication immédiate, bouton « signaler », masquage possible par l'admin. |
 | 7 | Volume cible | 500 commerçants **à un an**. Densité avant volume au lancement. |
-| 8 | Rôles | Un compte = un seul rôle (client **ou** commerçant). Rôle modifiable à la main par l'admin. |
+| 8 | Rôles | Une personne peut avoir **deux comptes liés** (client et commerçant) derrière **une seule connexion** (email + mot de passe). Bascule rapide entre les deux depuis l'app, sans se reconnecter. **Jamais les deux mélangés sur un même écran** : à tout instant, on est soit en mode client, soit en mode commerçant. |
 | 9 | Ville | Filtre **manuel** choisi par le client. Jamais de filtrage automatique. |
 | 10 | Disponibilité | Binaire (disponible / vendu). **Pas de gestion de stock.** |
 | 11 | Validation commerçant | Manuelle, via le tableau de bord Supabase. Aucune page admin en v1. |
@@ -50,6 +50,12 @@ conversation sur un produit, échange avec le commerçant, peut signaler.
 **Commerçant** — s'inscrit, renseigne sa boutique (nom, ville, téléphone
 WhatsApp), attend la validation en préparant ses produits en brouillon. Une
 fois approuvé, il publie, reçoit les messages et répond.
+
+**Une même personne, client et commerçant** — une seule connexion (email +
+mot de passe) donne accès aux deux comptes liés si les deux existent. Un
+menu permet de basculer de l'un à l'autre. Les deux espaces ne sont jamais
+visibles ni mélangés sur un même écran : la bascule change complètement le
+contexte (données, navigation, ton des textes).
 
 **Administrateur** — travaille directement dans le tableau de bord Supabase :
 approuve les commerçants, masque un produit, suspend un compte, met un

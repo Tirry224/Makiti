@@ -1,9 +1,11 @@
-import { FileText, LogOut, MapPin, MessageCircle, Package, User } from "lucide-react";
+import { FileText, LogOut, MapPin, MessageCircle, User } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { BottomNav } from "@/components/ui/BottomNav";
 import { MenuItem, MenuList } from "@/components/ui/MenuList";
 import { Screen, ScreenBody, Section } from "@/components/ui/Screen";
+import { SwitchSpaceCard } from "@/components/ui/SwitchSpaceCard";
 import { TopBar } from "@/components/ui/TopBar";
+import { merchantAissatou } from "@/lib/mock";
 
 /** Mon compte — écran 17 de docs/ECRANS.md. */
 export default function AccountPage() {
@@ -29,8 +31,16 @@ export default function AccountPage() {
             <MenuItem icon={MessageCircle} label="Mes messages" value="3" href="/messages" />
           </MenuList>
 
+          {/* Bascule vers le compte commerçant lié : jamais un item de menu
+              parmi d'autres, toujours une action à part (voir docs/SPEC.md,
+              décision 8). */}
+          <SwitchSpaceCard
+            label="Basculer vers mon espace commerçant"
+            target={merchantAissatou.shopName}
+            href="/vendeur"
+          />
+
           <MenuList>
-            <MenuItem icon={Package} label="Ma boutique" href="/vendeur" />
             <MenuItem icon={FileText} label="Conditions d'utilisation" />
           </MenuList>
 

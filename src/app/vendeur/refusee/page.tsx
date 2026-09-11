@@ -48,7 +48,7 @@ export default function RejectedShopPage() {
         </Section>
       </ScreenBody>
 
-      <BottomNav active="account" />
+      <BottomNav active="account" accountHref="/vendeur/boutique" />
     </Screen>
   );
 }

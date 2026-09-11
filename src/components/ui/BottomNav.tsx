@@ -15,11 +15,18 @@ export type NavTab = (typeof TABS)[number]["key"];
  * `aria-current="page"` dit à un lecteur d'écran quel onglet est actif.
  * La couleur seule ne le dirait pas — et une information portée
  * uniquement par la couleur est invisible pour une partie des utilisateurs.
+ *
+ * `accountHref` distingue l'espace actif : un compte client et un compte
+ * commerçant sont deux comptes liés mais jamais mélangés, donc l'onglet
+ * Compte ne pointe pas vers le même écran selon l'espace où l'on se trouve
+ * (voir `/compte` et `/vendeur/boutique`, qui fait aussi office de compte
+ * côté commerçant).
  */
-export function BottomNav({ active }: { active: NavTab }) {
+export function BottomNav({ active, accountHref = "/compte" }: { active: NavTab; accountHref?: string }) {
   return (
     <nav className="sticky bottom-0 flex shrink-0 border-t border-line bg-surface">
-      {TABS.map(({ key, label, href, icon: Icon }) => {
+      {TABS.map(({ key, label, href: defaultHref, icon: Icon }) => {
+        const href = key === "account" ? accountHref : defaultHref;
         const isActive = key === active;
         return (
           <Link

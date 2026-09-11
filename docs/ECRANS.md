@@ -23,12 +23,12 @@ Liste exhaustive. Elle sert de plan de construction : chaque ligne est un
 
 | # | Écran | Note |
 |---|-------|------|
-| 12 | Inscription — choix du rôle | Le caractère définitif est annoncé |
+| 12 | Inscription — choix du rôle | Choix non définitif : bascule possible plus tard vers l'autre compte lié |
 | 13 | Inscription — ma boutique | Étape 2, commerçants uniquement |
 | 14 | Connexion | |
 | 15 | Mot de passe oublié | |
 | 16 | Compte requis | Déclenché par « Contacter le vendeur » |
-| 17 | Mon compte | |
+| 17 | Mon compte | Carte de bascule vers le compte commerçant lié, jamais un item de menu comme les autres |
 | 18 | Mes informations | Modification, suppression du compte |
 | 19 | Compte suspendu | Motif + recours |
 
@@ -42,7 +42,7 @@ Liste exhaustive. Elle sert de plan de construction : chaque ligne est un
 | 23 | Mes produits — vide | Premier produit |
 | 24 | Ajouter / modifier un produit | 1 à 3 photos, prix, négociable |
 | 25 | Actions produit | Vendu, modifier, masquer, supprimer |
-| 26 | Modifier ma boutique | Revalidation si nom ou ville change |
+| 26 | Modifier ma boutique | Revalidation si nom ou ville change ; fait aussi office de « compte » côté commerçant (bascule vers le client lié, déconnexion) |
 
 ## Messagerie — 6
 

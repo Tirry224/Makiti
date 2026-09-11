@@ -56,7 +56,7 @@ export default function PendingShopPage() {
         </Section>
       </ScreenBody>
 
-      <BottomNav active="account" />
+      <BottomNav active="account" accountHref="/vendeur/boutique" />
     </Screen>
   );
 }
