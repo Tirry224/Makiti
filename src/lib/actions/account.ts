@@ -6,20 +6,29 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getSessionUser, getMyProfile } from "@/lib/data/session";
 import type { ActionState } from "@/lib/actions/auth";
 
-/** Mes informations — écran 18. Seules `full_name` et `phone` sont
+/** Mes informations — écran 18. `full_name`, `phone` et `city_id` sont
  * modifiables par un utilisateur (liste blanche de colonnes,
- * 0002_rules_and_security.sql, partie 4) : la ville et l'email de la
- * maquette n'ont pas de colonne réelle — voir docs/REPRISE.md. */
+ * 0002_rules_and_security.sql partie 4, complétée par
+ * 0010_client_profile_city.sql) : seul l'email de la maquette n'a pas de
+ * colonne réelle — voir docs/REPRISE.md. `city_id` reste facultatif :
+ * contrairement au nom et au téléphone, ce n'est pas une information
+ * obligatoire pour utiliser l'app. */
 export async function updateProfileAction(_prevState: ActionState | null, formData: FormData): Promise<ActionState> {
   const fullName = String(formData.get("fullName") ?? "").trim();
   const phone = String(formData.get("phone") ?? "").trim();
+  const cityIdRaw = String(formData.get("cityId") ?? "").trim();
+  const cityId = cityIdRaw ? Number(cityIdRaw) : null;
   if (!fullName || !phone) return { error: "Le nom et le téléphone sont obligatoires." };
+  if (cityIdRaw && (!cityId || Number.isNaN(cityId))) return { error: "Ville invalide." };
 
   const supabase = await createClient();
   const profile = await getMyProfile(supabase, "client");
   if (!profile) return { error: "Vous devez être connecté." };
 
-  const { error } = await supabase.from("profiles").update({ full_name: fullName, phone }).eq("id", profile.id);
+  const { error } = await supabase
+    .from("profiles")
+    .update({ full_name: fullName, phone, city_id: cityId })
+    .eq("id", profile.id);
   if (error) return { error: error.message };
 
   redirect("/compte");

@@ -7,6 +7,7 @@ export type SessionProfile = {
   role: "client" | "merchant";
   fullName: string;
   phone: string;
+  cityId: number | null;
   isSuspended: boolean;
   isDeleted: boolean;
 };
@@ -43,7 +44,7 @@ export const getMyProfiles = cache(async (supabase: SupabaseClient<Database>): P
   if (!user) return [];
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, role, full_name, phone, is_suspended, is_deleted")
+    .select("id, role, full_name, phone, city_id, is_suspended, is_deleted")
     .eq("auth_user_id", user.id);
   if (error) throw error;
   return data.map((p) => ({
@@ -51,6 +52,7 @@ export const getMyProfiles = cache(async (supabase: SupabaseClient<Database>): P
     role: p.role,
     fullName: p.full_name,
     phone: p.phone,
+    cityId: p.city_id,
     isSuspended: p.is_suspended,
     isDeleted: p.is_deleted,
   }));

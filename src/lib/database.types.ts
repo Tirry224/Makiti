@@ -321,6 +321,7 @@ export type Database = {
       profiles: {
         Row: {
           auth_user_id: string
+          city_id: number | null
           created_at: string
           deleted_at: string | null
           full_name: string
@@ -333,6 +334,7 @@ export type Database = {
         }
         Insert: {
           auth_user_id: string
+          city_id?: number | null
           created_at?: string
           deleted_at?: string | null
           full_name: string
@@ -345,6 +347,7 @@ export type Database = {
         }
         Update: {
           auth_user_id?: string
+          city_id?: number | null
           created_at?: string
           deleted_at?: string | null
           full_name?: string
@@ -355,7 +358,15 @@ export type Database = {
           role?: Database["public"]["Enums"]["user_role"]
           suspended_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_city_id_fkey"
+            columns: ["city_id"]
+            isOneToOne: false
+            referencedRelation: "cities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       reports: {
         Row: {

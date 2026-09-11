@@ -321,14 +321,19 @@ par jour — les messages d'erreur de ces triggers sont déjà en français,
 
 ### Étape 4 — « Mon compte » et la suppression de compte — FAIT le 2026-09-11
 
-Branché : nom et téléphone modifiables, mot de passe, suppression de
-compte (feuille de confirmation ajoutée, absente de la maquette), bascule
-vers l'espace commerçant seulement si ce compte lié existe.
+Branché : nom, téléphone et ville de résidence modifiables, mot de passe,
+suppression de compte (feuille de confirmation ajoutée, absente de la
+maquette), bascule vers l'espace commerçant seulement si ce compte lié
+existe.
 
-**Deux champs de la maquette retirés, pas simulés** : la ville d'un
-CLIENT (aucune colonne — les villes de la base n'appartiennent qu'aux
-boutiques) et le mot de passe affiché en clair (Supabase ne le rend
-jamais lisible). Le motif de suspension affiché sur `/compte/suspendu`
+**Ville de résidence ajoutée le 2026-09-11** (`profiles.city_id`,
+0010_client_profile_city.sql) : un client peut désormais la choisir ou la
+laisser vide depuis « Mes informations », indépendamment de la ville de
+navigation du fil (`/recherche/ville`, un simple paramètre d'URL).
+
+**Un champ de la maquette retiré, pas simulé** : le mot de passe affiché
+en clair (Supabase ne le rend jamais lisible). Le motif de suspension
+affiché sur `/compte/suspendu`
 (« à la suite de signalements ») a été retiré pour la même raison :
 `profiles` n'a que `suspended_at`, pas de colonne de motif.
 

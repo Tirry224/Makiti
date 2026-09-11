@@ -8,17 +8,25 @@ import { ProfileForm } from "@/components/auth/ProfileForm";
 import { UpdatePasswordForm } from "@/components/auth/UpdatePasswordForm";
 import { createClient } from "@/lib/supabase/server";
 import { getMyProfile, getSessionUser } from "@/lib/data/session";
+import { getCities } from "@/lib/data/reference";
 
 /**
- * Mes informations — écran 18. Deux champs de la maquette n'ont pas de
- * colonne réelle : la ville (aucune table ne porte celle d'un CLIENT — les
- * villes de la base sont attachées aux boutiques) et le mot de passe
- * affiché en clair (Supabase ne le rend jamais lisible, avec raison).
- * Retirés plutôt que simulés avec une fausse valeur.
+ * Mes informations — écran 18. Un champ de la maquette n'a pas de colonne
+ * réelle : le mot de passe affiché en clair (Supabase ne le rend jamais
+ * lisible, avec raison) — retiré plutôt que simulé avec une fausse valeur.
+ * La ville, elle, est branchée sur `profiles.city_id`
+ * (0010_client_profile_city.sql) : un client peut désormais choisir sa
+ * ville de résidence, indépendamment de la ville de navigation du fil
+ * (`/recherche/ville`, un simple paramètre d'URL, pas une donnée de
+ * profil).
  */
 export default async function ProfilePage() {
   const supabase = await createClient();
-  const [profile, user] = await Promise.all([getMyProfile(supabase, "client"), getSessionUser(supabase)]);
+  const [profile, user, cities] = await Promise.all([
+    getMyProfile(supabase, "client"),
+    getSessionUser(supabase),
+    getCities(supabase),
+  ]);
   if (!profile || !user) redirect("/connexion");
 
   return (
@@ -34,7 +42,13 @@ export default async function ProfilePage() {
       />
       <ScreenBody>
         <Section className="gap-4">
-          <ProfileForm id="profile-form" fullName={profile.fullName} phone={profile.phone} />
+          <ProfileForm
+            id="profile-form"
+            fullName={profile.fullName}
+            phone={profile.phone}
+            cityId={profile.cityId}
+            cities={cities}
+          />
 
           <Field
             label="Email"
