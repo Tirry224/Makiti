@@ -125,85 +125,101 @@ voir section 7. **Règle à partir de maintenant : toute migration appliquée
 au tableau de bord Supabase est commitée dans la même session, jamais
 après.**
 
+**Les 9 migrations rejouent depuis une base vierge** — vérifié, pas
+supposé (`supabase/tests/README.md` donne la commande). C'est la seule
+propriété qui compte pour une suite de migrations, et c'est celle qui
+casse le plus discrètement.
+
 `supabase/tests/` — 46 tests de sécurité, rejouables sur un PostgreSQL
 local. Ils vérifient que les actions **interdites** échouent. Ils ont déjà
-trouvé deux vraies failles pendant l'écriture.
+trouvé **trois** vraies failles (voir section 7).
 
 ### Maquette
 Publiée : https://claude.ai/code/artifact/5640888b-3a8e-4f07-aa50-4da03a76aef2
 Sources dans `design/` (33 écrans, direction visuelle « A — Marché »).
 
-### Front-end — les 33 écrans existent, aucune action n'est branchée
-Next.js 16, React 19, TypeScript, Tailwind 4.
+### Front-end
+Next.js 16, React 19, TypeScript, Tailwind 4. 27 routes, ~33 composants.
 
-- `src/styles/` — tokens (couleurs, typographie, rayons, espacements),
-  styles de base, et un README expliquant comment modifier l'apparence
-- `src/components/` — ~24 composants : `ui/` sans métier, `product/` et
-  `chat/` pour le domaine
-- `src/app/` — les 33 écrans
-- `src/lib/mock.ts` — données de démonstration, à remplacer par Supabase
+- `src/styles/` — tokens (couleurs, typographie, rayons, **vocabulaire
+  d'espacements nommés**) et un README expliquant comment modifier
+  l'apparence. `npm run classes` détecte les classes Tailwind inexistantes,
+  le défaut le plus silencieux du projet (voir section 7).
+- `src/components/` — `ui/` sans métier, `product/`, `chat/`, `auth/`.
+- `src/lib/supabase/` — client par requête : `server.ts` (composants
+  serveur), `client.ts` (navigateur), `middleware.ts` (rafraîchit la
+  session à chaque requête). **Un seul client global serait une faille** :
+  deux visiteurs partageraient la même session.
+- `src/lib/data/` — lecture : `products.ts`, `merchants.ts`,
+  `reference.ts`, `session.ts`. Seul endroit qui connaît la forme de la
+  base ; traduit vers les types de `src/lib/types.ts`.
+- `src/lib/actions/` — écriture : `auth.ts` (inscription, connexion,
+  déconnexion, mot de passe oublié et réinitialisation, création du second
+  compte lié), `merchants.ts` (création de boutique).
+- `src/lib/mock.ts` — **encore utilisé** par les écrans qui n'ont pas de
+  données réelles derrière : messagerie, espace vendeur, « mon compte ».
+  Voir section 3.
 
-Deux adresses utiles : **`/ecrans`** liste les 33 écrans avec un lien vers
+**Authentification : faite.** Inscription client et commerçant, connexion,
+déconnexion, mot de passe oublié, réinitialisation, comptes liés.
+
+**Catalogue public : branché sur la vraie base.** `/`, `/recherche`, fiche
+produit, galerie photo, boutique publique, contacter, signaler.
+
+Deux adresses de travail : **`/ecrans`** liste les écrans avec un lien vers
 chacun ; **`/styleguide`** affiche tous les composants et tous les tokens.
 
+**Base vide au départ** : `supabase/seed_demo.sql` crée deux boutiques et
+six produits pour avoir quelque chose à regarder. À supprimer avant le
+lancement (commande en fin de fichier). Les lignes de photos qu'il crée ne
+désignent aucun fichier réel : les vignettes s'afficheront cassées jusqu'à
+ce qu'un vrai commerçant en dépose.
+
 ```bash
-npm install && npm run dev
+npm install && npm run dev     # nécessite .env.local — voir README
+npm run typecheck && npm run build
+npm run classes                # classes Tailwind fantômes
+npm run poids                  # budgets de poids (docs/PERFORMANCE.md)
 ```
+
+**Ce qui n'a JAMAIS été vérifié** : le rendu dans un navigateur. Les
+environnements de travail successifs n'ont pas pu joindre `*.supabase.co`
+(politique réseau : « host not in allowlist »). Tout a été vérifié
+autrement — requêtes rejouées en base **en tant qu'anonyme réel**
+(`set role anon`, pas via un outil qui contourne le RLS), migrations
+rejouées sur un PostgreSQL vierge, 46/46 tests, build de production. Mais
+personne n'a encore regardé un seul écran chargé avec de vraies données.
+C'est la première chose à faire.
 
 ---
 
 ## 3. Ce qui reste à faire, dans l'ordre
 
-Ordre revu le 2026-09-11 avec le porteur du projet : on pousse le front
-(textes, parcours, architecture des comptes, performance) le plus loin
-possible sur le mock, et **Supabase réel passe en tout dernier** plutôt
-qu'en bloquant, comme c'était le cas avant. Raison : la plupart du travail
-qui reste est indépendant de la base, et repousser Supabase évite de
-déployer un schéma qu'on sait déjà incomplet (voir point 4 de la section
-précédente — le lien entre les deux comptes d'une même personne).
+*Cette section a été entièrement réécrite le 2026-09-11. Elle disait
+auparavant que « Supabase réel passe en tout dernier » et rangeait
+l'authentification parmi les tâches à venir — deux affirmations devenues
+fausses : la base est déployée, le catalogue public la lit, et
+l'authentification est écrite. Un plan qui décrit un projet qu'on n'a plus
+est pire qu'une absence de plan.*
 
-### Étape 1 — Corrections : relire les 21 derniers écrans
-Les 12 premiers écrans ont été vérifiés dans un navigateur ; les 21
-derniers ne l'ont pas été, faute de temps. Le build et les types passent,
-mais cela ne dit rien du rendu. Les vérifications précédentes avaient
-trouvé une classe CSS inexistante, un prix illisible et un badge étiré —
-aucun de ces défauts ne produisait d'erreur.
+### Étape 1 — Regarder l'application dans un navigateur
+**Avant tout le reste, et ce n'est pas une formalité.** Rien n'a jamais
+été vu à l'écran avec de vraies données (voir la note de la section 2).
+`npm run dev`, parcourir `/ecrans`, ouvrir chaque écran. Les vérifications
+passées avaient trouvé une classe CSS inexistante, un prix illisible et un
+badge étiré — aucun de ces défauts ne produit d'erreur au build.
 
-Ouvrir `/ecrans`, parcourir les 33, corriger ce qui cloche. À faire avant
-tout le reste : inutile de soigner des textes ou un parcours sur un écran
-visuellement cassé.
+Inutile de soigner une fonctionnalité sur un écran visuellement cassé.
 
-### Étape 2 — Positionnement et textes
-Makiti = trouver des produits et des commerçants (côté acheteur). Relire
-les textes de l'app avec cette phrase en tête ; corriger toute formulation
-ambiguë ou orientée « gestion / vente » sur les écrans côté acheteur.
+### Étape 2 — Espace vendeur : les actions produit
+Le plus gros bloc restant. Écrans encore sur `mock.ts` : `/vendeur`,
+`/vendeur/produits/[id]/actions`, `/vendeur/boutique`, `/vendeur/refusee`.
 
-### Étape 3 — Parcours principal
-Découvrir → produit → commerçant → contacter. Vérifier que ce chemin est
-direct sur les 33 écrans : rien ne doit détourner l'utilisateur de cette
-suite d'actions.
+À brancher : créer et modifier un produit, envoyer les photos, marquer
+vendu, masquer, supprimer, modifier la boutique, afficher le motif de
+refus (`merchants.rejection_reason`, déjà en base).
 
-### Étape 4 — Architecture des comptes liés
-Une personne peut avoir un compte client et un compte commerçant, liés à
-une seule connexion, avec bascule rapide et sans mélange à l'écran (voir
-section 6). Concevoir et intégrer aux maquettes/écrans le mécanisme de
-bascule (menu, indicateur de contexte actif). Le schéma réel (comment lier
-deux profils à une seule connexion Supabase) reste à trancher à l'étape 9
-— ne pas l'anticiper en base tant qu'elle n'existe pas.
-
-### Étape 5 — Performance
-Compression forte des photos avant envoi, attention au poids des pages sur
-mobile.
-
-*Correction du 2026-09-11 : la phrase d'origine proposait de préparer dès
-maintenant « l'UI de sélection/prévisualisation des photos ». C'est faux —
-`src/components/README.md` est explicite : aucun composant ne bascule côté
-client avant d'avoir une vraie action à brancher (« un par un, pas avant »).
-Un sélecteur de photos avec aperçu est déjà de l'interactivité réelle ; sans
-stockage où envoyer le fichier, ce serait exactement l'inverse de la règle
-du projet. Cette UI attend l'étape 9, comme la compression elle-même.*
-
-Ce qui PEUT se décider avant, sans écrire de code client prématuré :
+**Compression des photos — déjà tranché, à appliquer ici :**
 
 - **Librairie retenue : [`browser-image-compression`](https://www.npmjs.com/package/browser-image-compression).**
   Alternative envisagée : Canvas API native (zéro dépendance), écartée
@@ -215,142 +231,82 @@ Ce qui PEUT se décider avant, sans écrire de code client prématuré :
 - **Paramètres cibles** : dimension max ~1280 px, qualité JPEG ~0,75,
   taille visée sous 300–500 Ko par photo. À ajuster une fois les premières
   vraies photos de commerçants vues.
-- **Affichage** : utiliser `next/image` pour les vraies photos (pas de
-  `<img>` brut) — redimensionnement responsive et lazy loading inclus,
-  sans travail supplémentaire.
+- **Affichage** : `next/image` (déjà en place dans `Photo`), jamais un
+  `<img>` brut.
+- Convention de chemin imposée par `0004_storage.sql` :
+  `product-images/{merchant_id}/{product_id}/{n}.webp`. Le RLS du stockage
+  vérifie le premier dossier — un commerçant ne peut écrire que chez lui.
 
-Le reste de la « performance » (poids du bundle, nombre de composants
-client) n'est pas un problème aujourd'hui : l'app est encore 100 % rendue
-côté serveur avec des données factices, donc rien à optimiser tant que les
-vraies photos n'existent pas. Le vrai risque de poids arrive avec elles.
+### Étape 3 — Messagerie
+Quatre écrans sur `mock.ts` : `/messages`, `/messages/[id]`, `+/citer`,
+`+/actions`. Ouvrir un fil, envoyer un message, citer un produit, marquer
+comme lu, signaler, bloquer (`conversations.blocked_by`, déjà en base —
+section 4, point 1). Temps réel via Supabase Realtime.
 
-### Étape 6 — Recherche (UX, sur le mock)
-Affiner l'expérience de recherche et de filtre (catégories, villes) sur les
-données de démonstration, en cohérence avec ce que fera plus tard la
-fonction `search_products`. Le branchement à la vraie base attend l'étape 9.
+Rappel des règles que la base fait déjà respecter, inutile de les
+redupliquer dans l'interface : un seul fil par couple (client, boutique),
+le premier message cite obligatoirement un produit, le produit cité
+appartient à la boutique destinataire, quotas de 20 boutiques contactées
+et 100 messages par jour.
 
-### Étape 7 — Sécurité, en continu
-Ne rien casser du RLS ni des 46 tests de `supabase/tests/` en avançant sur
-les étapes précédentes. Pas une étape isolée : un réflexe à chaque
-modification de schéma envisagée.
+### Étape 4 — « Mon compte » et la suppression de compte
+`/compte` est encore sur `mock.ts`. Et il manque l'**Edge Function de
+suppression** (`service_role`) : elle doit anonymiser `profiles`
+(`full_name`, `phone`, `is_deleted`, `deleted_at`) **et** couper l'accès à
+`auth.users` dans la MÊME opération — sinon un profil se retrouve marqué
+supprimé avec une connexion encore active. Voir section 4, point 3.
 
-### Étape 8 — Administration, anticiper sans construire
-Pas de page admin en v1, mais garder en tête qu'elle arrivera : éviter les
-choix qui la rendraient difficile à ajouter plus tard (ex. le motif de
-refus d'une boutique, point 2 de la section précédente).
+À trancher à ce moment-là : est-ce que `merchants.status` doit sortir de
+`'approved'` quand le commerçant supprimé avait une boutique publique ?
 
-### Étape 9 — Supabase réel (dernière étape)
-Tout ce qui suit était avant en tête de liste ; c'est maintenant la toute
-dernière étape, une fois le front stabilisé :
+### Étape 5 — Emails
+Deux besoins distincts, un seul fournisseur (Resend) :
 
-1. ~~Trancher le schéma des comptes liés~~ **Fait le 2026-09-11** (point 4
-   de la section précédente) — les migrations sont déjà à jour.
-2. ~~Créer un projet sur supabase.com~~ **Fait le 2026-09-10.** Projet
-   `Makiti`, réf. `bfmsruzyrgbndbueikcb`, région `eu-west-3` (Paris — la
-   plus proche de la Guinée). Un premier projet créé par erreur en
-   `us-east-2` a été supprimé puis recréé dans la bonne région : ça ne se
-   change pas après coup sur un projet existant.
-3. ~~Exécuter les migrations dans l'ordre~~ **Fait**, via l'API Supabase
-   plutôt que l'éditeur SQL à la main (MCP Supabase, disponible dans cette
-   session). Trois avertissements de l'audit de sécurité corrigés dans la
-   foulée et reportés dans les fichiers sources (pas seulement appliqués en
-   direct) : `search_path` manquant sur deux fonctions, et surtout
-   `is_active_profile(pid)` qui, appelable en RPC direct par un inconnu
-   (conséquence normale de `security definer`), révélait si un profil
-   ARBITRAIRE — pas forcément celui de l'appelant — était suspendu ou
-   supprimé. Corrigé en vérifiant aussi la propriété à l'intérieur de la
-   fonction ; aucun appel légitime ne change de comportement, puisque
-   chaque policy vérifiait déjà cette propriété juste avant de l'appeler.
-   Sept autres fonctions signalées « callable en RPC » sont de faux
-   positifs : ce sont des fonctions de trigger (`returns trigger`), que
-   PostgreSQL refuse structurellement d'exécuter autrement qu'en trigger —
-   vérifié en l'appelant directement, pas supposé.
-   Avertissements de performance : trois clés étrangères sans index
-   ajoutées (`messages.sender_id`, `reports.reporter_id`,
-   `conversations.blocked_by`), et `auth.uid()` enveloppé dans
-   `(select auth.uid())` sur les policies de `profiles` qui l'appelaient
-   nu. « Multiple permissive policies » et « unused index » laissés tels
-   quels — la seconde ne veut rien dire sur une base qui vient de naître,
-   la première est un choix de lisibilité déjà justifié ailleurs (voir la
-   note sur `search_products` en 0003).
-4. ~~Vérifier que RLS est activé partout~~ **Fait** : les 9 tables de
-   `public` affichent `rls_enabled: true`.
-5. ~~Mettre les clés dans `.env.local`~~ **Fait** (fichier non versionné,
-   déjà dans `.gitignore`). Clé `publishable` (nouveau format
-   `sb_publishable_...`), pas l'ancienne clé `anon` JWT — recommandation
-   Supabase actuelle pour un nouveau projet.
-6. ~~Générer les types~~ **Fait, mais pas comme prévu.** `src/lib/types.ts`
-   n'est PAS remplacé : la base réelle est en snake_case
-   (`price_gnf`, `shop_name`…), les ~30 écrans lisent du camelCase
-   (`priceGnf`, `shopName`…). Réécrire tous les écrans pour suivre la
-   casse de la base aurait été un chantier mécanique énorme pour un
-   bénéfice cosmétique. À la place : `src/lib/database.types.ts` (généré,
-   à regénérer après toute migration qui touche au schéma — ne pas éditer
-   à la main) sert uniquement à la couche de lecture (`src/lib/data/`),
-   qui traduit vers les types applicatifs de `src/lib/types.ts`, inchangés.
-   Un seul endroit connaît les deux formes.
-7. ~~Brancher les données en lecture~~ **Fait pour tout ce qui est public
-   (catalogue, sans compte) — le reste attend l'étape 8 (authentification),
-   voir plus bas pourquoi.**
-   - `src/lib/data/reference.ts` (villes, catégories), `src/lib/data/products.ts`
-     (`search_products` pour les listes, `getProduct` pour une fiche) et
-     `src/lib/data/merchants.ts` (`getMerchant`, `getMerchantProducts`).
-   - Écrans branchés : `/` (accueil), `/recherche`, fiche produit (écrans 7
-     et 8), galerie photo, signaler un produit, compte requis, boutique
-     publique.
-   - Deux écarts réels trouvés en branchant, pas supposés :
-     `search_products` ne renvoyait que les produits `active` (pas
-     `sold`, pourtant affiché grisé depuis l'écran 8) ni le nom de la
-     catégorie — corrigée en 0003. Plus grave : la policy RLS `products:
-     catalogue public` avait le MÊME trou, invisible tant que je testais
-     avec un outil qui contourne le RLS. Retesté en simulant un vrai
-     visiteur anonyme (`set role anon`, sans connexion) plutôt qu'en
-     `execute_sql` brut — deux nouveaux tests dans
-     `supabase/tests/security_test.sql` (46 contre 44) couvrent
-     maintenant ce cas précisément.
-   - Écrans encore sur `src/lib/mock.ts`, et pourquoi ce n'est pas un
-     oubli : « Mon compte », « Mes produits », les messages, les actions
-     commerçant… affichent tous des données qui appartiennent à UNE
-     personne connectée. Sans authentification (étape 8, pas encore
-     faite), il n'existe aucune vraie session à qui rattacher ces
-     données — les brancher maintenant aurait forcé soit une session
-     inventée, soit un formulaire de connexion qui ne connecte
-     personne. Les deux auraient été un simulacre, pas un branchement.
+1. **Notification de nouveau message** — badge de non-lus dans l'app +
+   email. **Sans cette étape, la messagerie est une boîte aux lettres que
+   personne ne relève.**
+2. **Emails d'authentification** — réinitialisation de mot de passe, et
+   confirmation d'inscription si elle est réactivée. L'écran
+   `/mot-de-passe-oublie` promet noir sur blanc « vous recevrez un lien » :
+   aujourd'hui cette promesse dépend du serveur mail intégré de Supabase,
+   que leur propre documentation déclare « non destiné à un usage en
+   production » (quelques envois par heure, au mieux). Un SMTP externe est
+   donc nécessaire **avant** le lancement, pas après.
 
-   **Note de vérification** — le bac à sable de cette session ne peut pas
-   joindre `*.supabase.co` en HTTPS direct (politique réseau de
-   l'environnement, hors de mon contrôle : « host not in allowlist »).
-   Vérifié autrement, à chaque écran branché : des données de test
-   insérées dans la vraie base (puis supprimées après coup — le `on
-   delete cascade` en a profité pour se vérifier lui aussi à chaque fois)
-   confirment que les requêtes renvoient exactement la forme attendue,
-   testées **en tant qu'anonyme réel** (`set role anon`) et non via un
-   outil qui contourne le RLS — c'est cette différence qui a trouvé le
-   trou sur les produits vendus. `npm run build` passe. Ce qui n'est PAS
-   vérifié : le rendu réel dans un navigateur. À confirmer par le porteur
-   du projet en lançant `npm run dev` sur sa machine, ou une fois déployé
-   sur Vercel.
-8. Brancher l'authentification (inscription, connexion, mot de passe
-   oublié, déconnexion, écran « compte requis », bascule entre comptes liés)
-9. Écrire l'Edge Function de suppression de compte (`service_role`) :
-   anonymise `profiles` (`full_name`, `phone`, `is_deleted`, `deleted_at`)
-   ET coupe l'accès à `auth.users` dans la MÊME opération — voir section 4,
-   point 3. Décider à ce moment-là si `merchants.status` doit sortir de
-   `'approved'` quand le commerçant supprimé avait une boutique publique.
-10. Brancher les actions du commerçant (produit, photos avec compression
-    via `browser-image-compression` puis affichage en `next/image`,
-    marquer vendu, masquer, supprimer, modifier la boutique)
-11. Brancher la messagerie (Supabase Realtime) : ouvrir un fil, envoyer,
-    citer un produit, marquer comme lu, signaler, bloquer (déjà en base :
-    `conversations.blocked_by`, voir section 4, point 1)
-12. Notifier le commerçant : badge de non-lus + email (Resend). **Sans
-    cette étape, la messagerie est une boîte aux lettres que personne ne
-    relève.**
-13. Déployer sur Vercel (`.vercel.app` pour commencer)
-14. Avant le lancement : rédiger des conditions d'utilisation — Makiti est
-    un intermédiaire technique, non une partie à la vente ; à écrire avant
-    le premier litige, pas après
-15. Supprimer la page `/ecrans`, qui est une page de travail
+### Étape 6 — Déploiement en production
+`main` est la branche de production. Voir le README pour les variables
+d'environnement Vercel. Le `.env` versionné ne porte que des valeurs
+`NEXT_PUBLIC_`, publiques par construction — tout secret va dans le
+tableau de bord, jamais dans un fichier suivi.
+
+### Étape 7 — Avant d'ouvrir à de vrais commerçants
+- Supprimer le jeu de démonstration :
+  `delete from auth.users where email like '%@demo.makiti.local';`
+- Rédiger des conditions d'utilisation — Makiti est un intermédiaire
+  technique, non une partie à la vente. À écrire avant le premier litige.
+- Décider si la confirmation d'email est réactivée. Argument pour :
+  l'email est à la fois l'identifiant de connexion **et** le canal des
+  notifications ; sans confirmation, quelqu'un peut s'inscrire avec
+  l'adresse d'un tiers, qui recevra les messages d'un inconnu. Argument
+  contre : une friction de plus à l'inscription, sur un marché où il faut
+  déjà arracher les vingt premiers commerçants. **Aucun écran de type
+  « vérifiez votre boîte mail » n'existe dans la maquette** : le
+  réactiver demande d'en dessiner un.
+- Supprimer la page `/ecrans`, page de travail.
+- Fermer le dernier trou de schéma connu : `check (status <> 'rejected' or
+  rejection_reason is not null)` — voir section 4.
+- Corriger le dépassement de budget signalé par `npm run poids` :
+  **polices 60 Ko pour 40 Ko**.
+
+### En parallèle — récupérer ce qui reste de `kind-thompson`
+Voir la liste en tête de document. La compression des photos (étape 2) et
+les formulaires fonctionnant sans JavaScript en sont les deux morceaux les
+plus utiles.
+
+### Sécurité — un réflexe, pas une étape
+Ne rien casser du RLS ni des 46 tests de `supabase/tests/` en avançant.
+`npm run` les tests après **toute** modification de policy : c'est ainsi
+que trois failles ont été trouvées, et aucune ne produisait d'erreur.
 
 ---
 
@@ -399,7 +355,7 @@ prises le 2026-09-11, à la demande du porteur du projet.
    policy qui comparait directement une colonne à `auth.uid()` est passée
    par une fonction (`my_profile_id(role)`, `owns_profile(id)`,
    `is_active_profile(id)`) qui résout « lequel de MES profils ». Testé de
-   bout en bout (44 tests, RLS activé, sur un PostgreSQL local recréé de
+   bout en bout (46 tests, RLS activé, sur un PostgreSQL local recréé de
    zéro) plutôt que déduit par lecture du code.
 
 **Un reste, mineur mais réel, sur le point 2** : aucune contrainte n'empêche de passer `status = 'rejected'` en laissant `rejection_reason` vide. La base accepte donc un refus sans motif — exactement ce que la colonne devait éviter. Un `check (status <> 'rejected' or rejection_reason is not null)` le fermerait ; pas fait faute d'un vrai parcours de refus à tester dessus.
@@ -462,6 +418,23 @@ prises le 2026-09-11, à la demande du porteur du projet.
   passage aux comptes liés (section 4) : `security_test.sql` continuait à
   utiliser l'UUID de connexion comme s'il était aussi l'identifiant du
   profil, et ne tournait plus du tout depuis ce changement.
+- **Un avertissement de sécurité se vérifie, il ne se croit pas — dans les
+  deux sens.** L'audit Supabase a signalé onze fonctions `security
+  definer` « appelables en RPC par un inconnu ». Sept étaient de faux
+  positifs : des fonctions de trigger (`returns trigger`), que PostgreSQL
+  refuse structurellement d'exécuter autrement qu'en trigger — vérifié en
+  les appelant, pas déduit. Mais une était une vraie fuite :
+  `is_active_profile(pid)` révélait si un profil ARBITRAIRE était suspendu
+  ou supprimé. Corrigée en 0005 en vérifiant la propriété à l'intérieur de
+  la fonction ; aucun appel légitime n'en change, puisque chaque policy
+  vérifiait déjà cette propriété juste avant. Trier les onze demandait de
+  lire chaque fonction : ni « tout corriger » ni « tout ignorer » n'aurait
+  donné le bon résultat.
+- **Le RLS ne se teste pas avec un outil qui le contourne.** La policy
+  `products: catalogue public` masquait les produits vendus au public,
+  défaut resté invisible tant qu'il était testé via un accès
+  administrateur. Trouvé en rejouant les requêtes en `set role anon`, sans
+  connexion — comme un vrai visiteur.
 - **Une migration appliquée au tableau de bord Supabase n'existe nulle
   part tant qu'elle n'est pas commitée.** Le SQL Editor de Supabase
   n'écrit dans aucun fichier du dépôt : cinq migrations (0005 à 0009) et
