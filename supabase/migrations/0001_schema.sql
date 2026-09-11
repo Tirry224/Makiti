@@ -58,6 +58,17 @@ create table public.profiles (
   full_name    text not null,
   phone        text not null,        -- non vérifié : ce n'est PAS une preuve d'identité
   is_suspended boolean not null default false,
+  -- Suppression de compte = ANONYMISATION, jamais un vrai DELETE. Avec les
+  -- `on delete cascade` de ce fichier, effacer un profil effacerait aussi
+  -- ses messages dans TOUTES ses conversations — y compris ceux que lit
+  -- encore l'autre participant. Un commerçant qui supprime son compte ne
+  -- doit pas rendre illisible l'historique de ses anciens clients.
+  -- `full_name`/`phone` sont écrasés au moment de la suppression (par une
+  -- Edge Function, voir 0002 et docs/REPRISE.md étape 9) plutôt que
+  -- protégés par une colonne séparée : la donnée personnelle disparaît
+  -- vraiment, seule la ligne et son historique de messages survivent.
+  is_deleted   boolean not null default false,
+  deleted_at   timestamptz,
   created_at   timestamptz not null default now()
 );
 
@@ -168,6 +179,14 @@ create table public.conversations (
   merchant_id     uuid not null references public.merchants(id) on delete cascade,
   created_at      timestamptz not null default now(),
   last_message_at timestamptz not null default now(),
+  -- Blocage entre les deux participants (écran 32). Porté par la
+  -- conversation et non par une table à part : avec un seul fil possible
+  -- par couple (client, boutique), il n'existe déjà qu'UN endroit où
+  -- bloquer quelqu'un aurait un sens. `blocked_by` dit QUI a bloqué ; c'est
+  -- donc l'AUTRE participant qui perd le droit d'écrire (RLS, voir 0002).
+  -- Le fil reste lisible pour les deux : bloquer ferme l'écriture, pas la
+  -- lecture. Pas de déblocage en v1 — aucun écran ne le propose.
+  blocked_by      uuid references public.profiles(id),
   unique (client_id, merchant_id)
 );
 

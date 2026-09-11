@@ -22,7 +22,11 @@
 -- PARTIE 1 — Fonctions utilitaires
 -- =====================================================================
 
--- Un utilisateur suspendu ne doit plus rien pouvoir écrire.
+-- Un utilisateur suspendu OU qui a supprimé son compte ne doit plus rien
+-- pouvoir écrire. Une seule fonction pour les deux, plutôt que de répéter
+-- `is_suspended = false and is_deleted = false` dans chaque policy : le
+-- jour où un troisième état d'écriture interdite apparaît, il y a UN seul
+-- endroit à corriger, pas une recherche dans tout le fichier.
 -- `security definer` : la fonction s'exécute avec les droits de son
 -- propriétaire, donc elle contourne le RLS. C'est indispensable ici, sinon
 -- une règle posée SUR la table profiles qui interroge la table profiles
@@ -38,7 +42,7 @@ set search_path = ''
 as $$
   select exists (
     select 1 from public.profiles
-    where id = auth.uid() and is_suspended = false
+    where id = auth.uid() and is_suspended = false and is_deleted = false
   );
 $$;
 
@@ -354,6 +358,15 @@ revoke update on public.profiles  from authenticated, anon;
 grant  update (full_name, phone)
   on public.profiles to authenticated;
 
+-- `is_suspended`, `is_deleted` et `deleted_at` restent hors de cette liste
+-- blanche. `is_suspended` est déjà admin-only ; `is_deleted`/`deleted_at`
+-- le sont pour une autre raison : « supprimer mon compte » doit aussi
+-- couper l'accès à `auth.users`, ce que RLS ne peut pas faire — ça
+-- suppose une fonction serveur avec `service_role` (voir docs/REPRISE.md,
+-- étape 9). Laisser le client écrire `is_deleted` directement ouvrirait
+-- une fenêtre où le profil est marqué supprimé mais la connexion reste
+-- active — un état incohérent qu'une seule opération atomique évite.
+
 revoke update on public.merchants from authenticated, anon;
 grant  update (shop_name, description, whatsapp_phone, city_id, address_hint)
   on public.merchants to authenticated;
@@ -383,9 +396,12 @@ grant  update (category_id, title, description, price_gnf, is_negotiable, status
 revoke update on public.messages from authenticated, anon;
 grant  update (read_at) on public.messages to authenticated;
 
--- Une conversation n'est jamais modifiée par un utilisateur : sa date de
--- dernier message est tenue à jour par un trigger.
+-- Une conversation n'est presque jamais modifiée par un utilisateur : sa
+-- date de dernier message est tenue à jour par un trigger. La seule
+-- exception est `blocked_by` (écran 32, policy 6.6 bis plus bas) : un
+-- participant peut s'y désigner lui-même comme bloqueur, rien d'autre.
 revoke update on public.conversations from authenticated, anon;
+grant  update (blocked_by) on public.conversations to authenticated;
 
 -- Rien ne s'efface : on masque (voir `status`). Supprimer une fiche
 -- détruirait le contexte des conversations qui y renvoient.
@@ -564,6 +580,16 @@ create policy "conversations: un client contacte un commercant"
     )
   );
 
+-- 6.6 bis Blocage (écran 32) : un participant se désigne lui-même comme
+-- bloqueur. La colonne `with check` empêche deux abus symétriques :
+-- s'attribuer le blocage d'un fil qui n'est pas le sien (`using` limite
+-- déjà aux deux participants), et désigner l'AUTRE participant comme
+-- bloqueur pour le faire taire à sa place.
+create policy "conversations: je bloque mon interlocuteur"
+  on public.conversations for update
+  using (client_id = auth.uid() or merchant_id = public.my_merchant_id())
+  with check (blocked_by = auth.uid());
+
 
 -- 6.7 Messages : lisibles et écrivables par les participants uniquement.
 create policy "messages: lecture par les participants"
@@ -576,6 +602,10 @@ create policy "messages: lecture par les participants"
     )
   );
 
+-- `blocked_by is null or blocked_by = auth.uid()` : si personne n'a
+-- bloqué personne, les deux écrivent normalement ; si quelqu'un a bloqué,
+-- SEUL le bloqueur garde le droit d'écrire — l'autre, visé par « elle ne
+-- pourra plus vous écrire » sur l'écran 32, en est privé.
 create policy "messages: envoi par les participants"
   on public.messages for insert
   with check (
@@ -585,6 +615,7 @@ create policy "messages: envoi par les participants"
       select 1 from public.conversations c
       where c.id = public.messages.conversation_id
         and (c.client_id = auth.uid() or c.merchant_id = public.my_merchant_id())
+        and (c.blocked_by is null or c.blocked_by = auth.uid())
     )
   );
 

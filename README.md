@@ -13,7 +13,7 @@ conclut hors de l'application.
 
 - [x] Spécification validée
 - [x] Schéma de base de données, règles métier et sécurité (RLS)
-- [x] Tests de sécurité (35 vérifications, voir `supabase/tests/`)
+- [x] Tests de sécurité (40 vérifications, voir `supabase/tests/`)
 - [ ] Projet Supabase créé et migrations exécutées
 - [x] Design system et bibliothèque de composants (`src/styles/`, `src/components/`)
 - [x] Les 33 écrans (33 faits) — sans actions branchées

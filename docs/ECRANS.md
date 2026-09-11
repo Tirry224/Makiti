@@ -63,12 +63,13 @@ Liste exhaustive. Elle sert de plan de construction : chaque ligne est un
 
 ## Ce que cet inventaire a révélé
 
-Trois besoins qui n'existaient nulle part dans la spécification et qu'il
-faudra ajouter à la base de données :
+Trois besoins qui n'existaient nulle part dans la spécification. Les trois
+sont maintenant résolus (voir `docs/REPRISE.md`, section 4) :
 
-1. **Blocage entre personnes** — écran 32. Aucune table ne le porte.
+1. ~~**Blocage entre personnes**~~ — écran 32. Résolu :
+   `conversations.blocked_by`.
 2. ~~**Motif de refus d'une boutique**~~ — écran 21. Résolu :
-   `merchants.rejection_reason` (voir `docs/REPRISE.md`, section 4).
-3. **Suppression de compte** — écran 18. À décider : effacement réel ou
-   anonymisation, sachant que les conversations de l'autre partie doivent
-   rester lisibles.
+   `merchants.rejection_reason`.
+3. ~~**Suppression de compte**~~ — écran 18. Résolu : anonymisation
+   (`profiles.is_deleted`/`deleted_at`), jamais un effacement réel — les
+   conversations de l'autre partie restent lisibles.

@@ -40,7 +40,7 @@ Marché : Guinée · Devise : franc guinéen (GNF), en entiers · Langue : fran�
   12 villes
 - `0004_storage.sql` — stockage des photos
 
-`supabase/tests/` — 35 tests de sécurité, rejouables sur un PostgreSQL
+`supabase/tests/` — 40 tests de sécurité, rejouables sur un PostgreSQL
 local. Ils vérifient que les actions **interdites** échouent. Ils ont déjà
 trouvé deux vraies failles pendant l'écriture.
 
@@ -145,7 +145,7 @@ données de démonstration, en cohérence avec ce que fera plus tard la
 fonction `search_products`. Le branchement à la vraie base attend l'étape 9.
 
 ### Étape 7 — Sécurité, en continu
-Ne rien casser du RLS ni des 35 tests de `supabase/tests/` en avançant sur
+Ne rien casser du RLS ni des 40 tests de `supabase/tests/` en avançant sur
 les étapes précédentes. Pas une étape isolée : un réflexe à chaque
 modification de schéma envisagée.
 
@@ -173,37 +173,62 @@ dernière étape, une fois le front stabilisé :
    `src/lib/mock.ts`
 8. Brancher l'authentification (inscription, connexion, mot de passe
    oublié, déconnexion, écran « compte requis », bascule entre comptes liés)
-9. Brancher les actions du commerçant (produit, photos avec compression
-   via `browser-image-compression` puis affichage en `next/image`,
-   marquer vendu, masquer, supprimer, modifier la boutique)
-10. Brancher la messagerie (Supabase Realtime) : ouvrir un fil, envoyer,
-    citer un produit, marquer comme lu, signaler, bloquer
-11. Notifier le commerçant : badge de non-lus + email (Resend). **Sans
+9. Écrire l'Edge Function de suppression de compte (`service_role`) :
+   anonymise `profiles` (`full_name`, `phone`, `is_deleted`, `deleted_at`)
+   ET coupe l'accès à `auth.users` dans la MÊME opération — voir section 4,
+   point 3. Décider à ce moment-là si `merchants.status` doit sortir de
+   `'approved'` quand le commerçant supprimé avait une boutique publique.
+10. Brancher les actions du commerçant (produit, photos avec compression
+    via `browser-image-compression` puis affichage en `next/image`,
+    marquer vendu, masquer, supprimer, modifier la boutique)
+11. Brancher la messagerie (Supabase Realtime) : ouvrir un fil, envoyer,
+    citer un produit, marquer comme lu, signaler, bloquer (déjà en base :
+    `conversations.blocked_by`, voir section 4, point 1)
+12. Notifier le commerçant : badge de non-lus + email (Resend). **Sans
     cette étape, la messagerie est une boîte aux lettres que personne ne
     relève.**
-12. Déployer sur Vercel (`.vercel.app` pour commencer)
-13. Avant le lancement : rédiger des conditions d'utilisation — Makiti est
+13. Déployer sur Vercel (`.vercel.app` pour commencer)
+14. Avant le lancement : rédiger des conditions d'utilisation — Makiti est
     un intermédiaire technique, non une partie à la vente ; à écrire avant
     le premier litige, pas après
-14. Supprimer la page `/ecrans`, qui est une page de travail
+15. Supprimer la page `/ecrans`, qui est une page de travail
 
 ---
 
 ## 4. Manques dans la base de données
 
-Découverts en dessinant les écrans. Les trois premiers restent à trancher
-avant l'étape 9 (Supabase réel) ; le deuxième est déjà résolu ci-dessous.
+Découverts en dessinant les écrans. Seul le quatrième reste ouvert — les
+trois autres sont tranchés et écrits dans `0001_schema.sql` /
+`0002_rules_and_security.sql`, vérifiés par les tests 17 et 18 de
+`supabase/tests/security_test.sql` (blocage) et 18 (suppression). Décisions
+prises le 2026-09-11, à la demande du porteur du projet.
 
-1. **Le blocage entre personnes.** L'écran 32 propose « bloquer cette
-   personne », mais aucune table ne porte cette information.
-2. ~~**Le motif de refus d'une boutique.**~~ **Résolu le 2026-09-11** :
+1. ~~**Le blocage entre personnes.**~~ **Résolu.** `conversations.blocked_by`
+   (nullable, référence `profiles`). Porté par la conversation plutôt que
+   par une table séparée : avec un seul fil par couple (client, boutique),
+   c'est déjà le seul endroit où bloquer aurait un sens. La personne visée
+   perd le droit d'écrire dans CE fil (RLS) ; le fil reste lisible pour les
+   deux. Pas de déblocage en v1 : aucun écran ne le propose.
+2. ~~**Le motif de refus d'une boutique.**~~ **Résolu** :
    `merchants.rejection_reason` (colonne texte, écriture réservée à
    l'administrateur — voir `0001_schema.sql` et `0002_rules_and_security.sql`).
    Un refus sans explication est un vendeur perdu définitivement ; ça reste
    à brancher côté écran (`/vendeur/refusee`) quand la vraie base existera.
-3. **La suppression de compte.** Effacement réel ou anonymisation ? Si on
-   efface vraiment, les conversations de l'autre partie deviennent
-   illisibles.
+3. ~~**La suppression de compte.**~~ **Résolu : anonymisation, jamais un
+   vrai DELETE.** Les `on delete cascade` de `0001_schema.sql` auraient
+   effacé les messages envoyés dans TOUTES les conversations de la
+   personne, y compris ceux que lit encore l'autre partie — c'est ce qui
+   tranche la question, pas une préférence. `profiles.is_deleted` +
+   `deleted_at`, colonnes admin-only comme `rejection_reason` : le
+   navigateur ne peut pas les écrire directement. Raison précise, pas
+   seulement « par cohérence avec le reste » : « supprimer mon compte »
+   doit AUSSI couper l'accès à `auth.users`, que RLS ne gère jamais — les
+   deux doivent arriver ensemble via une Edge Function (`service_role`),
+   sinon un profil pourrait se retrouver marqué supprimé avec la connexion
+   encore active. Cette fonction reste à écrire à l'étape 9 ; elle devra
+   aussi décider si `merchants.status` doit sortir de `'approved'` quand
+   son commerçant supprime son compte (sinon la boutique resterait visible
+   dans le catalogue public) — pas tranché ici, à faire à ce moment-là.
 4. **Le lien entre les deux comptes d'une même personne.** Décision prise
    le 2026-09-11 (une connexion, deux comptes liés, bascule sans
    reconnexion) mais pas encore traduite en schéma. `profiles.id`

@@ -478,5 +478,92 @@ select pg_temp.check('filtre par ville sans résultat hors zone',
 select pg_temp.check('les brouillons n''apparaissent jamais',
   (select count(*) from public.search_products()) = 3);
 
+
+-- =====================================================================
+-- 17. Blocage entre personnes (écran 32)
+-- =====================================================================
+-- Fil Client D <-> Boutique A, ouvert section 14, encore intact.
+set role authenticated;
+select pg_temp.login('44444444-4444-4444-4444-444444444444');   -- Client D
+
+do $$
+begin
+  update public.conversations set blocked_by = '11111111-1111-1111-1111-111111111111'
+   where id = 'dddddddd-0000-0000-0000-000000000002';
+  raise exception 'ECHEC Client D a pu désigner Boutique A comme bloqueuse';
+exception when insufficient_privilege then
+  raise notice 'OK    impossible de désigner l''AUTRE participant comme bloqueur';
+end $$;
+
+reset role;
+set role authenticated;
+select pg_temp.login('11111111-1111-1111-1111-111111111111');   -- Boutique A
+
+update public.conversations set blocked_by = '11111111-1111-1111-1111-111111111111'
+ where id = 'dddddddd-0000-0000-0000-000000000002';
+select pg_temp.check('un participant peut se désigner lui-même comme bloqueur',
+  (select blocked_by from public.conversations
+    where id = 'dddddddd-0000-0000-0000-000000000002') = '11111111-1111-1111-1111-111111111111');
+
+-- Boutique A a bloqué : elle peut donc toujours écrire...
+insert into public.messages (conversation_id, sender_id, product_id, body)
+values ('dddddddd-0000-0000-0000-000000000002',
+        '11111111-1111-1111-1111-111111111111',
+        'cccccccc-0000-0000-0000-000000000001', 'Dernier mot du bloqueur');
+reset role;
+
+-- ...mais Client D, bloqué, ne peut plus.
+set role authenticated;
+select pg_temp.login('44444444-4444-4444-4444-444444444444');   -- Client D
+
+do $$
+begin
+  insert into public.messages (conversation_id, sender_id, product_id, body)
+  values ('dddddddd-0000-0000-0000-000000000002',
+          '44444444-4444-4444-4444-444444444444',
+          'cccccccc-0000-0000-0000-000000000001', 'Vous êtes là ?');
+  raise exception 'ECHEC la personne bloquée a pu écrire';
+exception when insufficient_privilege then
+  raise notice 'OK    écriture refusée à la personne bloquée, le fil reste lisible';
+end $$;
+
+reset role;
+
+
+-- =====================================================================
+-- 18. Un compte supprimé (anonymisé) ne peut plus écrire
+-- =====================================================================
+-- Même mécanisme que la section 13 (compte suspendu) : `is_active_user()`
+-- vérifie maintenant les deux colonnes. Un seul endroit changé suffit.
+update public.profiles set is_deleted = true
+ where id = '33333333-3333-3333-3333-333333333333';
+
+set role authenticated;
+select pg_temp.login('33333333-3333-3333-3333-333333333333');   -- Client C
+
+do $$
+begin
+  insert into public.messages (conversation_id, sender_id, product_id, body)
+  values ('dddddddd-0000-0000-0000-000000000001',
+          '33333333-3333-3333-3333-333333333333',
+          'cccccccc-0000-0000-0000-000000000001', 'Encore moi');
+  raise exception 'ECHEC un compte supprimé a pu écrire';
+exception when insufficient_privilege then
+  raise notice 'OK    écriture refusée à un compte supprimé';
+end $$;
+
+reset role;
+update public.profiles set is_deleted = false
+ where id = '33333333-3333-3333-3333-333333333333';
+
+-- Le point de toute cette section : les messages de Client C restent lus
+-- normalement par Boutique A, anonymisation oblige — rien n'a cascadé.
+set role authenticated;
+select pg_temp.login('11111111-1111-1111-1111-111111111111');   -- Boutique A
+select pg_temp.check('les messages du compte supprimé restent lisibles par l''autre partie',
+  (select count(*) from public.messages
+    where conversation_id = 'dddddddd-0000-0000-0000-000000000001') > 0);
+reset role;
+
 \echo ''
 \echo '===== TOUS LES TESTS SONT PASSES ====='
