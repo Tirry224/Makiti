@@ -1,16 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
 import type { Product } from "@/lib/types";
-
-/**
- * Les photos vivent dans Supabase Storage ; la base ne stocke que leur
- * CHEMIN. C'est ici qu'un chemin devient une adresse affichable, et nulle
- * part ailleurs : les écrans reçoivent des URL prêtes à poser dans une
- * balise image, sans rien savoir du stockage.
- */
-function publicUrl(supabase: SupabaseClient<Database>, path: string): string {
-  return supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
-}
+import { productImageUrl } from "@/lib/storage";
 
 type SearchRow = Database["public"]["Functions"]["search_products"]["Returns"][number];
 
@@ -20,7 +11,7 @@ type SearchRow = Database["public"]["Functions"]["search_products"]["Returns"][n
  * connaît les deux formes : si demain la fonction SQL change de forme, ce
  * fichier est le seul à corriger, pas les ~15 écrans qui affichent un produit.
  */
-function mapRow(supabase: SupabaseClient<Database>, row: SearchRow): Product {
+function mapRow(row: SearchRow): Product {
   return {
     id: row.product_id,
     merchant: {
@@ -40,7 +31,7 @@ function mapRow(supabase: SupabaseClient<Database>, row: SearchRow): Product {
     /* `image_path` est déclaré non-nul par les types générés alors que la
        jointure SQL est un LEFT JOIN : un produit sans photo renvoie NULL.
        On garde donc le test, que le type juge inutile. */
-    imageUrls: row.image_path ? [publicUrl(supabase, row.image_path)] : [],
+    imageUrls: row.image_path ? [productImageUrl(row.image_path)] : [],
   };
 }
 
@@ -113,7 +104,7 @@ export async function getProduct(supabase: SupabaseClient<Database>, id: string)
   ]);
   if (error) throw error;
   if (!row) return null;
-  return mapDetailRow(row, (images ?? []).map((i) => publicUrl(supabase, i.storage_path)));
+  return mapDetailRow(row, (images ?? []).map((i) => productImageUrl(i.storage_path)));
 }
 
 export async function searchProducts(
@@ -134,5 +125,5 @@ export async function searchProducts(
     p_limit: opts.limit ?? 24,
   });
   if (error) throw error;
-  return data.map((row) => mapRow(supabase, row));
+  return data.map(mapRow);
 }

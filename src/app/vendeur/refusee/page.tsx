@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { X } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { BottomNav } from "@/components/ui/BottomNav";
@@ -5,7 +6,8 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Screen, ScreenBody, Section } from "@/components/ui/Screen";
 import { TopBar, Wordmark } from "@/components/ui/TopBar";
-import { merchantRejected } from "@/lib/mock";
+import { createClient } from "@/lib/supabase/server";
+import { getMyMerchant } from "@/lib/data/merchants";
 
 /**
  * Écran 21 — boutique refusée.
@@ -13,9 +15,16 @@ import { merchantRejected } from "@/lib/mock";
  * Un refus sans motif est un vendeur perdu définitivement. L'écran dit
  * POURQUOI, dit CE QU'IL FAUT FAIRE, et rassure sur ce qui est conservé.
  * Le motif vient de `merchants.rejection_reason` (voir docs/REPRISE.md,
- * section 4) — `merchantRejected.rejectionReason` en attendant la vraie base.
+ * section 4) : un refus sans motif reste possible côté base (contrainte
+ * pas encore posée), d'où le texte de repli ci-dessous.
  */
-export default function RejectedShopPage() {
+export default async function RejectedShopPage() {
+  const supabase = await createClient();
+  const merchant = await getMyMerchant(supabase);
+  if (!merchant) redirect("/inscription/boutique");
+  if (merchant.status === "approved") redirect("/vendeur");
+  if (merchant.status === "pending") redirect("/vendeur/attente");
+
   return (
     <Screen>
       <TopBar title={<Wordmark />} right={<Badge tone="danger">Refusée</Badge>} />
@@ -28,7 +37,9 @@ export default function RejectedShopPage() {
 
           <div className="flex flex-col gap-2.5">
             <h1 className="text-2xl font-bold">Votre boutique n&apos;a pas été validée</h1>
-            <p className="text-base leading-relaxed text-ink-soft">{merchantRejected.rejectionReason}</p>
+            <p className="text-base leading-relaxed text-ink-soft">
+              {merchant.rejectionReason ?? "Aucun motif n'a été renseigné par notre équipe."}
+            </p>
           </div>
 
           <Card padded className="flex flex-col gap-2">
@@ -40,9 +51,6 @@ export default function RejectedShopPage() {
           </Card>
 
           <Button href="/vendeur/boutique">Corriger ma boutique</Button>
-          <Button variant="secondary" size="sm">
-            Nous écrire
-          </Button>
         </Section>
       </ScreenBody>
 

@@ -77,12 +77,15 @@ fictif, en écartant délibérément Supabase. Ses fonctionnalités ne se
 fusionnent donc pas : elles se réimplémentent sur la couche de données
 réelle. À faire, par ordre de valeur décroissante :
 
-1. **Compression des photos dans le navigateur** (`ChoixPhotos`) — déjà
-   une décision actée (SPEC, décision 15), indispensable avant que des
-   commerçants envoient des photos de 4 Mo depuis un téléphone.
-2. **Formulaires fonctionnant sans JavaScript** — sur un réseau guinéen
-   instable, un formulaire qui exige que le script soit chargé est un
-   formulaire qui échoue.
+1. ~~**Compression des photos dans le navigateur**~~ **Fait le
+   2026-09-11**, réimplémenté contre la vraie base (`PhotoPicker`,
+   section 3, étape 2) — pas une reprise de `ChoixPhotos`, qui supposait
+   `mock.ts`.
+2. **Formulaires fonctionnant sans JavaScript** — À MOITIÉ fait en même
+   temps (voir étape 2, section 3) : les champs texte et les actions
+   produit marchent sans script, `PhotoPicker` et le `Toggle` prix
+   négociable non. Sur un réseau guinéen instable, un formulaire qui
+   exige que le script soit chargé est un formulaire qui échoue.
 3. **Recherche v2** : quatre états d'écran, filtres, recherches récentes
    (`recherche.ts`, `FiltreChip`, `RecherchesRecentes`).
 4. **Bandeau de réseau dégradé** (`BandeauReseau`).
@@ -229,31 +232,54 @@ badge étiré — aucun de ces défauts ne produit d'erreur au build.
 
 Inutile de soigner une fonctionnalité sur un écran visuellement cassé.
 
-### Étape 2 — Espace vendeur : les actions produit
-Le plus gros bloc restant. Écrans encore sur `mock.ts` : `/vendeur`,
-`/vendeur/produits/[id]/actions`, `/vendeur/boutique`, `/vendeur/refusee`.
+### Étape 2 — Espace vendeur : les actions produit — FAIT le 2026-09-11
 
-À brancher : créer et modifier un produit, envoyer les photos, marquer
-vendu, masquer, supprimer, modifier la boutique, afficher le motif de
-refus (`merchants.rejection_reason`, déjà en base).
+Branché : créer un produit (photos, publication immédiate ou brouillon),
+le modifier, marquer vendu, masquer, republier, supprimer, modifier la
+boutique, afficher le motif de refus (`merchants.rejection_reason`).
+`/vendeur`, `/vendeur/attente`, `/vendeur/refusee` aiguillent maintenant
+vers le bon écran selon `merchants.status` réel, plutôt que d'être trois
+écrans isolés qu'il fallait deviner. Photos réellement affichées dans
+« Mes produits » (`ProductRow` ne recevait jamais de `src` — corrigé).
 
-**Compression des photos — déjà tranché, à appliquer ici :**
+**Compression et envoi des photos — décision 15 appliquée :**
 
-- **Librairie retenue : [`browser-image-compression`](https://www.npmjs.com/package/browser-image-compression).**
-  Alternative envisagée : Canvas API native (zéro dépendance), écartée
-  parce qu'elle ne gère pas seule l'orientation EXIF des photos prises au
-  téléphone — un produit qui apparaît de travers dans son propre catalogue
-  est le genre de défaut qui ruine la confiance d'un commerçant dès son
-  premier envoi. La librairie s'en charge, et tourne dans un web worker
-  (ne bloque pas l'interface sur un téléphone d'entrée de gamme).
-- **Paramètres cibles** : dimension max ~1280 px, qualité JPEG ~0,75,
-  taille visée sous 300–500 Ko par photo. À ajuster une fois les premières
-  vraies photos de commerçants vues.
-- **Affichage** : `next/image` (déjà en place dans `Photo`), jamais un
-  `<img>` brut.
-- Convention de chemin imposée par `0004_storage.sql` :
-  `product-images/{merchant_id}/{product_id}/{n}.webp`. Le RLS du stockage
-  vérifie le premier dossier — un commerçant ne peut écrire que chez lui.
+- Librairie [`browser-image-compression`](https://www.npmjs.com/package/browser-image-compression),
+  dans un web worker. Sortie forcée en **webp** (`fileType`), pas JPEG :
+  plus léger à qualité égale, et c'est déjà l'extension que
+  `0004_storage.sql` donnait en exemple dans son propre commentaire.
+  Cible 0,5 Mo / 1280 px de côté max, à ajuster sur de vraies photos.
+- **L'envoi vers Storage se fait depuis le navigateur**, pas via une
+  action serveur qui n'aurait fait que relayer un fichier déjà prêt
+  (`PhotoPicker`, client Supabase navigateur déjà présent mais inutilisé
+  jusqu'ici). Seul le CHEMIN obtenu voyage dans le formulaire.
+- `productId` est généré **côté navigateur** (`crypto.randomUUID()`) avant
+  le premier envoi de photo, pour respecter la convention de chemin
+  `product-images/{merchant_id}/{product_id}/{fichier}` sans attendre que
+  la ligne `products` existe. Le insert se fait ensuite en deux temps —
+  `draft` puis `update status = 'active'` — jamais en un seul : le trigger
+  `products_check_publishable` refuse la publication tant qu'aucune ligne
+  `product_images` ne référence le produit, ce qui est impossible à
+  satisfaire dans l'insert qui le crée.
+
+**Deux choses trouvées en cours de route, non résolues :**
+
+1. **La promesse de « nouvelle vérification » de l'écran boutique était
+   fausse.** Rien dans la base ne la mettait en œuvre. L'ajouter
+   ferait disparaître du catalogue public les produits déjà en ligne
+   (`products: catalogue public` exige `merchants.status = 'approved'`),
+   ce qui contredit la seconde phrase du même écran (« vos produits
+   restent en ligne pendant ce temps »). Le texte a été retiré plutôt que
+   laissé à mentir ; `updateMerchantAction` ne touche jamais `status`. À
+   trancher avec le porteur du projet avant de réintroduire un
+   comportement ici.
+2. **« Formulaires fonctionnant sans JavaScript »** (liste `kind-thompson`
+   ci-dessus) n'est fait qu'À MOITIÉ. Les champs texte et les boutons
+   d'action (marquer vendu, masquer, supprimer…) fonctionnent sans JS —
+   ce sont de vraies `<form action={...}>` Next.js. Mais `PhotoPicker`
+   (compression + envoi Storage) et le bouton « Prix négociable »
+   (`Toggle`) exigent du JavaScript : aucun des deux n'a d'équivalent
+   fonctionnel sans script pour l'instant.
 
 ### Étape 3 — Messagerie
 Quatre écrans sur `mock.ts` : `/messages`, `/messages/[id]`, `+/citer`,
@@ -317,9 +343,10 @@ tableau de bord, jamais dans un fichier suivi.
   **polices 60 Ko pour 40 Ko**.
 
 ### En parallèle — récupérer ce qui reste de `kind-thompson`
-Voir la liste en tête de document. La compression des photos (étape 2) et
-les formulaires fonctionnant sans JavaScript en sont les deux morceaux les
-plus utiles.
+Voir la liste en tête de document. La compression des photos est faite ;
+restent la recherche v2, le bandeau réseau dégradé, le catalogue à 8
+catégories, et compléter les formulaires sans JavaScript (`PhotoPicker`,
+`Toggle`) commencés à l'étape 2.
 
 ### Sécurité — un réflexe, pas une étape
 Ne rien casser du RLS ni des 46 tests de `supabase/tests/` en avançant.

@@ -20,12 +20,15 @@ export function MenuItem({
   label,
   value,
   href,
+  action,
   tone = "default",
 }: {
   icon: LucideIcon;
   label: string;
   value?: string;
   href?: string;
+  /** Action serveur (ex. déconnexion) — rend sa propre petite `<form>`. */
+  action?: () => void | Promise<void>;
   tone?: "default" | "danger";
 }) {
   const content = (
@@ -44,14 +47,26 @@ export function MenuItem({
     tone === "danger" ? "text-danger" : "text-ink",
   );
 
-  /* Un élément qui navigue est un lien ; un élément qui agit sera un
-     bouton. On ne met pas un `onClick` sur un `<div>` : ni le clavier ni
-     un lecteur d'écran ne sauraient s'en servir. */
-  return href ? (
-    <Link href={href} className={className}>
-      {content}
-    </Link>
-  ) : (
+  /* Un élément qui navigue est un lien, un élément qui agit est un bouton
+     dans sa propre `<form>`. On ne met pas un `onClick` sur un `<div>` :
+     ni le clavier ni un lecteur d'écran ne sauraient s'en servir. */
+  if (href) {
+    return (
+      <Link href={href} className={className}>
+        {content}
+      </Link>
+    );
+  }
+  if (action) {
+    return (
+      <form action={action}>
+        <button type="submit" className={cn(className, "w-full cursor-pointer text-left")}>
+          {content}
+        </button>
+      </form>
+    );
+  }
+  return (
     <button type="button" className={cn(className, "w-full cursor-pointer text-left")}>
       {content}
     </button>

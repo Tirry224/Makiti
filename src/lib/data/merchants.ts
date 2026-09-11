@@ -1,6 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
 import type { Merchant, Product } from "@/lib/types";
+import { productImageUrl } from "@/lib/storage";
+import { getMyProfile } from "@/lib/data/session";
 
 type MerchantRow = {
   id: string;
@@ -44,6 +46,25 @@ export async function getMerchant(supabase: SupabaseClient<Database>, id: string
   return mapMerchant(data);
 }
 
+/**
+ * La boutique de la connexion active, avec son statut réel — contrairement
+ * à `getMerchant`, réservée à un visiteur et donc muette sur une boutique
+ * en attente ou refusée. Sert à tout l'espace vendeur : lui seul a le
+ * droit de savoir où en est SA boutique.
+ */
+export async function getMyMerchant(supabase: SupabaseClient<Database>): Promise<Merchant | null> {
+  const merchantProfile = await getMyProfile(supabase, "merchant");
+  if (!merchantProfile) return null;
+  const { data, error } = await supabase
+    .from("merchants")
+    .select("id, shop_name, description, address_hint, whatsapp_phone, status, rejection_reason, cities(name)")
+    .eq("profile_id", merchantProfile.id)
+    .maybeSingle<MerchantRow>();
+  if (error) throw error;
+  if (!data) return null;
+  return mapMerchant(data);
+}
+
 type MerchantProductRow = {
   id: string;
   title: string;
@@ -53,32 +74,40 @@ type MerchantProductRow = {
   is_featured: boolean;
   contact_count: number;
   categories: { name: string } | null;
+  product_images: { storage_path: string; position: number }[];
 };
 
 /** Catalogue d'une boutique (écran 11) : RLS filtre déjà les brouillons et
- * les produits masqués, y compris pour un visiteur non connecté. */
+ * les produits masqués pour un visiteur non connecté ; pour le commerçant
+ * propriétaire, la même policy le laisse tout voir — cette fonction sert
+ * donc aussi à « Mes produits » (écran 22). */
 export async function getMerchantProducts(
   supabase: SupabaseClient<Database>,
   merchant: Merchant,
 ): Promise<Product[]> {
   const { data, error } = await supabase
     .from("products")
-    .select("id, title, price_gnf, is_negotiable, status, is_featured, contact_count, categories(name)")
+    .select(
+      "id, title, price_gnf, is_negotiable, status, is_featured, contact_count, categories(name), product_images(storage_path, position)",
+    )
     .eq("merchant_id", merchant.id)
     .order("created_at", { ascending: false })
     .returns<MerchantProductRow[]>();
   if (error) throw error;
-  return data.map((row) => ({
-    id: row.id,
-    merchant: { id: merchant.id, shopName: merchant.shopName, city: merchant.city, addressHint: merchant.addressHint },
-    category: row.categories?.name ?? "",
-    title: row.title,
-    description: null,
-    priceGnf: row.price_gnf,
-    isNegotiable: row.is_negotiable,
-    status: row.status,
-    isFeatured: row.is_featured,
-    contactCount: row.contact_count,
-    imageUrls: [],
-  }));
+  return data.map((row) => {
+    const cover = [...row.product_images].sort((a, b) => a.position - b.position)[0];
+    return {
+      id: row.id,
+      merchant: { id: merchant.id, shopName: merchant.shopName, city: merchant.city, addressHint: merchant.addressHint },
+      category: row.categories?.name ?? "",
+      title: row.title,
+      description: null,
+      priceGnf: row.price_gnf,
+      isNegotiable: row.is_negotiable,
+      status: row.status,
+      isFeatured: row.is_featured,
+      contactCount: row.contact_count,
+      imageUrls: cover ? [productImageUrl(cover.storage_path)] : [],
+    };
+  });
 }

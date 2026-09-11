@@ -17,7 +17,7 @@ export function ProductRow({ product }: { product: Product }) {
   const status = STATUS[product.status];
   return (
     <Card className={cn("flex items-center gap-3 p-2.5", product.status === "sold" && "opacity-60")}>
-      <Photo ratio="free" className="size-14 shrink-0 rounded-md" iconSize={20} />
+      <Photo src={product.imageUrls[0]} ratio="free" className="size-14 shrink-0 rounded-md" iconSize={20} />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <h3 className="truncate text-base font-semibold">{product.title}</h3>
         <PriceTag amount={product.priceGnf} size="sm" />

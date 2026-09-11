@@ -1,5 +1,6 @@
+import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Check, Plus, User } from "lucide-react";
+import { Check, MessageCircle, Plus, User } from "lucide-react";
 import { BottomNav } from "@/components/ui/BottomNav";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -8,16 +9,25 @@ import { Screen, ScreenBody, ScreenFooter, Section } from "@/components/ui/Scree
 import { SectionLabel } from "@/components/ui/SectionLabel";
 import { TopBar } from "@/components/ui/TopBar";
 import { ProductRow } from "@/components/product/ProductRow";
-import { merchantAissatou, myProducts } from "@/lib/mock";
+import { createClient } from "@/lib/supabase/server";
+import { getMyMerchant, getMerchantProducts } from "@/lib/data/merchants";
 
-/** Mes produits — écrans 22 et 23 de docs/ECRANS.md. */
-export default async function SellerPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ etat?: string }>;
-}) {
-  const { etat } = await searchParams;
-  const catalogue = etat === "vide" ? [] : myProducts;
+/**
+ * Mes produits — écrans 22 et 23 de docs/ECRANS.md.
+ *
+ * Cette page ne se contente pas d'afficher : elle aiguille. Une boutique
+ * sans compte va s'inscrire, une boutique en attente ou refusée va voir
+ * l'écran qui explique pourquoi — voir `/vendeur/attente` et
+ * `/vendeur/refusee`. Seule une boutique approuvée voit son catalogue.
+ */
+export default async function SellerPage() {
+  const supabase = await createClient();
+  const merchant = await getMyMerchant(supabase);
+  if (!merchant) redirect("/inscription/boutique");
+  if (merchant.status === "pending") redirect("/vendeur/attente");
+  if (merchant.status === "rejected") redirect("/vendeur/refusee");
+
+  const catalogue = await getMerchantProducts(supabase, merchant);
   const published = catalogue.filter((p) => p.status === "active").length;
 
   return (
@@ -25,7 +35,7 @@ export default async function SellerPage({
       <TopBar
         title={
           <div className="flex flex-col gap-0.5">
-            <span className="font-display text-lg font-bold">{merchantAissatou.shopName}</span>
+            <span className="font-display text-lg font-bold">{merchant.shopName}</span>
             <span className="flex items-center gap-1 text-2xs font-semibold text-success">
               <Check size={13} strokeWidth={2.8} aria-hidden />
               Boutique validée
@@ -51,16 +61,18 @@ export default async function SellerPage({
         ) : (
           <Section className="gap-3.5">
             {/* Deux chiffres, pas six. Le second est le seul qui fera
-                revenir un commerçant chaque matin. */}
+                revenir un commerçant chaque matin — mais le compteur de
+                non-lus n'existe pas encore (étape 3 de docs/REPRISE.md) :
+                un lien honnête vaut mieux qu'un chiffre inventé. */}
             <div className="flex gap-3">
               <Card className="flex flex-1 flex-col gap-0.5 p-3.5">
                 <span className="font-display text-2xl font-bold">{published}</span>
                 <span className="text-xs text-ink-soft">produits publiés</span>
               </Card>
               <Link href="/messages" className="flex-1">
-                <Card className="flex h-full flex-col gap-0.5 border-accent bg-accent-soft p-3.5">
-                  <span className="font-display text-2xl font-bold text-accent-hover">3</span>
-                  <span className="text-xs font-medium text-accent-hover">messages non lus</span>
+                <Card className="flex h-full flex-col items-start justify-center gap-1 border-accent bg-accent-soft p-3.5">
+                  <MessageCircle size={20} strokeWidth={1.9} className="text-accent-hover" aria-hidden />
+                  <span className="text-xs font-medium text-accent-hover">Mes messages</span>
                 </Card>
               </Link>
             </div>

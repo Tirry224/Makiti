@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { Clock, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { BottomNav } from "@/components/ui/BottomNav";
@@ -6,6 +7,8 @@ import { Card } from "@/components/ui/Card";
 import { Screen, ScreenBody, Section } from "@/components/ui/Screen";
 import { StepList } from "@/components/ui/StepList";
 import { TopBar, Wordmark } from "@/components/ui/TopBar";
+import { createClient } from "@/lib/supabase/server";
+import { getMyMerchant } from "@/lib/data/merchants";
 
 /**
  * Écran 20 — boutique en cours de vérification.
@@ -14,7 +17,13 @@ import { TopBar, Wordmark } from "@/components/ui/TopBar";
  * attend 48 heures devant une page inerte ne revient pas ; un commerçant
  * qui a préparé quatre brouillons a déjà investi quelque chose.
  */
-export default function PendingShopPage() {
+export default async function PendingShopPage() {
+  const supabase = await createClient();
+  const merchant = await getMyMerchant(supabase);
+  if (!merchant) redirect("/inscription/boutique");
+  if (merchant.status === "approved") redirect("/vendeur");
+  if (merchant.status === "rejected") redirect("/vendeur/refusee");
+
   return (
     <Screen>
       <TopBar title={<Wordmark />} right={<Badge tone="warn">En attente</Badge>} />
@@ -27,7 +36,7 @@ export default function PendingShopPage() {
             </div>
             <h1 className="text-2xl font-bold">Votre boutique est en cours de vérification</h1>
             <p className="text-base leading-relaxed text-ink-soft">
-              Nous vérifions les informations de <b className="text-ink">Chez Aïssatou</b> sous
+              Nous vérifions les informations de <b className="text-ink">{merchant.shopName}</b> sous
               48 heures. Vous recevrez un email dès qu&apos;elle sera validée.
             </p>
           </div>
