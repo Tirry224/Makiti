@@ -4,7 +4,20 @@ Ce fichier est le point d'entrée pour continuer le projet dans une nouvelle
 conversation. Il dit ce qui est fait, ce qui reste, et ce qui a déjà été
 tranché pour ne pas rediscuter les mêmes choses deux fois.
 
-Branche de travail : `claude/prochaine-etape-08nw5c`.
+## Branches — à lire avant de coder
+
+**`main` est le tronc.** C'est elle que Vercel déploie en production, et
+c'est d'elle que part toute nouvelle branche de travail.
+
+Cette règle est née d'une panne réelle, le 2026-09-11 : le dépôt n'avait
+aucun tronc, seulement six branches `claude/*` issues de sessions
+successives, et la branche « par défaut » pointait sur un état vieux de
+plusieurs jours. Résultat : la production servait une version périmée du
+site pendant que les déploiements de prévisualisation échouaient, et
+personne ne comprenait pourquoi les deux disaient des choses opposées.
+
+Un dépôt sans tronc ne se contente pas d'être désordonné : il rend
+impossible la question « quelle version est en ligne ? ».
 
 ---
 
@@ -29,18 +42,33 @@ Marché : Guinée · Devise : franc guinéen (GNF), en entiers · Langue : fran�
 `docs/SPEC.md` — 18 décisions tranchées et figées.
 `docs/ECRANS.md` — inventaire des 33 écrans.
 
-### Base de données — écrite, testée, DÉPLOYÉE
-Projet Supabase réel : `Makiti`, réf. `bfmsruzyrgbndbueikcb`, région
-`eu-west-3`. `supabase/migrations/` — 4 fichiers SQL, déjà exécutés en
-production dans l'ordre :
+### Base de données — écrite, testée, ET DÉPLOYÉE
+Projet Supabase `Makiti` (région eu-west-3) créé et migré le 2026-09-11.
+`supabase/migrations/` — 9 fichiers SQL, à exécuter dans l'ordre sur un
+projet neuf :
 
 - `0001_schema.sql` — 9 tables : profiles, merchants, cities, categories,
-  products, product_images, conversations, messages, reports
+  products, product_images, conversations, messages, reports. Porte
+  aussi, depuis une reprise de session, la décision des **comptes liés**
+  (voir plus bas) : `profiles.id` n'est plus la clé de `auth.users`.
 - `0002_rules_and_security.sql` — **le fichier le plus important** :
   triggers métier et règles de sécurité au niveau des lignes (RLS)
 - `0003_search_and_seed.sql` — fonction `search_products`, 10 catégories,
   12 villes
 - `0004_storage.sql` — stockage des photos
+- `0005_advisor_fixes.sql` à `0009_profile_suspension_date.sql` — corrections
+  postérieures (advisors Supabase, performance, produits vendus visibles,
+  date de suspension). Voir le fichier de chaque migration pour le détail.
+
+**Piège vécu, à ne pas reproduire** : ces 5 dernières migrations, et la
+décision des comptes liés dans 0001/0002, avaient été appliquées
+directement sur le projet Supabase (SQL Editor) sans jamais être commitées
+dans `supabase/migrations/`. Le dépôt Git décrivait donc une base qui
+n'existait plus. Reconstitué depuis `supabase_migrations.schema_migrations`
+et revérifié migration par migration contre le SQL réellement en base —
+voir section 7. **Règle à partir de maintenant : toute migration appliquée
+au tableau de bord Supabase est commitée dans la même session, jamais
+après.**
 
 `supabase/tests/` — 46 tests de sécurité, rejouables sur un PostgreSQL
 local. Ils vérifient que les actions **interdites** échouent. Ils ont déjà
@@ -319,6 +347,8 @@ prises le 2026-09-11, à la demande du porteur du projet.
    bout en bout (44 tests, RLS activé, sur un PostgreSQL local recréé de
    zéro) plutôt que déduit par lecture du code.
 
+**Un reste, mineur mais réel, sur le point 2** : aucune contrainte n'empêche de passer `status = 'rejected'` en laissant `rejection_reason` vide. La base accepte donc un refus sans motif — exactement ce que la colonne devait éviter. Un `check (status <> 'rejected' or rejection_reason is not null)` le fermerait ; pas fait faute d'un vrai parcours de refus à tester dessus.
+
 ---
 
 ## 5. Questions ouvertes, à poser au porteur du projet
@@ -373,7 +403,20 @@ prises le 2026-09-11, à la demande du porteur du projet.
 - **Quand un modèle de données change, les protections écrites pour
   l'ancien deviennent souvent décoratives** sans qu'aucun test ne le
   signale. C'est arrivé au quota anti-spam lors du passage à un fil unique
-  par client.
+  par client, et une seconde fois au fichier de test lui-même lors du
+  passage aux comptes liés (section 4) : `security_test.sql` continuait à
+  utiliser l'UUID de connexion comme s'il était aussi l'identifiant du
+  profil, et ne tournait plus du tout depuis ce changement.
+- **Une migration appliquée au tableau de bord Supabase n'existe nulle
+  part tant qu'elle n'est pas commitée.** Le SQL Editor de Supabase
+  n'écrit dans aucun fichier du dépôt : cinq migrations (0005 à 0009) et
+  une décision d'architecture entière (comptes liés) ont vécu uniquement
+  dans `supabase_migrations.schema_migrations`, invisibles depuis Git,
+  pendant que `docs/SPEC.md` et `docs/REPRISE.md` continuaient de décrire
+  l'ancien modèle comme la vérité « figée ». Reconstitué en lisant le SQL
+  réellement stocké côté serveur (`select statements from
+  supabase_migrations.schema_migrations`) et en le comparant fichier par
+  fichier à ce qui était commité.
 
 ---
 

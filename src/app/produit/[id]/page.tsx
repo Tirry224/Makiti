@@ -28,7 +28,10 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
           <Link href={`/produit/${product.id}/photos`} aria-label="Voir les photos">
             <Photo
               ratio="hero"
-              label={sold ? undefined : `Photo 1 sur ${product.photoCount}`}
+              src={product.imageUrls[0]}
+              alt={product.title}
+              priority
+              label={sold ? undefined : `Photo 1 sur ${product.imageUrls.length}`}
               className={sold ? "grayscale" : ""}
             />
           </Link>

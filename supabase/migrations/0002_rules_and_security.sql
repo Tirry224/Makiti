@@ -71,15 +71,6 @@ $$;
 -- même personne sont modérés indépendamment (voir docs/SPEC.md, décision
 -- 8) — suspendre le compte client d'un fauteur de troubles ne doit pas
 -- geler sa boutique, qui n'a rien à y voir.
---
--- `and auth_user_id = auth.uid()` : chaque appel de cette fonction dans les
--- policies plus bas porte déjà sur un profil dont la propriété vient d'être
--- vérifiée — cette clause ne change donc aucun comportement légitime. Mais
--- comme toute fonction `security definer`, PostgREST l'expose aussi en RPC
--- direct (`/rest/v1/rpc/is_active_profile`) à quiconque, connecté ou non :
--- sans cette clause, n'importe qui pouvait demander si un profil ARBITRAIRE
--- (pas forcément le sien) était suspendu ou supprimé — une fuite trouvée
--- par les advisors de sécurité Supabase après le premier déploiement.
 create or replace function public.is_active_profile(pid uuid)
 returns boolean
 language sql
@@ -89,8 +80,7 @@ set search_path = ''
 as $$
   select exists (
     select 1 from public.profiles
-    where id = pid and auth_user_id = auth.uid()
-      and is_suspended = false and is_deleted = false
+    where id = pid and is_suspended = false and is_deleted = false
   );
 $$;
 
@@ -155,10 +145,7 @@ create trigger on_auth_user_created
 
 -- 3.1 — `updated_at` tenu à jour automatiquement.
 create or replace function public.touch_updated_at()
-returns trigger
-language plpgsql
-set search_path = ''
-as $$
+returns trigger language plpgsql as $$
 begin
   new.updated_at := now();
   return new;
@@ -517,15 +504,9 @@ create policy "categories: lecture publique"
 -- porter deux (voir partie 1). Un interlocuteur voit le nom de la personne
 -- avec qui il discute — et rien de plus, ce qui suppose de ne jamais
 -- sélectionner `phone` côté client sans raison.
---
--- `(select auth.uid())` plutôt que `auth.uid()` nu : Postgres évalue alors
--- l'appel une seule fois par requête (plan d'initialisation) plutôt qu'une
--- fois par ligne parcourue. Seules CES policies en ont besoin — celles qui
--- passent par `my_profile_id()`/`owns_profile()` appellent déjà auth.uid()
--- à l'intérieur d'une fonction stable, qui bénéficie du même traitement.
 create policy "profiles: je vois mes profils"
   on public.profiles for select
-  using (auth_user_id = (select auth.uid()));
+  using (auth_user_id = auth.uid());
 
 create policy "profiles: je vois mes interlocuteurs"
   on public.profiles for select
@@ -541,8 +522,8 @@ create policy "profiles: je vois mes interlocuteurs"
 
 create policy "profiles: je modifie mon profil"
   on public.profiles for update
-  using (auth_user_id = (select auth.uid()))
-  with check (auth_user_id = (select auth.uid()));
+  using (auth_user_id = auth.uid())
+  with check (auth_user_id = auth.uid());
 
 -- Créer le SECOND compte lié (écran 12 : « vous pourrez créer l'autre
 -- compte plus tard »). Le premier passe par le trigger `handle_new_user`
@@ -553,7 +534,7 @@ create policy "profiles: je modifie mon profil"
 -- réseau plutôt qu'une policy qui devrait dupliquer la même logique.
 create policy "profiles: je cree mon second compte"
   on public.profiles for insert
-  with check (auth_user_id = (select auth.uid()));
+  with check (auth_user_id = auth.uid());
 
 
 -- 6.3 Boutiques : les boutiques approuvées sont publiques ; un commerçant
@@ -582,14 +563,10 @@ create policy "merchants: je modifie ma boutique"
 -- `using` filtre ce qu'on peut LIRE ou modifier ; `with check` valide ce
 -- qu'on tente d'ÉCRIRE. Ici, un commerçant en attente peut créer et
 -- modifier ses brouillons, mais le trigger 3.2 lui refusera la publication.
--- `status in ('active', 'sold')`, pas seulement 'active' : un produit
--- vendu reste visible (grisé, prix barré côté écran) — voir la même
--- décision dans search_products (0003). Seuls 'draft' et 'hidden'
--- disparaissent du public.
 create policy "products: catalogue public"
   on public.products for select
   using (
-    (status in ('active', 'sold') and exists (
+    (status = 'active' and exists (
       select 1 from public.merchants m
       where m.id = public.products.merchant_id and m.status = 'approved'
     ))
@@ -610,7 +587,7 @@ create policy "product_images: visibles avec le produit"
       select 1 from public.products p
       where p.id = public.product_images.product_id
         and (
-          (p.status in ('active', 'sold') and exists (
+          (p.status = 'active' and exists (
              select 1 from public.merchants m
              where m.id = p.merchant_id and m.status = 'approved'))
           or p.merchant_id = public.my_merchant_id()

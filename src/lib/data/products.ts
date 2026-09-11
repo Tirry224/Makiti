@@ -2,6 +2,16 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
 import type { Product } from "@/lib/types";
 
+/**
+ * Les photos vivent dans Supabase Storage ; la base ne stocke que leur
+ * CHEMIN. C'est ici qu'un chemin devient une adresse affichable, et nulle
+ * part ailleurs : les écrans reçoivent des URL prêtes à poser dans une
+ * balise image, sans rien savoir du stockage.
+ */
+function publicUrl(supabase: SupabaseClient<Database>, path: string): string {
+  return supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
+}
+
 type SearchRow = Database["public"]["Functions"]["search_products"]["Returns"][number];
 
 /**
@@ -10,7 +20,7 @@ type SearchRow = Database["public"]["Functions"]["search_products"]["Returns"][n
  * connaît les deux formes : si demain la fonction SQL change de forme, ce
  * fichier est le seul à corriger, pas les ~15 écrans qui affichent un produit.
  */
-function mapRow(row: SearchRow): Product {
+function mapRow(supabase: SupabaseClient<Database>, row: SearchRow): Product {
   return {
     id: row.product_id,
     merchant: {
@@ -27,7 +37,10 @@ function mapRow(row: SearchRow): Product {
     status: row.status,
     isFeatured: row.is_featured,
     contactCount: row.contact_count,
-    photoCount: row.image_path ? 1 : 0,
+    /* `image_path` est déclaré non-nul par les types générés alors que la
+       jointure SQL est un LEFT JOIN : un produit sans photo renvoie NULL.
+       On garde donc le test, que le type juge inutile. */
+    imageUrls: row.image_path ? [publicUrl(supabase, row.image_path)] : [],
   };
 }
 
@@ -55,7 +68,7 @@ type ProductDetailRow = {
   } | null;
 };
 
-function mapDetailRow(row: ProductDetailRow, photoCount: number): Product {
+function mapDetailRow(row: ProductDetailRow, imageUrls: string[]): Product {
   return {
     id: row.id,
     merchant: {
@@ -72,19 +85,19 @@ function mapDetailRow(row: ProductDetailRow, photoCount: number): Product {
     status: row.status,
     isFeatured: row.is_featured,
     contactCount: row.contact_count,
-    photoCount,
+    imageUrls,
   };
 }
 
 /**
  * Fiche produit (écrans 7, 8, 9). Deux requêtes plutôt qu'un embed
- * `product_images(count)` : plus simple à lire, et une fiche produit n'est
+ * `product_images(...)` : plus simple à lire, et une fiche produit n'est
  * jamais consultée en liste — le coût d'un aller-retour de plus est
  * invisible ici, contrairement à `search_products` qui, elle, sert une
  * grille de vingt cartes.
  */
 export async function getProduct(supabase: SupabaseClient<Database>, id: string): Promise<Product | null> {
-  const [{ data: row, error }, { count }] = await Promise.all([
+  const [{ data: row, error }, { data: images }] = await Promise.all([
     supabase
       .from("products")
       .select(
@@ -92,11 +105,15 @@ export async function getProduct(supabase: SupabaseClient<Database>, id: string)
       )
       .eq("id", id)
       .maybeSingle<ProductDetailRow>(),
-    supabase.from("product_images").select("id", { count: "exact", head: true }).eq("product_id", id),
+    supabase
+      .from("product_images")
+      .select("storage_path, position")
+      .eq("product_id", id)
+      .order("position"),
   ]);
   if (error) throw error;
   if (!row) return null;
-  return mapDetailRow(row, count ?? 0);
+  return mapDetailRow(row, (images ?? []).map((i) => publicUrl(supabase, i.storage_path)));
 }
 
 export async function searchProducts(
@@ -117,5 +134,5 @@ export async function searchProducts(
     p_limit: opts.limit ?? 24,
   });
   if (error) throw error;
-  return data.map(mapRow);
+  return data.map((row) => mapRow(supabase, row));
 }

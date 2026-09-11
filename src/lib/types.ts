@@ -37,8 +37,8 @@ export type Product = {
   status: ProductStatus;
   isFeatured: boolean;
   contactCount: number;
-  /** Nombre de photos. Aucune vraie image n'existe encore. */
-  photoCount: number;
+  /** Adresses publiques des photos, dans l'ordre d'affichage. */
+  imageUrls: string[];
 };
 
 export type Message = {

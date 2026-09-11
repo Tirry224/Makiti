@@ -79,6 +79,6 @@ export async function getMerchantProducts(
     status: row.status,
     isFeatured: row.is_featured,
     contactCount: row.contact_count,
-    photoCount: 0,
+    imageUrls: [],
   }));
 }

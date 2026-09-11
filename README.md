@@ -17,7 +17,10 @@ conclut hors de l'application.
 - [x] Projet Supabase créé et migrations exécutées
 - [x] Design system et bibliothèque de composants (`src/styles/`, `src/components/`)
 - [x] Les 33 écrans (33 faits) — sans actions branchées
-- [ ] Branchement des données et des actions
+- [x] Branchement des données en LECTURE : fil, recherche, fiche produit,
+      galerie et boutique publique lisent la vraie base
+- [ ] Authentification (inscription, connexion, session)
+- [ ] Branchement des ACTIONS (publier, envoyer un message, signaler)
 - [ ] Notification par email des nouveaux messages
 - [ ] Déploiement Vercel
 
@@ -41,8 +44,19 @@ l'authentification existera.
 Toute autre adresse affiche la page « Cette page n'existe pas ».
 - **`/styleguide`** : tous les composants et tous les tokens sur une page.
 
-Les écrans affichent des données de démonstration (`src/lib/mock.ts`).
-Aucun bouton n'agit encore : c'est la prochaine étape.
+`.env.local` est nécessaire pour démarrer (voir plus bas) : sans lui,
+l'application s'arrête tout de suite avec un message explicite plutôt que
+de laisser une erreur réseau incompréhensible apparaître plus tard.
+
+Le fil, la recherche, la fiche produit, la galerie et la boutique publique
+lisent la **vraie base**. Les écrans de messagerie et d'espace vendeur
+utilisent encore des données de démonstration (`src/lib/mock.ts`) : ils
+demandent une session, qui n'existe pas encore. Aucun bouton n'agit
+toujours — c'est l'étape suivante.
+
+Base vide au départ : `supabase/seed_demo.sql` remplit deux boutiques et
+six produits pour avoir quelque chose à regarder. **À supprimer avant le
+lancement**, la commande est à la fin du fichier.
 
 Pour changer l'apparence de l'application, voir
 [`src/styles/README.md`](src/styles/README.md).
@@ -72,3 +86,16 @@ La clé `anon` est conçue pour être exposée au navigateur : c'est le RLS qui
 protège les données, pas le secret de cette clé. En revanche la clé
 `service_role` ignore complètement le RLS et donne un accès total à la base.
 Elle ne doit jamais apparaître dans le code du navigateur, ni dans Git.
+
+### Sur Vercel — à faire avant le premier déploiement
+
+`.env.local` n'est pas versionné : Vercel ne le reçoit donc **jamais**. Les
+deux mêmes variables doivent être saisies dans
+**Project Settings → Environment Variables** (Production, Preview et
+Development), puis le déploiement relancé.
+
+Sans elles le build **échoue**, avec un message qui nomme les deux
+variables. C'est volontaire : un site en ligne dont chaque page plante est
+pire qu'un déploiement refusé. Si tu vois cette erreur dans les logs
+Vercel, il n'y a rien à corriger dans le code — il manque la
+configuration.

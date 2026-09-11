@@ -1,11 +1,18 @@
 /**
- * Généré depuis le vrai schéma Supabase (`supabase gen types typescript`).
- * NE PAS ÉDITER À LA MAIN : régénérer après toute migration qui change le
- * schéma. Les types applicatifs (camelCase, ce que lisent les écrans)
- * restent dans `src/lib/types.ts` — celui-ci ne sert qu'à la couche de
- * lecture/écriture Supabase, pour que le code qui parle à la base ne
- * puisse plus se désynchroniser du schéma réel.
+ * Types générés depuis la base de données réelle.
+ *
+ * NE PAS MODIFIER À LA MAIN. Ce fichier est le reflet du schéma déployé ;
+ * le corriger à la main ferait exactement ce qu'il est censé empêcher —
+ * laisser le code croire à un schéma qui n'existe pas.
+ *
+ * Pour le régénérer après une migration :
+ *   supabase gen types typescript --project-id bfmsruzyrgbndbueikcb
+ *
+ * Ces types décrivent la base (snake_case). Les composants, eux, parlent
+ * les types du domaine de `types.ts` (camelCase). La traduction entre les
+ * deux se fait à un seul endroit : `data.ts`.
  */
+
 export type Json =
   | string
   | number
