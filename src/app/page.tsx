@@ -10,11 +10,13 @@ import { Card } from "@/components/ui/Card";
 import { Photo } from "@/components/ui/Photo";
 import { Badge } from "@/components/ui/Badge";
 import { PriceTag } from "@/components/product/PriceTag";
-import { categories, featuredProduct, products } from "@/lib/mock";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
 import { Package } from "lucide-react";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
+import { getCategories, getCities } from "@/lib/data/reference";
+import { searchProducts } from "@/lib/data/products";
 
 /**
  * Fil d'accueil — écrans 1 et 2 de docs/ECRANS.md.
@@ -24,6 +26,13 @@ import Link from "next/link";
  * bouton « retour » du téléphone défait le filtre, et l'écran vide est
  * atteignable pour de vrai — pas seulement en imagination. La catégorie
  * suit la même règle (`&categorie=...`).
+ *
+ * Un seul appel réseau : `inCity` (toute la ville, sans filtre de
+ * catégorie) est déjà tout ce dont l'écran a besoin — la catégorie choisie
+ * ne fait que filtrer ce résultat en mémoire, comme `src/lib/mock.ts` le
+ * faisait avant. Le catalogue d'une ville reste de taille modeste (limite
+ * dure de 50 dans `search_products`) : un deuxième aller-retour réseau
+ * n'apporterait rien.
  */
 export default async function HomePage({
   searchParams,
@@ -31,15 +40,15 @@ export default async function HomePage({
   searchParams: Promise<{ ville?: string; categorie?: string }>;
 }) {
   const { ville = "Conakry", categorie = "Tout" } = await searchParams;
-  const inCity = products.filter(
-    (p) => (p.status === "active" || p.status === "sold") && p.merchant.city === ville,
-  );
-  const visible = inCity.filter((p) => categorie === "Tout" || p.category === categorie);
-  const featuredHere =
-    featuredProduct.merchant.city === ville &&
-    (categorie === "Tout" || featuredProduct.category === categorie)
-      ? featuredProduct
-      : null;
+  const supabase = await createClient();
+
+  const [cities, categories] = await Promise.all([getCities(supabase), getCategories(supabase)]);
+  const city = cities.find((c) => c.name === ville) ?? cities.find((c) => c.name === "Conakry");
+
+  const inCity = city ? await searchProducts(supabase, { cityId: city.id, limit: 50 }) : [];
+  const visible = categorie === "Tout" ? inCity : inCity.filter((p) => p.category === categorie);
+  const featuredHere = visible.find((p) => p.isFeatured) ?? null;
+  const gridItems = featuredHere ? visible.filter((p) => p.id !== featuredHere.id) : visible;
 
   return (
     <Screen>
@@ -59,9 +68,15 @@ export default async function HomePage({
           {/* `overflow-x-auto` : la rangée de catégories défile au doigt
               plutôt que de passer à la ligne et de manger l'écran. */}
           <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5">
+            <Link href={`/?ville=${encodeURIComponent(ville)}&categorie=Tout`}>
+              <Chip selected={categorie === "Tout"}>Tout</Chip>
+            </Link>
             {categories.map((c) => (
-              <Link key={c} href={`/?ville=${encodeURIComponent(ville)}&categorie=${encodeURIComponent(c)}`}>
-                <Chip selected={c === categorie}>{c}</Chip>
+              <Link
+                key={c.id}
+                href={`/?ville=${encodeURIComponent(ville)}&categorie=${encodeURIComponent(c.name)}`}
+              >
+                <Chip selected={c.name === categorie}>{c.name}</Chip>
               </Link>
             ))}
           </div>
@@ -117,7 +132,7 @@ export default async function HomePage({
             <span className="text-sm font-semibold text-accent">Populaires</span>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            {visible.map((p) => (
+            {gridItems.map((p) => (
               <ProductCard key={p.id} product={p} />
             ))}
           </div>

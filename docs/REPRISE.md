@@ -196,10 +196,39 @@ dernière étape, une fois le front stabilisé :
    déjà dans `.gitignore`). Clé `publishable` (nouveau format
    `sb_publishable_...`), pas l'ancienne clé `anon` JWT — recommandation
    Supabase actuelle pour un nouveau projet.
-6. Générer les types (`supabase gen types typescript` remplace
-   `src/lib/types.ts`)
-7. Brancher les données en lecture, écran par écran, à la place de
-   `src/lib/mock.ts`
+6. ~~Générer les types~~ **Fait, mais pas comme prévu.** `src/lib/types.ts`
+   n'est PAS remplacé : la base réelle est en snake_case
+   (`price_gnf`, `shop_name`…), les ~30 écrans lisent du camelCase
+   (`priceGnf`, `shopName`…). Réécrire tous les écrans pour suivre la
+   casse de la base aurait été un chantier mécanique énorme pour un
+   bénéfice cosmétique. À la place : `src/lib/database.types.ts` (généré,
+   à regénérer après toute migration qui touche au schéma — ne pas éditer
+   à la main) sert uniquement à la couche de lecture (`src/lib/data/`),
+   qui traduit vers les types applicatifs de `src/lib/types.ts`, inchangés.
+   Un seul endroit connaît les deux formes.
+7. **En cours** — brancher les données en lecture, écran par écran, à la
+   place de `src/lib/mock.ts`.
+   - `src/lib/data/reference.ts` (villes, catégories) et
+     `src/lib/data/products.ts` (`search_products`, déjà corrigée pour
+     inclure les produits `sold` et le nom de catégorie — elle ne
+     renvoyait que `active` et pas le nom, un écart avec l'écran 8 trouvé
+     en branchant `/`).
+   - `/` (accueil) branché et vérifié — voir note de vérification plus bas.
+   - Tout le reste (`/recherche`, fiche produit, boutique publique, `/vendeur`,
+     messagerie…) reste sur `src/lib/mock.ts` pour l'instant.
+
+   **Note de vérification** — le bac à sable de cette session ne peut pas
+   joindre `*.supabase.co` en HTTPS direct (politique réseau de
+   l'environnement, hors de mon contrôle : « host not in allowlist »).
+   Vérifié autrement : des données de test insérées dans la vraie base
+   confirment que `search_products` renvoie exactement ce qui était
+   attendu (produit vendu inclus, nom de catégorie inclus), `npm run
+   build` passe, et les données de test ont été supprimées après coup
+   (le `on delete cascade` en a profité pour se vérifier lui aussi : les
+   4 tables concernées sont revenues à zéro ligne). Ce qui n'est PAS
+   vérifié : le rendu réel dans un navigateur avec de vraies données. À
+   confirmer par le porteur du projet en lançant `npm run dev` sur sa
+   machine, ou une fois déployé sur Vercel.
 8. Brancher l'authentification (inscription, connexion, mot de passe
    oublié, déconnexion, écran « compte requis », bascule entre comptes liés)
 9. Écrire l'Edge Function de suppression de compte (`service_role`) :

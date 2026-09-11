@@ -24,6 +24,12 @@
 -- de l'appelant, donc le RLS s'applique normalement. Un produit masqué reste
 -- invisible même à travers elle.
 
+-- `create or replace` ne suffit pas : PostgreSQL refuse de changer le type
+-- de retour d'une fonction existante (ici, deux colonnes ajoutées). Il faut
+-- la supprimer d'abord — sans risque, rien ne l'appelait encore en dehors
+-- de ce fichier au moment de ce changement.
+drop function if exists public.search_products(text, int, int, text, int, int);
+
 create or replace function public.search_products(
   p_query       text default null,
   p_city_id     int  default null,
@@ -37,7 +43,9 @@ returns table (
   title         text,
   price_gnf     bigint,
   is_negotiable boolean,
+  status        public.product_status,
   category_id   int,
+  category_name text,
   is_featured   boolean,
   contact_count int,
   created_at    timestamptz,
@@ -52,13 +60,15 @@ stable
 set search_path = ''
 as $$
   select
-    p.id, p.title, p.price_gnf, p.is_negotiable, p.category_id,
+    p.id, p.title, p.price_gnf, p.is_negotiable, p.status,
+    p.category_id, cat.name,
     p.is_featured, p.contact_count, p.created_at,
     m.id, m.shop_name, c.id, c.name,
     img.storage_path
   from public.products p
-  join public.merchants m on m.id = p.merchant_id
-  join public.cities    c on c.id = m.city_id
+  join public.merchants  m on m.id = p.merchant_id
+  join public.cities     c on c.id = m.city_id
+  join public.categories cat on cat.id = p.category_id
   left join lateral (
     select storage_path
       from public.product_images
@@ -66,7 +76,10 @@ as $$
      order by position
      limit 1
   ) img on true
-  where p.status = 'active'
+  -- 'sold' reste visible (grisé, prix barré côté écran) : un produit vendu
+  -- n'est pas retiré du catalogue, seul son statut change. Seuls 'draft' et
+  -- 'hidden' disparaissent.
+  where p.status in ('active', 'sold')
     and m.status = 'approved'
     and (p_city_id     is null or m.city_id     = p_city_id)
     and (p_category_id is null or p.category_id = p_category_id)
