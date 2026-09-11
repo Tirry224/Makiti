@@ -4,7 +4,20 @@ Ce fichier est le point d'entrée pour continuer le projet dans une nouvelle
 conversation. Il dit ce qui est fait, ce qui reste, et ce qui a déjà été
 tranché pour ne pas rediscuter les mêmes choses deux fois.
 
-Branche de travail : `claude/ecstatic-wright-ed0bp3`.
+## Branches — à lire avant de coder
+
+**`main` est le tronc.** C'est elle que Vercel déploie en production, et
+c'est d'elle que part toute nouvelle branche de travail.
+
+Cette règle est née d'une panne réelle, le 2026-09-11 : le dépôt n'avait
+aucun tronc, seulement six branches `claude/*` issues de sessions
+successives, et la branche « par défaut » pointait sur un état vieux de
+plusieurs jours. Résultat : la production servait une version périmée du
+site pendant que les déploiements de prévisualisation échouaient, et
+personne ne comprenait pourquoi les deux disaient des choses opposées.
+
+Un dépôt sans tronc ne se contente pas d'être désordonné : il rend
+impossible la question « quelle version est en ligne ? ».
 
 ---
 
