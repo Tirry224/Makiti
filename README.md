@@ -14,12 +14,13 @@ conclut hors de l'application.
 - [x] Spécification validée
 - [x] Schéma de base de données, règles métier et sécurité (RLS)
 - [x] Tests de sécurité (46 vérifications, voir `supabase/tests/`)
+- [x] Budgets de performance mesurés (`npm run poids`, voir `docs/PERFORMANCE.md`)
 - [x] Projet Supabase créé et migrations exécutées
 - [x] Design system et bibliothèque de composants (`src/styles/`, `src/components/`)
 - [x] Les 33 écrans (33 faits) — sans actions branchées
 - [x] Branchement des données en LECTURE : fil, recherche, fiche produit,
       galerie et boutique publique lisent la vraie base
-- [ ] Authentification (inscription, connexion, session)
+- [x] Authentification (inscription, connexion, session)
 - [ ] Branchement des ACTIONS (publier, envoyer un message, signaler)
 - [ ] Notification par email des nouveaux messages
 - [ ] Déploiement Vercel

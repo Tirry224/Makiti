@@ -1,0 +1,105 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Figtree:wght@400;500;600;700&display=swap">
+  <style>
+    :root{
+      --paper:oklch(0.981 0.008 80);
+      --card:#ffffff;
+      --ink:oklch(0.245 0.018 60);
+      --ink2:oklch(0.545 0.014 60);
+      --line:oklch(0.902 0.012 75);
+      --accent:oklch(0.55 0.15 42);
+      --accent-dark:oklch(0.45 0.15 42);
+      --accent-soft:oklch(0.955 0.028 42);
+      --ok:oklch(0.55 0.15 150);
+      --ok-soft:oklch(0.955 0.028 150);
+      --ph:oklch(0.935 0.013 75);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Figtree,'Segoe UI',system-ui,sans-serif;color:var(--ink);
+         background:var(--paper);-webkit-font-smoothing:antialiased;font-size:15px;line-height:1.45}
+    h1,h2,h3{font-family:'Bricolage Grotesque',Figtree,system-ui,sans-serif;margin:0;letter-spacing:-0.022em;line-height:1.15}
+    a{color:oklch(0.55 0.15 42);text-decoration:none}
+    a:hover{color:oklch(0.45 0.15 42)}
+    .scr{width:390px;height:844px;background:var(--paper);display:flex;flex-direction:column;overflow:hidden}
+    .bar{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--card);
+         border-bottom:1px solid var(--line);flex-shrink:0}
+    .bd{flex-grow:1;overflow:hidden;display:flex;flex-direction:column}
+    .pad{padding:16px;display:flex;flex-direction:column;gap:14px}
+    .lbl{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink2)}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+    .ph{background:var(--ph);display:flex;align-items:center;justify-content:center;color:oklch(0.72 0.02 75)}
+    .chip{display:inline-flex;align-items:center;gap:6px;padding:8px 13px;border-radius:999px;
+          border:1px solid var(--line);background:var(--card);font-size:13px;font-weight:500;white-space:nowrap}
+    .chip-on{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+    .tag{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;
+         font-size:11px;font-weight:600;letter-spacing:.01em}
+    .btn{height:52px;border-radius:12px;border:none;font-family:inherit;font-size:16px;font-weight:600;
+         display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;width:100%}
+    .btn-1{background:var(--accent);color:#fff}
+    .btn-2{background:var(--card);color:var(--ink);border:1px solid var(--line)}
+    .fld{display:flex;flex-direction:column;gap:6px}
+    .fld > span{font-size:13px;font-weight:600;color:var(--ink2)}
+    .inp{height:52px;border:1px solid var(--line);border-radius:12px;background:var(--card);
+         display:flex;align-items:center;gap:10px;padding:0 14px;font-size:15px}
+    .nav{display:flex;border-top:1px solid var(--line);background:var(--card);flex-shrink:0}
+    .nav > div{flex-grow:1;height:64px;display:flex;flex-direction:column;align-items:center;
+               justify-content:center;gap:3px;font-size:11px;font-weight:500;color:var(--ink2)}
+    .prc{font-family:'Bricolage Grotesque',Figtree,sans-serif;font-weight:700;letter-spacing:-0.01em}
+    .mut{color:var(--ink2)}
+  </style>
+</helmet>
+<div class="scr">
+  <div class="bar"><h2 style="font-size:19px;font-weight:700">Mon compte</h2></div>
+  <div class="bd">
+    <div class="pad" style="gap:16px">
+
+      <!-- L'identité affichée est la BOUTIQUE, pas la personne. C'est la
+           première seconde qui doit dire au commerçant qu'il n'est pas ici
+           dans le compte d'un acheteur. -->
+      <div style="display:flex;align-items:center;gap:14px">
+        <div style="width:58px;height:58px;border-radius:14px;background:var(--accent-soft);
+                    display:flex;align-items:center;justify-content:center;color:var(--accent)">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l9-4 9 4v8l-9 4-9-4V8Z"/><path d="M3 8l9 4 9-4"/><path d="M12 12v8"/></svg>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <div style="font-size:17px;font-weight:700">Chez Aïssatou</div>
+          <div style="display:flex;align-items:center;gap:4px;color:var(--ok);font-size:11.5px;font-weight:600">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="m4 12.5 5 5L20 6.5"/></svg>
+            Boutique validée · Conakry
+          </div>
+        </div>
+      </div>
+
+      <div class="lbl">Ma boutique</div>
+      <div class="card" style="padding:0 14px">
+        <div style="display:flex;align-items:center;gap:13px;height:56px;border-bottom:1px solid var(--line);color:var(--ink)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l9-4 9 4v8l-9 4-9-4V8Z"/><path d="M3 8l9 4 9-4"/><path d="M12 12v8"/></svg><span style="font-size:15px;flex-grow:1">Modifier ma boutique</span><span class="mut" style="font-size:13px"></span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div>
+        <div style="display:flex;align-items:center;gap:13px;height:56px;border-bottom:1px solid var(--line);color:var(--ink)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="2.8"/></svg><span style="font-size:15px;flex-grow:1">Voir ma vitrine publique</span><span class="mut" style="font-size:13px"></span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div>
+        <div style="display:flex;align-items:center;gap:13px;height:56px;border-bottom:1px solid var(--line);color:var(--ink)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l9-4 9 4v8l-9 4-9-4V8Z"/><path d="M3 8l9 4 9-4"/></svg><span style="font-size:15px;flex-grow:1">Mes produits</span><span class="mut" style="font-size:13px">4 publiés</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div>
+      </div>
+
+      <div class="lbl">Mon compte</div>
+      <div class="card" style="padding:0 14px">
+        <div style="display:flex;align-items:center;gap:13px;height:56px;border-bottom:1px solid var(--line);color:var(--ink)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg><span style="font-size:15px;flex-grow:1">Mes informations</span><span class="mut" style="font-size:13px">Mariama Diallo</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div>
+        <div style="display:flex;align-items:center;gap:13px;height:56px;border-bottom:1px solid var(--line);color:var(--ink)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4h9l-1 3h6v9h-7l-1-3H5"/></svg><span style="font-size:15px;flex-grow:1">Conditions d'utilisation</span><span class="mut" style="font-size:13px"></span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></div>
+      </div>
+
+      <div class="card" style="padding:0 14px">
+        <div style="display:flex;align-items:center;gap:13px;height:56px;border-bottom:1px solid var(--line);color:oklch(0.5 0.17 27)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m11 18-6-6 6-6"/></svg><span style="font-size:15px;flex-grow:1">Se déconnecter</span><span class="mut" style="font-size:13px"></span></div>
+      </div>
+
+    </div>
+  </div>
+  <div class="nav"><div style="color:var(--ink2);font-weight:500;position:relative"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l9-4 9 4v8l-9 4-9-4V8Z"/><path d="M3 8l9 4 9-4"/><path d="M12 12v8"/></svg><span>Ma boutique</span></div><div style="color:var(--ink2);font-weight:500;position:relative"><span style="position:absolute;top:12px;margin-left:17px;width:16px;height:16px;border-radius:999px;background:var(--accent);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center">3</span><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-8 8H8l-5 3 1.2-4.2A8 8 0 1 1 21 12Z"/></svg><span>Messages</span></div><div style="color:var(--accent);font-weight:600;position:relative"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg><span>Compte</span></div></div>
+</div></x-dc>
+</body>
+</html>

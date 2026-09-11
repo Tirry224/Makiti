@@ -19,6 +19,54 @@ personne ne comprenait pourquoi les deux disaient des choses opposées.
 Un dépôt sans tronc ne se contente pas d'être désordonné : il rend
 impossible la question « quelle version est en ligne ? ».
 
+### La consolidation du 2026-09-11
+
+Cinq lignes de travail avaient divergé du même commit (`07b8440`) sans
+jamais converger. Elles sont réunies dans `main`. Base retenue :
+`prochaine-etape`, la plus avancée (authentification, client Supabase par
+requête, 46 tests). Y ont été portés :
+
+- de `main` : les migrations 0005 à 0009 reconstituées depuis la base
+  réellement déployée, le `.env` versionné, les correctifs du build
+  Vercel, et les vraies photos (`Product.imageUrls` remplace un simple
+  compte) ;
+- de `kind-thompson` : `docs/PERFORMANCE.md` et ses mesures
+  (`npm run poids`, `npm run parcours`), six maquettes de recherche ;
+- de `wizardly-cannon` : `docs/ARCHITECTURE.md`, `npm run classes` ;
+- de `brave-pascal` : la maquette du compte commerçant.
+
+**Deux pièges rencontrés, qui valent pour toute consolidation future** :
+`prochaine-etape` avait réécrit `0001` et `0003` en y absorbant des
+corrections postérieures. Résultat, la chaîne de migrations ne rejouait
+plus depuis zéro — `0006` recréait un index déjà présent, `0005` tentait
+de changer le type de retour d'une fonction. Les deux fichiers ont été
+rétablis dans leur version fidèle à la base déployée. **Une migration ne
+se réécrit jamais après avoir été appliquée** : elle décrit un pas déjà
+franchi, pas l'état final.
+
+### Ce qui reste à récupérer de `kind-thompson`
+
+Cette branche a construit une **seconde implémentation du front** (4008
+lignes, identifiants en français, `src/lib/magasin.ts`) sur un backend
+fictif, en écartant délibérément Supabase. Ses fonctionnalités ne se
+fusionnent donc pas : elles se réimplémentent sur la couche de données
+réelle. À faire, par ordre de valeur décroissante :
+
+1. **Compression des photos dans le navigateur** (`ChoixPhotos`) — déjà
+   une décision actée (SPEC, décision 15), indispensable avant que des
+   commerçants envoient des photos de 4 Mo depuis un téléphone.
+2. **Formulaires fonctionnant sans JavaScript** — sur un réseau guinéen
+   instable, un formulaire qui exige que le script soit chargé est un
+   formulaire qui échoue.
+3. **Recherche v2** : quatre états d'écran, filtres, recherches récentes
+   (`recherche.ts`, `FiltreChip`, `RecherchesRecentes`).
+4. **Bandeau de réseau dégradé** (`BandeauReseau`).
+5. **Le catalogue de lancement à 8 catégories** plutôt que 10 : c'est une
+   décision produit, à trancher avant de la traduire en migration.
+
+Le budget de poids révèle déjà un dépassement sur cette branche :
+**polices 60 Ko pour un budget de 40 Ko** (`npm run poids`).
+
 ---
 
 ## 1. Ce que Makiti est
