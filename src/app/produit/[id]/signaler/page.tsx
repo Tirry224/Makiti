@@ -3,13 +3,14 @@ import { Button } from "@/components/ui/Button";
 import { ChoiceRow } from "@/components/ui/ChoiceRow";
 import { Sheet } from "@/components/ui/Sheet";
 import { Textarea } from "@/components/ui/Field";
-import { findProduct, reportReasons } from "@/lib/mock";
+import { reportReasons } from "@/lib/mock";
+import { trouverProduit } from "@/lib/magasin";
 import { signaler } from "@/lib/actions";
 
 /** Écran 10 — signaler un produit. */
 export default async function ReportPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const product = findProduct(id);
+  const product = trouverProduit(id);
   if (!product) notFound();
 
   return (

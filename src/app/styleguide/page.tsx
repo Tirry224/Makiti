@@ -17,7 +17,8 @@ import { MerchantCard } from "@/components/product/MerchantCard";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { ProductRef } from "@/components/chat/ProductRef";
 import { ThreadRow } from "@/components/chat/ThreadRow";
-import { conversation, findProduct, products, threads } from "@/lib/mock";
+import { threads } from "@/lib/mock";
+import { conversationDuFil, tousLesProduits, trouverProduit } from "@/lib/magasin";
 
 /**
  * Catalogue vivant du design system.
@@ -66,8 +67,8 @@ function Block({ title, note, children }: { title: string; note?: string; childr
 }
 
 export default function StyleguidePage() {
-  const parfum = findProduct("p-parfum")!;
-  const perruque = findProduct("p-perruque")!;
+  const parfum = trouverProduit("p-parfum")!;
+  const perruque = trouverProduit("p-perruque")!;
 
   return (
     <Screen>
@@ -167,7 +168,7 @@ export default function StyleguidePage() {
             <ProductCard product={perruque} />
           </div>
           <div className="flex flex-col gap-2.5">
-            {products.slice(0, 3).map((p) => (
+            {tousLesProduits().slice(0, 3).map((p) => (
               <ProductRow key={p.id} product={p} />
             ))}
           </div>
@@ -177,7 +178,7 @@ export default function StyleguidePage() {
         <Block title="Messagerie">
           <div className="flex flex-col gap-2.5">
             <ProductRef product={parfum} />
-            {conversation.slice(0, 3).map((m) => (
+            {conversationDuFil().slice(0, 3).map((m) => (
               <MessageBubble key={m.id} message={m} />
             ))}
             <ProductRef product={perruque} />

@@ -22,7 +22,7 @@ export default async function NewProductPage({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  const { erreur, titre, categorie, prix, description, negociable } = await searchParams;
+  const { erreur, titre, categorie, prix, description, negociable, condition } = await searchParams;
   const choisie = categories.find((c) => c.slug === categorie);
 
   return (
@@ -70,6 +70,16 @@ export default async function NewProductPage({
                   {c.nom}
                 </option>
               ))}
+            </Select>
+          </Field>
+
+          {/* L'état est demandé ici parce qu'il est filtrable côté client :
+              sur un téléphone ou une pièce auto, c'est le premier critère
+              d'achat, avant le prix. */}
+          <Field label="État" htmlFor="condition">
+            <Select id="condition" name="condition" defaultValue={condition ?? "neuf"}>
+              <option value="neuf">Neuf</option>
+              <option value="occasion">Occasion</option>
             </Select>
           </Field>
 

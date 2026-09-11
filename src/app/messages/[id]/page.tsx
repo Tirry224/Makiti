@@ -1,18 +1,27 @@
-import { Flag, Plus, SendHorizontal } from "lucide-react";
+import { Flag, Plus, SendHorizontal, X } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
+import { Photo } from "@/components/ui/Photo";
 import { Screen, ScreenBody, ScreenFooter } from "@/components/ui/Screen";
 import { TopBar } from "@/components/ui/TopBar";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { ProductRef } from "@/components/chat/ProductRef";
-import { conversation, threads } from "@/lib/mock";
+import { conversationDuFil, tousLesFils, trouverProduit } from "@/lib/magasin";
 import { envoyerMessage } from "@/lib/actions";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 /** Fil de discussion — écran 30 de docs/ECRANS.md. */
-export default async function ThreadPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ThreadPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
   const { id } = await params;
-  const thread = threads.find((t) => t.id === id);
+  const { produit } = await searchParams;
+  const cite = produit ? trouverProduit(produit) : undefined;
+  const thread = tousLesFils().find((t) => t.id === id);
   if (!thread) notFound();
 
   return (
@@ -40,7 +49,7 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
           du champ de saisie, et l'écran paraît vide. */}
       <ScreenBody className="justify-end">
         <div className="flex flex-col gap-2.5 p-4">
-          {conversation.map((message) => (
+          {conversationDuFil().map((message) => (
             <div key={message.id} className="contents">
               {message.product ? <ProductRef product={message.product} /> : null}
               <MessageBubble message={message} />
@@ -52,9 +61,23 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
       {/* Un formulaire, donc la touche « Envoyer » du clavier du téléphone
           fonctionne, et le message part même si le JavaScript n'est pas
           chargé. Le fil voyage en champ caché : l'action ne devine rien. */}
-      <ScreenFooter>
+      <ScreenFooter className="flex flex-col gap-2.5">
+        {/* Le produit choisi à l'écran 31 attend au-dessus du champ : il
+            part avec le message, et on voit de quoi on parle avant
+            d'écrire. */}
+        {cite ? (
+          <div className="flex items-center gap-2.5 rounded-lg border border-line bg-paper p-2">
+            <Photo ratio="free" className="size-9 shrink-0 rounded-sm" iconSize={15} />
+            <span className="min-w-0 flex-1 truncate text-sm font-medium">{cite.title}</span>
+            <Link href={`/messages/${thread.id}`} aria-label="Retirer le produit" className="shrink-0 text-ink-soft">
+              <X size={16} strokeWidth={2.2} aria-hidden />
+            </Link>
+          </div>
+        ) : null}
+
         <form action={envoyerMessage} className="flex items-center gap-2.5">
           <input type="hidden" name="fil" value={thread.id} />
+          {cite ? <input type="hidden" name="produit" value={cite.id} /> : null}
           <Link
             href={`/messages/${thread.id}/citer`}
             prefetch={false}

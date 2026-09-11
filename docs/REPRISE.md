@@ -46,6 +46,12 @@ Marché : Guinée · Devise : franc guinéen (GNF), en entiers · Langue : fran�
   12 villes
 - `0004_storage.sql` — stockage des photos
 
+> **À remplacer au branchement Supabase :** `src/lib/magasin.ts` (l'état en
+> mémoire — produits, messages, fils) et `src/lib/session.ts` (le cookie de
+> démonstration, signé de rien). Chaque fonction du magasin correspond à une
+> requête ; la session devient Supabase Auth, et c'est le RLS qui décide de
+> ce que chacun voit. Ces deux fichiers doivent DISPARAÎTRE, pas cohabiter.
+>
 > **Dette connue, à régler au moment du branchement Supabase et pas avant :**
 > les catégories semées par `0003` (alimentation, maison, bricolage…) ne sont
 > plus celles du produit. La liste retenue est celle de `SPEC.md` §1.3 et de

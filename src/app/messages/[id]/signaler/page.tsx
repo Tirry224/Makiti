@@ -4,7 +4,8 @@ import { ChoiceRow } from "@/components/ui/ChoiceRow";
 import { Textarea } from "@/components/ui/Field";
 import { Sheet } from "@/components/ui/Sheet";
 import { signaler } from "@/lib/actions";
-import { conversationReportReasons, threads } from "@/lib/mock";
+import { conversationReportReasons } from "@/lib/mock";
+import { tousLesFils } from "@/lib/magasin";
 
 /**
  * Signaler une conversation — l'écran que la maquette
@@ -17,7 +18,7 @@ import { conversationReportReasons, threads } from "@/lib/mock";
  */
 export default async function ReportThreadPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const thread = threads.find((t) => t.id === id);
+  const thread = tousLesFils().find((t) => t.id === id);
   if (!thread) notFound();
 
   return (

@@ -23,15 +23,24 @@
  * dans l'historique du navigateur, dans les journaux du serveur et dans
  * le presse-papier de qui partage un lien.
  *
- * ── Ce que ces actions ne font PAS encore ───────────────────────────────
+ * ── Où vont les données ─────────────────────────────────────────────────
  *
- * Elles ne ENREGISTRENT rien : la base n'est pas branchée (étape 3). Elles
- * valident, elles orientent, elles refusent. Au branchement, une seule
- * ligne s'ajoute par action — l'appel à Supabase — et tout le reste, qui
- * est le travail réel, sera déjà écrit et déjà éprouvé à l'écran.
+ * Dans `magasin.ts`, EN MÉMOIRE, le temps que la base arrive. Ce n'est pas
+ * une base de données — tout disparaît au redémarrage — mais c'est ce qui
+ * rend le parcours jouable : je publie, je vois mon produit ; j'écris, je
+ * vois mon message. Un formulaire qui accepte puis oublie est pire qu'un
+ * bouton mort : il ment.
+ *
+ * À l'étape 3, chaque appel au magasin devient une requête Supabase. La
+ * validation, l'orientation et les refus — le vrai travail — ne bougeront
+ * pas d'une ligne.
+ *
+ * `revalidatePath` après chaque écriture : sans lui, Next peut resservir
+ * la page telle qu'elle était avant, et l'écran mentirait à nouveau.
  */
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import {
   estEmail,
   estTelephone,
@@ -41,6 +50,13 @@ import {
   type CodeErreur,
 } from "./validation";
 import { categories } from "./mock";
+import {
+  ajouterMessage,
+  ajouterProduit,
+  changerStatutProduit,
+  supprimerProduit,
+} from "./magasin";
+import { fermerSession, ouvrirSession } from "./session";
 
 /** Renvoie vers le formulaire avec le code d'erreur et les valeurs à garder. */
 function refuser(page: string, code: CodeErreur, garder: Record<string, string> = {}): never {
@@ -76,6 +92,8 @@ export async function creerCompte(data: FormData) {
   if (motDePasse.length < 8) refuser("/inscription", "motdepasse", garder);
 
   // TODO étape 3 : créer le compte Supabase et le profil.
+  await ouvrirSession({ nom, email, role: role === "commercant" ? "merchant" : "client" });
+  revalidatePath("/", "layout");
 
   /* Un vendeur a une étape de plus ; un acheteur peut acheter tout de
      suite. Envoyer un acheteur sur un formulaire de boutique serait la
@@ -113,10 +131,30 @@ export async function seConnecter(data: FormData) {
   if (!estEmail(email)) refuser("/connexion", "email", { email });
   if (motDePasse.length < 8) refuser("/connexion", "identifiants", { email });
 
-  // TODO étape 3 : authentifier. Un échec renverra le code « identifiants »,
-  // qui ne dit jamais lequel des deux est faux — sinon on offre à un
-  // inconnu le moyen de découvrir quels emails ont un compte.
+  /* TODO étape 3 : authentifier. Un échec renverra le code « identifiants »,
+     qui ne dit jamais lequel des deux est faux — sinon on offre à un
+     inconnu le moyen de découvrir quels emails ont un compte.
+
+     Le rôle ne peut pas être deviné ici : il vit dans le profil, donc en
+     base. En attendant, on ouvre une session de client — le rôle réel
+     viendra de la requête d'authentification. */
+  await ouvrirSession({ nom: nomDepuisEmail(email), email, role: "client" });
+  revalidatePath("/", "layout");
   redirect("/");
+}
+
+/** Écran 17 — se déconnecter. */
+export async function seDeconnecter() {
+  await fermerSession();
+  revalidatePath("/", "layout");
+  redirect("/");
+}
+
+/** « mariama@exemple.com » → « Mariama ». Faute de mieux, tant qu'il n'y a
+    pas de profil en base à relire. */
+function nomDepuisEmail(email: string): string {
+  const debut = email.split("@")[0].replace(/[._-]+/g, " ").trim();
+  return debut.charAt(0).toUpperCase() + debut.slice(1);
 }
 
 /** Écran 15 — mot de passe oublié. */
@@ -157,7 +195,7 @@ export async function publierProduit(data: FormData) {
   const negociable = data.get("negociable") === "on" ? "1" : "";
   const brouillon = data.get("brouillon") !== null;
 
-  const garder = { titre, categorie, prix: prixSaisi, description, negociable };
+  const garder = { titre, categorie, prix: prixSaisi, description, negociable, condition: etatProduit(data) };
   const page = "/vendeur/produits/nouveau";
 
   /* Un brouillon échappe aux règles : il sert justement à s'arrêter en
@@ -165,8 +203,18 @@ export async function publierProduit(data: FormData) {
      dans la liste. */
   if (!estTexte(titre, 5)) refuser(page, "titre", garder);
   if (brouillon) {
-    // TODO étape 3 : enregistrer le brouillon.
-    redirect("/vendeur");
+    ajouterProduit({
+      titre,
+      categorie: categories.find((c) => c.slug === categorie)?.nom ?? categories[0].nom,
+      prixGnf: lirePrix(prixSaisi) ?? 0,
+      description: description || null,
+      negociable: negociable === "1",
+      condition: etatProduit(data),
+      photos: data.getAll("photos").filter((f) => f instanceof File && f.size > 0).length,
+      brouillon: true,
+    });
+    revalidatePath("/", "layout");
+    redirect("/vendeur?brouillon=1");
   }
 
   if (!categories.some((c) => c.slug === categorie)) refuser(page, "categorie", garder);
@@ -179,8 +227,25 @@ export async function publierProduit(data: FormData) {
   if (photos.length === 0) refuser(page, "photo", garder);
   if (photos.length > 3) refuser(page, "photo", garder);
 
-  // TODO étape 3 : créer le produit, envoyer les photos, publier.
-  redirect("/vendeur");
+  // TODO étape 3 : envoyer les photos au stockage et garder leurs chemins.
+  ajouterProduit({
+    titre,
+    categorie: categories.find((c) => c.slug === categorie)!.nom,
+    prixGnf: lirePrix(prixSaisi)!,
+    description: description || null,
+    negociable: negociable === "1",
+    condition: etatProduit(data),
+    photos: photos.length,
+    brouillon: false,
+  });
+  revalidatePath("/", "layout");
+  redirect("/vendeur?publie=1");
+
+}
+
+/** Neuf par défaut : c'est le cas ordinaire, l'occasion est l'exception. */
+function etatProduit(data: FormData): "neuf" | "occasion" {
+  return String(data.get("condition")) === "occasion" ? "occasion" : "neuf";
 }
 
 /** Écran 25 — vendu, masqué, supprimé. */
@@ -189,9 +254,12 @@ export async function changerEtatProduit(data: FormData) {
   const action = texte(data, "action");
   if (!id) redirect("/vendeur");
 
-  // TODO étape 3 : appliquer le changement de statut.
-  void action;
-  redirect("/vendeur");
+  if (action === "supprimer") supprimerProduit(id);
+  else if (action === "vendu") changerStatutProduit(id, "sold");
+  else if (action === "masquer") changerStatutProduit(id, "hidden");
+
+  revalidatePath("/", "layout");
+  redirect(`/vendeur?${action}=1`);
 }
 
 /** Écran 26 — modifier sa boutique. */
@@ -230,8 +298,10 @@ export async function envoyerMessage(data: FormData) {
   if (!fil) redirect("/messages");
   if (!estTexte(corps, 1)) refuser(`/messages/${fil}`, "message");
 
-  // TODO étape 3 : insérer le message, marquer le fil comme non lu pour
-  // l'autre partie, déclencher l'email de notification.
+  // TODO étape 3 : marquer le fil comme non lu pour l'autre partie et
+  // déclencher l'email de notification.
+  ajouterMessage(fil, corps, texte(data, "produit") || undefined);
+  revalidatePath("/", "layout");
   redirect(`/messages/${fil}`);
 }
 

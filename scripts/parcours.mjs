@@ -161,6 +161,55 @@ const ok = (c, m) => { if (!c) echecs++; console.log((c ? '  OK   ' : ' ÉCHEC '
   await s.waitForLoadState('load');
   ok(s.url().includes('signale=1'), 'signalement envoyé (' + s.url() + ')');
 
+  // ── Ce que l'action CHANGE à l'écran ────────────────────────────────
+  //
+  // Les vérifications précédentes regardent où l'on atterrit. Elles
+  // passaient toutes alors que publier un produit ne le faisait apparaître
+  // nulle part : un formulaire qui accepte puis oublie est pire qu'un
+  // bouton mort. Celles-ci regardent l'écran d'après.
+  console.log('\n── Ce que l\'action change à l\'écran ──');
+  const u = await b.newContext({ viewport: { width: 390, height: 844 } });
+  const e = await u.newPage();
+  const marque = 'Samsung A' + (Date.now() % 100000);
+
+  await e.goto(B + '/vendeur/produits/nouveau', { waitUntil: 'networkidle' });
+  await e.setInputFiles('#photos', PHOTO);
+  await e.fill('#titre', marque + ' 128 Go');
+  await e.selectOption('#categorie', 'telephones');
+  await e.selectOption('#condition', 'occasion');
+  await e.fill('#prix', '1 850 000');
+  await e.click('button[type=submit]:has-text("Publier")');
+  await e.waitForTimeout(1500);
+  ok((await e.locator('body').innerText()).includes(marque), 'le produit publié apparaît dans mes produits');
+  await e.goto(B + '/recherche?q=' + encodeURIComponent(marque), { waitUntil: 'networkidle' });
+  ok((await e.locator('body').innerText()).includes(marque), 'et le client le trouve par la recherche');
+
+  const mot = 'Disponible ? ' + Date.now();
+  await e.goto(B + '/messages/t-mariama', { waitUntil: 'networkidle' });
+  await e.fill('input[name=message]', mot);
+  await e.click('button[aria-label=Envoyer]');
+  await e.waitForTimeout(1500);
+  ok((await e.locator('body').innerText()).includes(mot), 'le message envoyé apparaît dans le fil');
+
+  await e.goto(B + '/inscription', { waitUntil: 'networkidle' });
+  await e.fill('#nom', 'Fatoumata Bah');
+  await e.fill('#telephone', '622112233');
+  await e.fill('#email', 'fatou@exemple.com');
+  await e.fill('#motdepasse', 'motdepasse1');
+  await e.click('button[type=submit]');
+  await e.waitForTimeout(1500);
+  await e.goto(B + '/compte', { waitUntil: 'networkidle' });
+  ok((await e.locator('body').innerText()).includes('Fatoumata'), "après inscription, l'application sait qui je suis");
+
+  await e.goto(B + '/produit/p-parfum/contacter', { waitUntil: 'networkidle' });
+  ok(new URL(e.url()).pathname.startsWith('/messages'), "connecté, on n'exige plus de compte pour écrire");
+
+  await e.goto(B + '/compte', { waitUntil: 'networkidle' });
+  await e.click('text=Se déconnecter');
+  await e.waitForTimeout(1500);
+  await e.goto(B + '/compte', { waitUntil: 'networkidle' });
+  ok((await e.locator('body').innerText()).includes('pas connecté'), 'la déconnexion referme la session');
+
   console.log(echecs === 0 ? '\nTout passe.' : `\n${echecs} échec(s).`);
   await b.close();
   process.exit(echecs === 0 ? 0 : 1);

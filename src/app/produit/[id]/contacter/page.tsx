@@ -4,7 +4,9 @@ import { Card } from "@/components/ui/Card";
 import { Photo } from "@/components/ui/Photo";
 import { PriceTag } from "@/components/product/PriceTag";
 import { Sheet } from "@/components/ui/Sheet";
-import { findProduct } from "@/lib/mock";
+import { trouverProduit } from "@/lib/magasin";
+import { lireSession } from "@/lib/session";
+import { redirect } from "next/navigation";
 
 /**
  * Écran 16 — compte requis.
@@ -16,8 +18,13 @@ import { findProduct } from "@/lib/mock";
  */
 export default async function ContactPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const product = findProduct(id);
+  const product = trouverProduit(id);
   if (!product) notFound();
+
+  /* Écran 16 : le compte n'est demandé qu'au moment d'écrire, et
+     uniquement si l'on n'en a pas. Le montrer à quelqu'un de connecté
+     serait un obstacle inventé. */
+  if (await lireSession()) redirect("/messages/t-mariama");
 
   return (
     <Sheet

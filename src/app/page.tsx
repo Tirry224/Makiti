@@ -11,7 +11,8 @@ import { Card } from "@/components/ui/Card";
 import { Photo } from "@/components/ui/Photo";
 import { Badge } from "@/components/ui/Badge";
 import { PriceTag } from "@/components/product/PriceTag";
-import { PAR_ECRAN, categories, featuredProduct, products } from "@/lib/mock";
+import { PAR_ECRAN, categories } from "@/lib/mock";
+import { tousLesProduits } from "@/lib/magasin";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Button } from "@/components/ui/Button";
 import { Package } from "lucide-react";
@@ -31,10 +32,13 @@ export default async function HomePage({
   searchParams: Promise<{ ville?: string; reseau?: string }>;
 }) {
   const { ville = "Conakry", reseau } = await searchParams;
-  const visible = products
-    .filter((p) => (p.status === "active" || p.status === "sold") && p.merchant.city === ville)
-    .slice(0, PAR_ECRAN);
-  const featuredHere = featuredProduct.merchant.city === ville ? featuredProduct : null;
+  const publies = tousLesProduits().filter(
+    (p) => (p.status === "active" || p.status === "sold") && p.merchant.city === ville,
+  );
+  /* Le produit « à la une » sort du même magasin que les autres : s'il est
+     retiré ou vendu, le fil ne doit pas continuer à le mettre en avant. */
+  const featuredHere = publies.find((p) => p.isFeatured) ?? null;
+  const visible = publies.filter((p) => !p.isFeatured).slice(0, PAR_ECRAN);
 
   return (
     <Screen>
@@ -85,18 +89,19 @@ export default async function HomePage({
           </EmptyState>
         ) : (
           <>
+        {featuredHere ? (
         <Section className="gap-2 pt-2 pb-0">
           <SectionLabel>À la une</SectionLabel>
-          <Link href={`/produit/${featuredHere?.id ?? featuredProduct.id}`} prefetch={false}>
+          <Link href={`/produit/${featuredHere.id}`} prefetch={false}>
             <Card className="flex">
               <Photo ratio="free" className="w-26 shrink-0" />
               <div className="flex flex-col justify-center gap-1 px-3 py-3">
-                <h3 className="text-base font-semibold">{featuredProduct.title}</h3>
-                <PriceTag amount={featuredProduct.priceGnf} size="md" />
+                <h3 className="text-base font-semibold">{featuredHere.title}</h3>
+                <PriceTag amount={featuredHere.priceGnf} size="md" />
                 <p className="text-2xs text-ink-soft">
-                  {featuredProduct.merchant.shopName} · {featuredProduct.merchant.city}
+                  {featuredHere.merchant.shopName} · {featuredHere.merchant.city}
                 </p>
-                {featuredProduct.isNegotiable ? (
+                {featuredHere.isNegotiable ? (
                   <Badge tone="accent" className="self-start">
                     Négociable
                   </Badge>
@@ -105,6 +110,7 @@ export default async function HomePage({
             </Card>
           </Link>
         </Section>
+        ) : null}
 
         <Section className="gap-2 pt-3.5">
           <div className="flex items-baseline justify-between">

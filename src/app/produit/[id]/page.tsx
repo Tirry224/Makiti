@@ -7,7 +7,7 @@ import { Photo } from "@/components/ui/Photo";
 import { Screen, ScreenBody, ScreenFooter, Section } from "@/components/ui/Screen";
 import { PriceTag } from "@/components/product/PriceTag";
 import { MerchantCard } from "@/components/product/MerchantCard";
-import { findProduct } from "@/lib/mock";
+import { trouverProduit } from "@/lib/magasin";
 import Link from "next/link";
 
 /** Fiche produit — écrans 7 et 8 de docs/ECRANS.md. */
@@ -22,7 +22,7 @@ export default async function ProductPage({
      s'afficher avant que le routeur ait fini de résoudre l'URL. */
   const { id } = await params;
   const { signale } = await searchParams;
-  const product = findProduct(id);
+  const product = trouverProduit(id);
   if (!product) notFound();
 
   const sold = product.status === "sold";

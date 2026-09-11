@@ -8,16 +8,34 @@ import { Screen, ScreenBody, ScreenFooter, Section } from "@/components/ui/Scree
 import { SectionLabel } from "@/components/ui/SectionLabel";
 import { TopBar } from "@/components/ui/TopBar";
 import { ProductRow } from "@/components/product/ProductRow";
-import { merchantAissatou, myProducts } from "@/lib/mock";
+import { merchantAissatou } from "@/lib/mock";
+import { produitsDeLaBoutique } from "@/lib/magasin";
+import { MessageSucces } from "@/components/ui/Field";
 
 /** Mes produits — écrans 22 et 23 de docs/ECRANS.md. */
 export default async function SellerPage({
   searchParams,
 }: {
-  searchParams: Promise<{ etat?: string }>;
+  searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  const { etat } = await searchParams;
-  const catalogue = etat === "vide" ? [] : myProducts;
+  const { etat, publie, brouillon, vendu, masquer, supprimer, enregistre } = await searchParams;
+
+  /* Une action sans confirmation laisse croire qu'il ne s'est rien passé —
+     c'est exactement le reproche qui a fait naître le magasin. */
+  const confirmation = publie
+    ? "Produit publié. Il est en ligne."
+    : brouillon
+      ? "Brouillon enregistré. Il n'est visible que par vous."
+      : vendu
+        ? "Produit marqué vendu. Il reste visible, barré."
+        : masquer
+          ? "Produit masqué. Vous pouvez le republier quand vous voulez."
+          : supprimer
+            ? "Produit supprimé."
+            : enregistre
+              ? "Boutique enregistrée."
+              : null;
+  const catalogue = etat === "vide" ? [] : produitsDeLaBoutique(merchantAissatou.id);
   const published = catalogue.filter((p) => p.status === "active").length;
 
   return (
@@ -40,6 +58,11 @@ export default async function SellerPage({
       />
 
       <ScreenBody>
+        {confirmation ? (
+          <div className="px-4 pt-3">
+            <MessageSucces>{confirmation}</MessageSucces>
+          </div>
+        ) : null}
         {catalogue.length === 0 ? (
           <EmptyState
             icon={Plus}

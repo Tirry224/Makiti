@@ -7,7 +7,7 @@ import { FakeInput } from "@/components/ui/Field";
 import { Photo } from "@/components/ui/Photo";
 import { PriceTag } from "@/components/product/PriceTag";
 import { Sheet } from "@/components/ui/Sheet";
-import { myProducts, threads } from "@/lib/mock";
+import { produitsDeLaBoutique, tousLesFils } from "@/lib/magasin";
 import { citerProduit } from "@/lib/actions";
 
 /**
@@ -19,10 +19,10 @@ import { citerProduit } from "@/lib/actions";
  */
 export default async function QuoteProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const thread = threads.find((t) => t.id === id);
+  const thread = tousLesFils().find((t) => t.id === id);
   if (!thread) notFound();
 
-  const choices = myProducts.filter((p) => p.status !== "draft");
+  const choices = produitsDeLaBoutique("m-aissatou").filter((p) => p.status !== "draft");
 
   return (
     <Sheet

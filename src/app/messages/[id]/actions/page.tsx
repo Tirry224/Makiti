@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { Ban, Flag, User } from "lucide-react";
 import { ActionRow } from "@/components/ui/ActionRow";
 import { Sheet } from "@/components/ui/Sheet";
-import { threads } from "@/lib/mock";
+import { tousLesFils } from "@/lib/magasin";
 import { bloquer } from "@/lib/actions";
 
 /**
@@ -15,7 +15,7 @@ import { bloquer } from "@/lib/actions";
  */
 export default async function ThreadActionsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const thread = threads.find((t) => t.id === id);
+  const thread = tousLesFils().find((t) => t.id === id);
   if (!thread) notFound();
 
   return (

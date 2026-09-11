@@ -21,12 +21,15 @@ export function MenuItem({
   value,
   href,
   tone = "default",
+  submit = false,
 }: {
   icon: LucideIcon;
   label: string;
   value?: string;
   href?: string;
   tone?: "default" | "danger";
+  /** Envoie le formulaire qui entoure la ligne — « Se déconnecter ». */
+  submit?: boolean;
 }) {
   const content = (
     <>
@@ -52,7 +55,7 @@ export function MenuItem({
       {content}
     </Link>
   ) : (
-    <button type="button" className={cn(className, "w-full cursor-pointer text-left")}>
+    <button type={submit ? "submit" : "button"} className={cn(className, "w-full cursor-pointer text-left")}>
       {content}
     </button>
   );

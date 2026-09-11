@@ -10,7 +10,8 @@
  * isolées ici plutôt que dispersées dans les pages.
  */
 
-import { categories, products, featuredProduct } from "./mock";
+import { categories } from "./mock";
+import { tousLesProduits } from "./magasin";
 import type { Product } from "./types";
 
 /** Sans accents et sans majuscules : « telephone » doit trouver « Téléphone ». */
@@ -58,7 +59,7 @@ export function lien(f: Filtres, patch: Partial<Filtres>): string {
   return s ? `/recherche?${s}` : "/recherche";
 }
 
-const catalogue = () => [featuredProduct, ...products];
+const catalogue = () => tousLesProduits();
 
 /** Un produit est visible s'il est publié : ni brouillon, ni masqué. */
 const publie = (p: Product) => p.status === "active" || p.status === "sold";

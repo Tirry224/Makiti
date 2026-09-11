@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { Check, EyeOff, Pencil, Trash2 } from "lucide-react";
 import { ActionRow } from "@/components/ui/ActionRow";
 import { Sheet } from "@/components/ui/Sheet";
-import { findProduct } from "@/lib/mock";
+import { trouverProduit } from "@/lib/magasin";
 import { changerEtatProduit } from "@/lib/actions";
 
 /**
@@ -15,7 +15,7 @@ import { changerEtatProduit } from "@/lib/actions";
  */
 export default async function ProductActionsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const product = findProduct(id);
+  const product = trouverProduit(id);
   if (!product) notFound();
 
   return (

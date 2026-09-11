@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Image as ImageIcon, X } from "lucide-react";
-import { findProduct } from "@/lib/mock";
+import { trouverProduit } from "@/lib/magasin";
 import { cn } from "@/lib/cn";
 
 /**
@@ -22,7 +22,7 @@ export default async function GalleryPage({
 }) {
   const { id } = await params;
   const { photo = "1" } = await searchParams;
-  const product = findProduct(id);
+  const product = trouverProduit(id);
   if (!product) notFound();
 
   const current = Math.min(Math.max(Number(photo) || 1, 1), product.photoCount);

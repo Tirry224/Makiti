@@ -83,7 +83,9 @@ Tous les budgets sont tenus ; `npm run poids` échoue si l'un se met à céder.
 | `src/app/` | Une page par écran, en composants serveur. |
 | `src/components/ui/` | 19 composants génériques (Screen, TopBar, Chip, Sheet…). |
 | `src/components/product/`, `chat/` | Composants métier. |
-| `src/lib/mock.ts` | Toutes les données de démonstration. Un seul fichier. |
+| `src/lib/mock.ts` | Les données de départ — la GRAINE, jamais modifiée. |
+| `src/lib/magasin.ts` | L'état qui CHANGE, en mémoire : produits, messages, fils. Pas une base de données (tout disparaît au redémarrage). Devient des requêtes Supabase à l'étape 3. |
+| `src/lib/session.ts` | Qui est connecté — un cookie de démonstration, **signé de rien, vérifié par rien**. Remplacé par Supabase Auth. |
 | `src/lib/actions.ts` | Les Server Actions des formulaires : valident, orientent, refusent. **N'enregistrent rien** (étape 3). |
 | `src/lib/validation.ts` | Les règles de saisie, isolées pour être retraduites en contraintes SQL. |
 | `src/lib/recherche.ts` | Filtres, tri, hors périmètre. Partagé par le fil et la recherche. |
@@ -108,12 +110,14 @@ codée ; ses artboards restent sur la page « Recherche v2 » du canvas.
 
 - ✅ Tous les écrans codés et atteignables depuis `/ecrans`, plus l'écran
   32b (signaler une conversation) qui était maquetté sans être codé.
-- ✅ **Toutes les actions branchées** en Server Actions : inscription,
-  boutique, connexion, mot de passe oublié, profil, publication et
-  brouillon de produit, vendu/masquer/supprimer, envoi de message, citation
-  de produit, signalements, blocage. Elles valident, orientent et refusent ;
-  elles **n'enregistrent rien** — c'est l'étape 3, et chaque action porte
-  son `TODO étape 3` à la ligne près.
+- ✅ **Toutes les actions branchées** en Server Actions, et elles
+  **ENREGISTRENT** dans `magasin.ts` : publier un produit le fait
+  apparaître dans mes produits et dans la recherche, envoyer un message
+  l'affiche dans le fil, marquer vendu barre le prix, s'inscrire ouvre une
+  session que « Mon compte » reconnaît.
+- ⚠️ **`magasin.ts` n'est pas une base** : état en mémoire, perdu au
+  redémarrage, incohérent dès qu'il y a plusieurs machines, aucune règle de
+  sécurité. Il rend le parcours JOUABLE, il ne le tient pas.
 - ✅ **Erreurs sans JavaScript** : l'action redirige avec `?erreur=code`, la
   page affiche le message et réaffiche les valeurs saisies. **Jamais le mot
   de passe** — une URL traîne dans l'historique et les journaux.
@@ -160,6 +164,23 @@ non retenu pour l'instant : moins de gain, moins de risque.
 **Dette connue :** les catégories semées par `0003` sont celles d'avant le
 repositionnement. Correctif décrit dans `REPRISE.md`, à appliquer à l'étape 3.
 
+## Le piège dans lequel je suis tombé (11 sept.)
+
+J'ai annoncé « étape 2 terminée, toutes les actions branchées » alors que
+**rien n'était enregistré**. Les 19 vérifications passaient : elles
+regardaient où l'on ATTERRIT après un envoi, jamais ce que l'écran d'après
+MONTRE. Vu de l'utilisateur, publier un produit renvoyait sur une liste où
+il n'apparaissait pas — donc « rien n'a changé », et c'était exact.
+
+Deux règles qui en sortent :
+
+1. **Un formulaire qui accepte puis oublie est pire qu'un bouton mort** :
+   il ment. Tant qu'une action n'a pas d'effet visible, elle n'est pas
+   faite.
+2. **Un test qui vérifie une redirection ne vérifie rien.** La batterie a
+   maintenant une section « ce que l'action change à l'écran », qui relit
+   l'écran d'après.
+
 ## Décisions prises (11 sept., délégation explicite)
 
 - **Formulaires en Server Actions**, erreurs par l'URL, aucun
@@ -203,6 +224,10 @@ repositionnement. Correctif décrit dans `REPRISE.md`, à appliquer à l'étape 
 
 ## Journal — cinq dernières entrées
 
+- **11 sept.** Les actions enregistrent vraiment (`magasin.ts`) et la
+  session existe (`session.ts`). Publier, écrire, vendre, s'inscrire, se
+  déconnecter : chaque geste se voit à l'écran suivant. Six vérifications
+  de plus, qui relisent l'écran au lieu de l'URL.
 - **11 sept.** Service worker retenu comme prochain chantier (fin de
   session). Rien de commencé : la décision est ici pour ne pas se reperdre.
 - **11 sept.** Règle R3 corrigée : « pas de JavaScript » n'était pas la
@@ -229,3 +254,13 @@ repositionnement. Correctif décrit dans `REPRISE.md`, à appliquer à l'étape 
   et maquettes réalignés. Catalogue de démonstration réécrit (téléphonie,
   mode, parfums, beauté) — il vendait encore du riz.
 - **9 sept.** Document de reprise, inventaire des 33 écrans.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

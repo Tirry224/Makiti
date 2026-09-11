@@ -4,6 +4,7 @@ import { Field, Input, MessageErreur, MessageSucces } from "@/components/ui/Fiel
 import { Screen, ScreenBody, ScreenFooter, Section } from "@/components/ui/Screen";
 import { TopBar } from "@/components/ui/TopBar";
 import { mettreAJourProfil } from "@/lib/actions";
+import { lireSession } from "@/lib/session";
 
 /** Mes informations — écran 18 de docs/ECRANS.md. */
 export default async function ProfilePage({
@@ -12,6 +13,7 @@ export default async function ProfilePage({
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const { erreur, enregistre, nom, telephone } = await searchParams;
+  const session = await lireSession();
 
   return (
     <Screen>
@@ -23,7 +25,7 @@ export default async function ProfilePage({
           {enregistre ? <MessageSucces>Vos informations sont à jour.</MessageSucces> : null}
 
           <Field label="Nom complet" htmlFor="nom">
-            <Input id="nom" name="nom" autoComplete="name" required minLength={2} defaultValue={nom ?? "Mariama Diallo"} />
+            <Input id="nom" name="nom" autoComplete="name" required minLength={2} defaultValue={nom ?? session?.nom ?? ""} />
           </Field>
           <Field label="Téléphone" htmlFor="telephone">
             <Input id="telephone" name="telephone" type="tel" inputMode="tel" required pattern="[\s.\-()+0-9]{9,20}" defaultValue={telephone ?? "620 45 12 87"} />
@@ -36,7 +38,7 @@ export default async function ProfilePage({
             htmlFor="email"
             hint="L'email sert à vous connecter. Contactez-nous pour le changer."
           >
-            <Input id="email" type="email" defaultValue="mariama@exemple.com" disabled />
+            <Input id="email" type="email" defaultValue={session?.email ?? ""} disabled />
           </Field>
 
           <div className="my-1 h-px bg-line" />
