@@ -42,6 +42,24 @@ requête, 46 tests). Y ont été portés :
 `wizardly-cannon` et `brave-pascal` n'ont plus rien d'unique : elles sont
 supprimables sans perte. Seule `kind-thompson` reste à conserver.
 
+**Mise à jour du 2026-09-11 (fin de journée) — la cause de la panne était
+encore active.** En voulant nettoyer les branches, on a découvert que le
+réglage « branche par défaut » du dépôt GitHub pointait encore sur
+`claude/ecstatic-wright-ed0bp3` — un arrêt sur image au commit `07b8440`,
+soit exactement le point de divergence d'avant toute la consolidation.
+Autrement dit, la panne décrite en tête de section n'était pas juste
+racontée au passé : GitHub continuait, à cet instant, de désigner une
+vieille branche comme référence. Un `git push --delete` échoue toujours
+sur la branche par défaut (403, quels que soient les droits) : GitHub
+protège cette branche contre la suppression, mais pas contre le fait de le
+rester par erreur.
+
+Corrigé : branche par défaut basculée sur `main` (Settings → General →
+Default branch), puis suppression de `claude/ecstatic-wright-ed0bp3` et de
+`claude/wizardly-cannon-kqr64e` (déjà sans contenu unique, voir plus haut).
+Il ne reste que **`main`** et **`claude/kind-thompson-khl111`**.
+`brave-pascal` avait déjà disparu (absorbée par une session antérieure).
+
 **Deux pièges rencontrés, qui valent pour toute consolidation future** :
 `prochaine-etape` avait réécrit `0001` et `0003` en y absorbant des
 corrections postérieures. Résultat, la chaîne de migrations ne rejouait
