@@ -49,6 +49,7 @@ returns table (
 )
 language sql
 stable
+set search_path = ''
 as $$
   select
     p.id, p.title, p.price_gnf, p.is_negotiable, p.category_id,

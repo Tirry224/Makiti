@@ -29,8 +29,10 @@ Marché : Guinée · Devise : franc guinéen (GNF), en entiers · Langue : fran�
 `docs/SPEC.md` — 18 décisions tranchées et figées.
 `docs/ECRANS.md` — inventaire des 33 écrans.
 
-### Base de données — écrite et testée, PAS déployée
-`supabase/migrations/` — 4 fichiers SQL à exécuter dans l'ordre :
+### Base de données — écrite, testée, DÉPLOYÉE
+Projet Supabase réel : `Makiti`, réf. `bfmsruzyrgbndbueikcb`, région
+`eu-west-3`. `supabase/migrations/` — 4 fichiers SQL, déjà exécutés en
+production dans l'ordre :
 
 - `0001_schema.sql` — 9 tables : profiles, merchants, cities, categories,
   products, product_images, conversations, messages, reports
@@ -160,13 +162,40 @@ dernière étape, une fois le front stabilisé :
 
 1. ~~Trancher le schéma des comptes liés~~ **Fait le 2026-09-11** (point 4
    de la section précédente) — les migrations sont déjà à jour.
-2. Créer un projet sur supabase.com (offre gratuite, région Europe de
-   l'Ouest)
-3. Exécuter les migrations dans l'ordre, dans l'éditeur SQL
-4. Vérifier dans Database → Tables que **chaque** table affiche « RLS enabled »
-5. Mettre `NEXT_PUBLIC_SUPABASE_URL` et `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   dans `.env.local` (la clé `service_role` ne doit jamais entrer dans le
-   code du navigateur ni dans Git : elle ignore le RLS)
+2. ~~Créer un projet sur supabase.com~~ **Fait le 2026-09-10.** Projet
+   `Makiti`, réf. `bfmsruzyrgbndbueikcb`, région `eu-west-3` (Paris — la
+   plus proche de la Guinée). Un premier projet créé par erreur en
+   `us-east-2` a été supprimé puis recréé dans la bonne région : ça ne se
+   change pas après coup sur un projet existant.
+3. ~~Exécuter les migrations dans l'ordre~~ **Fait**, via l'API Supabase
+   plutôt que l'éditeur SQL à la main (MCP Supabase, disponible dans cette
+   session). Trois avertissements de l'audit de sécurité corrigés dans la
+   foulée et reportés dans les fichiers sources (pas seulement appliqués en
+   direct) : `search_path` manquant sur deux fonctions, et surtout
+   `is_active_profile(pid)` qui, appelable en RPC direct par un inconnu
+   (conséquence normale de `security definer`), révélait si un profil
+   ARBITRAIRE — pas forcément celui de l'appelant — était suspendu ou
+   supprimé. Corrigé en vérifiant aussi la propriété à l'intérieur de la
+   fonction ; aucun appel légitime ne change de comportement, puisque
+   chaque policy vérifiait déjà cette propriété juste avant de l'appeler.
+   Sept autres fonctions signalées « callable en RPC » sont de faux
+   positifs : ce sont des fonctions de trigger (`returns trigger`), que
+   PostgreSQL refuse structurellement d'exécuter autrement qu'en trigger —
+   vérifié en l'appelant directement, pas supposé.
+   Avertissements de performance : trois clés étrangères sans index
+   ajoutées (`messages.sender_id`, `reports.reporter_id`,
+   `conversations.blocked_by`), et `auth.uid()` enveloppé dans
+   `(select auth.uid())` sur les policies de `profiles` qui l'appelaient
+   nu. « Multiple permissive policies » et « unused index » laissés tels
+   quels — la seconde ne veut rien dire sur une base qui vient de naître,
+   la première est un choix de lisibilité déjà justifié ailleurs (voir la
+   note sur `search_products` en 0003).
+4. ~~Vérifier que RLS est activé partout~~ **Fait** : les 9 tables de
+   `public` affichent `rls_enabled: true`.
+5. ~~Mettre les clés dans `.env.local`~~ **Fait** (fichier non versionné,
+   déjà dans `.gitignore`). Clé `publishable` (nouveau format
+   `sb_publishable_...`), pas l'ancienne clé `anon` JWT — recommandation
+   Supabase actuelle pour un nouveau projet.
 6. Générer les types (`supabase gen types typescript` remplace
    `src/lib/types.ts`)
 7. Brancher les données en lecture, écran par écran, à la place de

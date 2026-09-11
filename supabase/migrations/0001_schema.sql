@@ -206,6 +206,9 @@ create table public.conversations (
 
 create index conversations_client_idx   on public.conversations(client_id, last_message_at desc);
 create index conversations_merchant_idx on public.conversations(merchant_id, last_message_at desc);
+-- Partiel : `blocked_by` est nullable et rarement renseigné, inutile
+-- d'indexer les lignes qui ne serviront jamais cette recherche.
+create index conversations_blocked_by_idx on public.conversations(blocked_by) where blocked_by is not null;
 
 -- `product_id` porte le contexte du message : « je te parle de CE produit ».
 -- Il est nullable, parce qu'une fois le sujet posé, la suite de l'échange
@@ -230,6 +233,7 @@ create table public.messages (
 
 create index messages_conversation_idx on public.messages(conversation_id, created_at);
 create index messages_product_idx      on public.messages(product_id) where product_id is not null;
+create index messages_sender_idx       on public.messages(sender_id);
 
 
 -- ---------------------------------------------------------------------
@@ -248,4 +252,5 @@ create table public.reports (
   created_at  timestamptz not null default now()
 );
 
-create index reports_pending_idx on public.reports(created_at desc) where handled_at is null;
+create index reports_pending_idx  on public.reports(created_at desc) where handled_at is null;
+create index reports_reporter_idx on public.reports(reporter_id);
