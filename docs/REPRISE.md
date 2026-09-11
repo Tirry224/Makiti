@@ -329,7 +329,23 @@ existe.
 **Ville de résidence ajoutée le 2026-09-11** (`profiles.city_id`,
 0010_client_profile_city.sql) : un client peut désormais la choisir ou la
 laisser vide depuis « Mes informations », indépendamment de la ville de
-navigation du fil (`/recherche/ville`, un simple paramètre d'URL).
+navigation du fil (`/recherche/ville`, un simple paramètre d'URL) —
+résider quelque part n'empêche pas de chercher ailleurs, décision
+explicite plutôt qu'un oubli.
+
+Cette ville de résidence sert de **point de départ**, pas de filtre
+permanent : sans `?ville=` dans l'URL, `src/app/page.tsx` l'utilise comme
+défaut à la place de "Conakry" en dur (client non connecté, compte sans
+profil client, ou ville non renseignée → "Conakry" reste le repli). Dès
+que `ville` est explicite dans l'URL, il gagne toujours.
+
+**Reste non harmonisé, signalé mais pas traité** : `/recherche` a son
+propre défaut "Conakry" en dur, indépendant de celui du fil d'accueil, et
+s'en sert pour calculer le badge « filtre actif » et le lien « Effacer
+les filtres ». Un client qui arrive directement sur `/recherche` (pas
+depuis le fil d'accueil) ne profite donc pas encore du même défaut. Choix
+à trancher séparément : l'harmoniser casserait net le sens actuel
+d'`activeFilterCount`.
 
 **Un champ de la maquette retiré, pas simulé** : le mot de passe affiché
 en clair (Supabase ne le rend jamais lisible). Le motif de suspension
