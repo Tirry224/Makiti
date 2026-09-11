@@ -86,3 +86,16 @@ La clé `anon` est conçue pour être exposée au navigateur : c'est le RLS qui
 protège les données, pas le secret de cette clé. En revanche la clé
 `service_role` ignore complètement le RLS et donne un accès total à la base.
 Elle ne doit jamais apparaître dans le code du navigateur, ni dans Git.
+
+### Sur Vercel — à faire avant le premier déploiement
+
+`.env.local` n'est pas versionné : Vercel ne le reçoit donc **jamais**. Les
+deux mêmes variables doivent être saisies dans
+**Project Settings → Environment Variables** (Production, Preview et
+Development), puis le déploiement relancé.
+
+Sans elles le build **échoue**, avec un message qui nomme les deux
+variables. C'est volontaire : un site en ligne dont chaque page plante est
+pire qu'un déploiement refusé. Si tu vois cette erreur dans les logs
+Vercel, il n'y a rien à corriger dans le code — il manque la
+configuration.

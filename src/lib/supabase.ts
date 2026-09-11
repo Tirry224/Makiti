@@ -25,9 +25,17 @@ const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 if (!url || !key) {
   /* Échouer tout de suite et clairement. Sans ça, l'erreur n'apparaît
      qu'au premier appel réseau, sous la forme d'un « fetch failed » qui ne
-     dit rien de la cause. */
+     dit rien de la cause.
+     Cet arrêt se produit aussi pendant `next build` : Next évalue les
+     modules de chaque page pour en collecter la configuration. C'est
+     voulu — mieux vaut un déploiement qui échoue qu'un site en ligne dont
+     chaque page plante. Le message doit donc nommer LES DEUX endroits où
+     ces variables se définissent, pas seulement celui du développement. */
   throw new Error(
-    "NEXT_PUBLIC_SUPABASE_URL et NEXT_PUBLIC_SUPABASE_ANON_KEY doivent être définies dans .env.local",
+    "NEXT_PUBLIC_SUPABASE_URL et NEXT_PUBLIC_SUPABASE_ANON_KEY sont manquantes.\n" +
+      "  · en local      : les définir dans .env.local (voir README)\n" +
+      "  · sur Vercel    : Project Settings → Environment Variables, puis relancer le déploiement\n" +
+      "Les deux valeurs sont publiques : c'est le RLS qui protège les données, pas leur secret.",
   );
 }
 
