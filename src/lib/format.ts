@@ -26,3 +26,17 @@ export function formatPhone(raw: string): string {
   if (digits.length !== 9) return raw;
   return `${digits.slice(0, 3)} ${digits.slice(3, 5)} ${digits.slice(5, 7)} ${digits.slice(7)}`;
 }
+
+/** « 14:03 » aujourd'hui, « Hier » la veille, « 3 sept. » avant : le format
+ * le plus court qui reste sans ambiguïté, pour la liste des messages. */
+export function formatMessageTime(iso: string): string {
+  const date = new Date(iso);
+  const now = new Date();
+  if (date.toDateString() === now.toDateString()) {
+    return date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  }
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (date.toDateString() === yesterday.toDateString()) return "Hier";
+  return date.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+}

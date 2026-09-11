@@ -1,0 +1,136 @@
+"use server";
+
+import { redirect } from "next/navigation";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/server";
+import { getMyProfiles } from "@/lib/data/session";
+import { getThreadContext } from "@/lib/data/messages";
+import type { ActionState } from "@/lib/actions/auth";
+import type { Database } from "@/lib/database.types";
+
+/**
+ * Ouvrir (ou retrouver) le fil avec une boutique — depuis « Contacter le
+ * vendeur » (écran 16/30). Appelée directement depuis le composant serveur
+ * de la page, pas depuis un formulaire : il n'y a pas de geste
+ * intermédiaire entre le clic sur « Contacter » et l'ouverture du fil,
+ * volontairement — SPEC ne prévoit qu'un seul écran d'interruption
+ * (le compte), pas un second pour la conversation elle-même. Un seul fil
+ * par couple (client, boutique) : `client_id`/`merchant_id` cherchés
+ * d'abord, créés seulement si absents.
+ */
+export async function findOrCreateConversation(
+  supabase: SupabaseClient<Database>,
+  clientProfileId: string,
+  merchantId: string,
+): Promise<string> {
+  const { data: existing, error: findError } = await supabase
+    .from("conversations")
+    .select("id")
+    .eq("client_id", clientProfileId)
+    .eq("merchant_id", merchantId)
+    .maybeSingle();
+  if (findError) throw findError;
+  if (existing) return existing.id;
+
+  const { data: created, error: createError } = await supabase
+    .from("conversations")
+    .insert({ client_id: clientProfileId, merchant_id: merchantId })
+    .select("id")
+    .single();
+  if (createError) throw createError;
+  return created.id;
+}
+
+/**
+ * Envoyer un message — écran 30. Les messages d'erreur des triggers
+ * (`0002_rules_and_security.sql`, section 3.4/3.4 bis) sont déjà écrits en
+ * français pour être lus tels quels : « Limite atteinte : 100 messages par
+ * jour maximum. », « Le premier message doit préciser le produit
+ * concerné. » — on les relaie donc sans les traduire, contrairement aux
+ * messages de `auth.ts` qui viennent de Supabase en anglais.
+ */
+export async function sendMessageAction(_prevState: ActionState | null, formData: FormData): Promise<ActionState> {
+  const conversationId = String(formData.get("conversationId") ?? "");
+  const body = String(formData.get("body") ?? "").trim();
+  const productId = String(formData.get("productId") ?? "") || null;
+  if (!conversationId || !body) return { error: "Écrivez un message avant d'envoyer." };
+
+  const supabase = await createClient();
+  const context = await getThreadContext(supabase, conversationId);
+  if (!context) return { error: "Conversation introuvable." };
+
+  const { error } = await supabase.from("messages").insert({
+    conversation_id: conversationId,
+    sender_id: context.myParticipantId,
+    body,
+    product_id: productId,
+  });
+  if (error) return { error: error.message };
+
+  redirect(`/messages/${conversationId}`);
+}
+
+/** Bloquer mon interlocuteur — écran 32. Je ne peux désigner que MOI-MÊME
+ * comme bloqueur (policy "conversations: je bloque mon interlocuteur") :
+ * bloquer, ici, veut dire « je me protège », pas « je réduis l'autre au
+ * silence dans l'absolu ». */
+export async function blockPeerAction(formData: FormData) {
+  const conversationId = String(formData.get("conversationId") ?? "");
+  if (!conversationId) return;
+
+  const supabase = await createClient();
+  const context = await getThreadContext(supabase, conversationId);
+  if (!context) return;
+
+  await supabase.from("conversations").update({ blocked_by: context.myParticipantId }).eq("id", conversationId);
+  redirect(`/messages/${conversationId}`);
+}
+
+/**
+ * Signaler une conversation — écran 32. Aucune feuille de motifs n'existe
+ * dans la maquette pour cette action précise (contrairement au
+ * signalement d'un produit, écran 10) : un motif générique est envoyé,
+ * l'équipe lit le fil elle-même pour comprendre pourquoi.
+ */
+export async function reportConversationAction(formData: FormData) {
+  const conversationId = String(formData.get("conversationId") ?? "");
+  const reason = String(formData.get("reason") ?? "Signalement depuis une conversation");
+  if (!conversationId) return;
+
+  const supabase = await createClient();
+  const context = await getThreadContext(supabase, conversationId);
+  if (!context) return;
+
+  await supabase.from("reports").insert({
+    reporter_id: context.myParticipantId,
+    target_type: "conversation",
+    target_id: conversationId,
+    reason,
+  });
+  redirect(`/messages/${conversationId}`);
+}
+
+/** Signaler un produit — écran 10. N'importe lequel de mes profils actifs
+ * convient : "reports: je signale" ne distingue pas le rôle. */
+export async function reportProductAction(_prevState: ActionState | null, formData: FormData): Promise<ActionState> {
+  const productId = String(formData.get("productId") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim();
+  const details = String(formData.get("details") ?? "").trim();
+  const fullReason = details ? `${reason} — ${details}` : reason;
+  if (!productId || fullReason.length < 3) return { error: "Choisissez un motif." };
+
+  const supabase = await createClient();
+  const profiles = await getMyProfiles(supabase);
+  const reporter = profiles.find((p) => !p.isSuspended && !p.isDeleted);
+  if (!reporter) return { error: "Vous devez être connecté pour signaler un produit." };
+
+  const { error } = await supabase.from("reports").insert({
+    reporter_id: reporter.id,
+    target_type: "product",
+    target_id: productId,
+    reason: fullReason,
+  });
+  if (error) return { error: error.message };
+
+  redirect(`/produit/${productId}`);
+}

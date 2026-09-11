@@ -5,30 +5,39 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Screen, ScreenBody, Section } from "@/components/ui/Screen";
 import { TopBar } from "@/components/ui/TopBar";
 import { ThreadRow } from "@/components/chat/ThreadRow";
-import { clientThreads, threads } from "@/lib/mock";
+import { createClient } from "@/lib/supabase/server";
+import { getMyProfile } from "@/lib/data/session";
+import { getMyThreadsAsClient, getMyThreadsAsMerchant } from "@/lib/data/messages";
 
 /**
  * Messages — écrans 27, 28 et 29 de docs/ECRANS.md.
  *
  * Le même écran sert aux deux rôles : côté client, la liste montre des
- * BOUTIQUES ; côté commerçant, des PERSONNES. Un seul composant
- * `ThreadRow` couvre les deux, parce que la seule différence est la nature
- * de l'interlocuteur.
- *
- * `?vue=` est un interrupteur TEMPORAIRE : sans authentification, rien ne
- * dit encore qui regarde. Il disparaîtra avec la session.
+ * BOUTIQUES ; côté commerçant, des PERSONNES. `?vue=` distingue les deux
+ * quand la connexion a ses deux comptes liés — sinon le seul rôle
+ * disponible s'affiche directement, sans qu'il y ait de choix à faire.
  */
 export default async function MessagesPage({
   searchParams,
 }: {
   searchParams: Promise<{ vue?: string }>;
 }) {
-  const { vue = "commercant" } = await searchParams;
-  const list = vue === "vide" ? [] : vue === "client" ? clientThreads : threads;
+  const { vue } = await searchParams;
+  const supabase = await createClient();
+
+  const [clientProfile, merchantProfile] = await Promise.all([
+    getMyProfile(supabase, "client"),
+    getMyProfile(supabase, "merchant"),
+  ]);
+
+  const hasBoth = Boolean(clientProfile) && Boolean(merchantProfile);
+  const asClient = hasBoth ? vue !== "commercant" : Boolean(clientProfile);
+
+  const list = asClient ? await getMyThreadsAsClient(supabase) : await getMyThreadsAsMerchant(supabase);
 
   return (
     <Screen>
-      <TopBar title={vue === "client" ? "Mes messages" : "Messages"} />
+      <TopBar title={asClient ? "Mes messages" : "Messages"} />
 
       <ScreenBody>
         {list.length === 0 ? (
@@ -48,7 +57,7 @@ export default async function MessagesPage({
         )}
       </ScreenBody>
 
-      <BottomNav active="messages" />
+      <BottomNav active="messages" accountHref={asClient ? "/compte" : "/vendeur/boutique"} />
     </Screen>
   );
 }

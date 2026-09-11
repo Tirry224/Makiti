@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Photo } from "@/components/ui/Photo";
@@ -6,20 +6,28 @@ import { PriceTag } from "@/components/product/PriceTag";
 import { Sheet } from "@/components/ui/Sheet";
 import { createClient } from "@/lib/supabase/server";
 import { getProduct } from "@/lib/data/products";
+import { getMyProfile } from "@/lib/data/session";
+import { findOrCreateConversation } from "@/lib/actions/messages";
 
 /**
  * Écran 16 — compte requis.
  *
- * Le seul endroit de toute l'application où l'on demande un compte. Il
- * arrive au moment où le client veut quelque chose, jamais avant — et il
- * rappelle le produit concerné, pour qu'on comprenne pourquoi on est
- * interrompu.
+ * Le seul endroit de toute l'application où l'on demande un compte —
+ * mais seulement à qui n'en a pas encore. Une connexion déjà cliente
+ * n'a rien à créer : elle ouvre directement le fil avec cette boutique
+ * (existant ou nouveau), le produit déjà cité pour son premier message.
  */
 export default async function ContactPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
   const product = await getProduct(supabase, id);
   if (!product) notFound();
+
+  const clientProfile = await getMyProfile(supabase, "client");
+  if (clientProfile) {
+    const conversationId = await findOrCreateConversation(supabase, clientProfile.id, product.merchant.id);
+    redirect(`/messages/${conversationId}?produit=${product.id}`);
+  }
 
   return (
     <Sheet

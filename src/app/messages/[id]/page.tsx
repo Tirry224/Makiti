@@ -1,18 +1,50 @@
-import { Flag, Plus, SendHorizontal } from "lucide-react";
+import { notFound } from "next/navigation";
+import { Flag } from "lucide-react";
+import Link from "next/link";
 import { Avatar } from "@/components/ui/Avatar";
 import { Screen, ScreenBody, ScreenFooter } from "@/components/ui/Screen";
 import { TopBar } from "@/components/ui/TopBar";
 import { MessageBubble } from "@/components/chat/MessageBubble";
 import { ProductRef } from "@/components/chat/ProductRef";
-import { conversation, threads } from "@/lib/mock";
-import Link from "next/link";
-import { notFound } from "next/navigation";
+import { Composer } from "@/components/chat/Composer";
+import { createClient } from "@/lib/supabase/server";
+import { getThreadContext, getMessages } from "@/lib/data/messages";
+import { getProduct } from "@/lib/data/products";
 
 /** Fil de discussion — écran 30 de docs/ECRANS.md. */
-export default async function ThreadPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ThreadPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ produit?: string }>;
+}) {
   const { id } = await params;
-  const thread = threads.find((t) => t.id === id);
-  if (!thread) notFound();
+  const { produit } = await searchParams;
+  const supabase = await createClient();
+
+  const context = await getThreadContext(supabase, id);
+  if (!context) notFound();
+
+  const [messages, citing] = await Promise.all([
+    getMessages(supabase, id, context.myParticipantId),
+    produit ? getProduct(supabase, produit) : Promise.resolve(null),
+  ]);
+
+  // Marquer comme lu ce que je viens de voir — seuls les messages reçus,
+  // jamais les miens (policy "messages: marquer comme lu", 0002).
+  await supabase
+    .from("messages")
+    .update({ read_at: new Date().toISOString() })
+    .eq("conversation_id", id)
+    .is("read_at", null)
+    .neq("sender_id", context.myParticipantId);
+
+  const blockedByPeer = context.blockedBy !== null && context.blockedBy !== context.myParticipantId;
+  // Le premier message d'un fil DOIT citer un produit (trigger
+  // `check_message_product`, 0002) : sans citation en attente sur un fil
+  // encore vide, écrire échouerait — autant le dire avant plutôt qu'après.
+  const mustCiteFirst = messages.length === 0 && !citing;
 
   return (
     <Screen>
@@ -20,15 +52,14 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
         backHref="/messages"
         title={
           <div className="flex items-center gap-3">
-            <Avatar name={thread.peerName} kind={thread.peerKind} size={38} />
+            <Avatar name={context.peerName} kind={context.peerKind} size={38} />
             <span className="flex flex-col">
-              <span className="text-base font-semibold">{thread.peerName}</span>
-              <span className="text-2xs text-ink-soft">Cliente · Ratoma</span>
+              <span className="text-base font-semibold">{context.peerName}</span>
             </span>
           </div>
         }
         right={
-          <Link href={`/messages/${thread.id}/actions`} aria-label="Actions">
+          <Link href={`/messages/${id}/actions`} aria-label="Actions">
             <Flag size={19} strokeWidth={1.8} className="text-ink-soft" aria-hidden />
           </Link>
         }
@@ -39,7 +70,7 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
           du champ de saisie, et l'écran paraît vide. */}
       <ScreenBody className="justify-end">
         <div className="flex flex-col gap-2.5 p-4">
-          {conversation.map((message) => (
+          {messages.map((message) => (
             <div key={message.id} className="contents">
               {message.product ? <ProductRef product={message.product} /> : null}
               <MessageBubble message={message} />
@@ -48,26 +79,23 @@ export default async function ThreadPage({ params }: { params: Promise<{ id: str
         </div>
       </ScreenBody>
 
-      <ScreenFooter className="flex items-center gap-2.5">
-        <Link
-          href={`/messages/${thread.id}/citer`}
-          aria-label="Joindre un produit"
-          className="flex size-tap shrink-0 items-center justify-center rounded-full border border-line text-ink-soft"
-        >
-          <Plus size={21} strokeWidth={2} aria-hidden />
-        </Link>
-        <input
-          className="h-tap flex-1 rounded-full border border-line bg-surface px-4 text-base"
-          placeholder="Écrire un message…"
-          aria-label="Votre message"
-        />
-        <button
-          type="button"
-          aria-label="Envoyer"
-          className="flex size-tap shrink-0 items-center justify-center rounded-full bg-accent text-on-accent"
-        >
-          <SendHorizontal size={20} strokeWidth={1.9} aria-hidden />
-        </button>
+      <ScreenFooter className="flex flex-col gap-2">
+        {citing ? (
+          <div className="flex items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-xs">
+            <span className="flex-1 truncate">
+              Concerne : <b>{citing.title}</b>
+            </span>
+            <Link href={`/messages/${id}`} className="shrink-0 font-medium text-ink-soft">
+              Retirer
+            </Link>
+          </div>
+        ) : null}
+
+        {blockedByPeer ? (
+          <p className="py-2 text-center text-sm text-ink-soft">Vous ne pouvez plus écrire dans ce fil.</p>
+        ) : (
+          <Composer conversationId={id} citingProductId={citing?.id} disabled={mustCiteFirst} />
+        )}
       </ScreenFooter>
     </Screen>
   );
