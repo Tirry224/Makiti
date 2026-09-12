@@ -102,7 +102,7 @@ export default async function EditShopPage() {
         </Section>
       </ScreenBody>
 
-      <BottomNav active="account" accountHref="/vendeur/boutique" />
+      <BottomNav active="account" space="merchant" />
     </Screen>
   );
 }

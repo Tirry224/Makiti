@@ -57,7 +57,7 @@ export default async function MessagesPage({
         )}
       </ScreenBody>
 
-      <BottomNav active="messages" accountHref={asClient ? "/compte" : "/vendeur/boutique"} />
+      <BottomNav active="messages" space={asClient ? "client" : "merchant"} />
     </Screen>
   );
 }

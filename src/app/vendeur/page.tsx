@@ -108,7 +108,7 @@ export default async function SellerPage({
         </ScreenFooter>
       ) : null}
 
-      <BottomNav active="account" accountHref="/vendeur/boutique" />
+      <BottomNav active="shop" space="merchant" />
     </Screen>
   );
 }

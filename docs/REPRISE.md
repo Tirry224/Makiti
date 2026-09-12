@@ -700,6 +700,77 @@ compte lié mérite d'être regardé : l'écran d'inscription ne propose le
 compte lié qu'à une personne DÉJÀ connectée, ce qui n'est pas le réflexe de
 quelqu'un qui veut « aussi vendre ».
 
+### Étape 4 sexies — Les DEUX barres d'onglets — FAIT le 2026-09-12
+
+Question du porteur du projet juste après le correctif précédent : « as-tu
+réglé le problème de la barre de navigation qui est différente ? »
+**Réponse honnête : non.** L'étape précédente avait réglé l'écran
+d'OUVERTURE, pas la barre. La décision de `design/README.md` en compte
+trois — pas la même barre, pas le même écran d'ouverture, pas le même
+« Mon compte » — et une seule des trois était traitée.
+
+Mesuré plutôt que supposé, code contre maquette :
+
+| | maquette | code (avant) |
+|---|---|---|
+| client | Accueil · Rechercher · Messages · Compte | idem ✓ |
+| commerçant | **Ma boutique · Messages · Compte** | la même barre à 4 onglets ✗ |
+
+`BottomNav` portait UNE liste de quatre onglets et un `accountHref` pour
+rattraper la différence sur le dernier. Ça ne rattrapait rien : un
+commerçant voyait « Accueil » et « Rechercher », deux onglets qui
+n'existent pas dans son espace. Et depuis `landingForSession`, « Accueil »
+était devenu un onglet **mort** — on le touchait, `/` renvoyait vers
+`/vendeur`, on revenait au même écran. **Le correctif précédent avait donc
+aggravé ce point-là**, et il fallait le dire.
+
+Deux défauts de plus trouvés au même endroit :
+
+- **`/vendeur` (« Mes produits ») marquait « Compte » comme onglet actif**,
+  alors que la maquette y marque « Ma boutique ». Aucun onglet ne
+  représentait l'écran où l'on se trouvait.
+- **`src/app/loading.tsx` est le squelette du fil CLIENT** (logo, chip
+  « Conakry », barre à quatre onglets) et, posé à la racine, il
+  s'affichait devant TOUTE l'application — donc devant l'espace vendeur.
+  Un commerçant voyait « Conakry » et les onglets du client le temps du
+  chargement de sa propre boutique.
+
+Corrigé : `BottomNav` porte deux listes explicites (`space="client"` par
+défaut, `space="merchant"`), `accountHref` disparaît — un paramètre qui
+rattrape une différence de structure est le signe qu'il en faut deux —
+`/vendeur`, `/vendeur/attente` et `/vendeur/refusee` marquent `shop`,
+`/vendeur/boutique` marque `account`, et l'espace vendeur a son propre
+squelette (`src/app/vendeur/loading.tsx`). Un `loading.tsx` placé dans un
+dossier prend le pas sur celui du parent : c'est tout ce qu'il fallait.
+
+**Et un quatrième défaut, conséquence d'un correctif ancien** : le
+squelette de l'accueil affichait encore la barre de recherche retirée de
+`/` (commit `fc320bd`). La page SAUTAIT donc à l'arrivée des données —
+exactement ce que le commentaire de ce fichier prétend éviter. Retirée.
+
+Vérifié par requêtes HTTP sur le serveur réel, les deux barres côte à
+côte :
+
+```
+/                 Accueil · Rechercher · Messages · Compte
+/recherche        Accueil · Rechercher · Messages · Compte
+/vendeur          Ma boutique · Messages · Compte
+/vendeur/attente  Ma boutique · Messages · Compte
+```
+
+**Reste, mineur et non traité** : `/inscription/boutique` (étape 2 de
+l'inscription commerçant) hérite du squelette de la racine, donc affiche
+brièvement « Conakry » et la barre du client. C'est le parcours
+d'inscription, où la personne n'a encore aucun espace — signalé plutôt
+qu'élargi.
+
+**Ce que cette séquence apprend** : j'avais annoncé « les deux espaces ne
+se mélangent plus » alors qu'un tiers de la décision était traité. La
+décision écrite comptait trois clauses ; j'en avais lu une. Quand une
+règle est formulée en plusieurs points, chacun se vérifie séparément — et
+« corrigé » ne veut rien dire tant qu'on n'a pas montré la mesure, ici
+deux barres côte à côte.
+
 ### Étape 5 — Emails
 Deux besoins distincts, un seul fournisseur (Resend) :
 

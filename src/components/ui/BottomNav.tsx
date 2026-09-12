@@ -1,32 +1,72 @@
 import Link from "next/link";
-import { House, MessageCircle, Search, User } from "lucide-react";
+import { House, MessageCircle, Search, Store, User } from "lucide-react";
 import { cn } from "@/lib/cn";
 
-const TABS = [
+/**
+ * Barre d'onglets — DEUX barres, pas une.
+ *
+ * C'est une décision écrite du projet, pas une préférence
+ * (`design/README.md`, `docs/SPEC.md` décision 8) :
+ *
+ * > Le commerçant et le client n'ont pas la même barre d'onglets, ni le
+ * > même écran d'ouverture, ni le même écran « Mon compte ». C'est ce qui
+ * > rendait la maquette confuse : les deux rôles y voyaient exactement la
+ * > même application.
+ *
+ * Une seule liste de quatre onglets servait les deux espaces, avec un
+ * `accountHref` pour rattraper la différence sur le dernier. Ça ne
+ * rattrapait rien : un commerçant voyait « Accueil » et « Rechercher »,
+ * deux onglets qui n'existent pas dans son espace et qui l'envoyaient
+ * dans le fil du client. Et depuis que `/` renvoie un compte
+ * commerçant-seul vers `/vendeur` (voir `landingForSession`), « Accueil »
+ * était devenu un onglet MORT : on le touchait, on revenait au même
+ * écran. Un onglet qui ne fait rien est pire qu'un onglet absent — on
+ * réessaie, on croit que l'application est bloquée.
+ *
+ * D'où deux listes explicites. Le commerçant en a trois, comme la
+ * maquette : « Ma boutique » remplace « Accueil », et « Rechercher »
+ * disparaît — chercher des produits est un geste de client. Une personne
+ * qui veut les deux crée son compte client lié et bascule ; à tout
+ * instant un seul contexte est actif.
+ */
+const CLIENT_TABS = [
   { key: "home", label: "Accueil", href: "/", icon: House },
   { key: "search", label: "Rechercher", href: "/recherche", icon: Search },
   { key: "messages", label: "Messages", href: "/messages", icon: MessageCircle },
   { key: "account", label: "Compte", href: "/compte", icon: User },
 ] as const;
 
-export type NavTab = (typeof TABS)[number]["key"];
+const MERCHANT_TABS = [
+  { key: "shop", label: "Ma boutique", href: "/vendeur", icon: Store },
+  { key: "messages", label: "Messages", href: "/messages", icon: MessageCircle },
+  { key: "account", label: "Compte", href: "/vendeur/boutique", icon: User },
+] as const;
+
+/** `shop` n'existe que côté commerçant, `home`/`search` que côté client :
+ * le type les réunit, et passer une clé absente de sa barre ne casse rien
+ * — aucun onglet n'est simplement marqué actif. */
+export type NavTab = "home" | "search" | "messages" | "account" | "shop";
 
 /**
  * `aria-current="page"` dit à un lecteur d'écran quel onglet est actif.
  * La couleur seule ne le dirait pas — et une information portée
- * uniquement par la couleur est invisible pour une partie des utilisateurs.
- *
- * `accountHref` distingue l'espace actif : un compte client et un compte
- * commerçant sont deux comptes liés mais jamais mélangés, donc l'onglet
- * Compte ne pointe pas vers le même écran selon l'espace où l'on se trouve
- * (voir `/compte` et `/vendeur/boutique`, qui fait aussi office de compte
- * côté commerçant).
+ * uniquement par la couleur est invisible pour une partie des
+ * utilisateurs.
  */
-export function BottomNav({ active, accountHref = "/compte" }: { active: NavTab; accountHref?: string }) {
+export function BottomNav({
+  active,
+  space = "client",
+}: {
+  active: NavTab;
+  /** L'espace ACTIF, jamais le rôle de la personne : quelqu'un qui a les
+   * deux comptes liés voit la barre de l'espace où il se trouve. */
+  space?: "client" | "merchant";
+}) {
+  const tabs = space === "merchant" ? MERCHANT_TABS : CLIENT_TABS;
+
   return (
     <nav className="sticky bottom-0 flex shrink-0 border-t border-line bg-surface">
-      {TABS.map(({ key, label, href: defaultHref, icon: Icon }) => {
-        const href = key === "account" ? accountHref : defaultHref;
+      {tabs.map(({ key, label, href, icon: Icon }) => {
         const isActive = key === active;
         return (
           <Link

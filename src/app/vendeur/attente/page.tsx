@@ -65,7 +65,7 @@ export default async function PendingShopPage() {
         </Section>
       </ScreenBody>
 
-      <BottomNav active="account" accountHref="/vendeur/boutique" />
+      <BottomNav active="shop" space="merchant" />
     </Screen>
   );
 }

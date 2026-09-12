@@ -74,14 +74,14 @@ export const getMyProfiles = cache(async (supabase: SupabaseClient<Database>): P
  * l'écran de CONNEXION alors qu'il était déjà connecté. Et `signInAction`
  * renvoyant vers `/`, il pouvait tourner en rond.
  *
- * La décision d'aiguillage vit ici, pas dans `BottomNav` : l'onglet a bien
- * un `accountHref`, mais les écrans PUBLICS (`/`, `/recherche`,
- * `/boutique/[id]`, et `loading.tsx` qui est synchrone) ne peuvent pas le
- * calculer sans résoudre la session — un aller-retour réseau ajouté aux
- * pages les plus consultées, et justement celles qui n'ont aucun besoin
- * de savoir qui regarde. Corriger la DESTINATION plutôt que chaque
- * appelant règle aussi le cas d'une URL mise en favori ou d'un lien
- * partagé, qui ne passent par aucun `BottomNav`.
+ * La décision d'aiguillage vit ici, pas dans `BottomNav`. Cette barre
+ * porte désormais deux listes d'onglets (client et commerçant, décision de
+ * `design/README.md`), mais les écrans PUBLICS du catalogue rendent
+ * légitimement celle du client — ce sont des écrans de client — et
+ * `loading.tsx`, synchrone, ne peut de toute façon pas résoudre une
+ * session. Corriger la DESTINATION plutôt que chaque appelant règle en
+ * plus le cas d'une URL mise en favori ou d'un lien partagé, qui ne
+ * passent par aucune barre d'onglets.
  *
  * Gratuit : `getMyProfiles` est mis en cache pour la durée de la requête,
  * et l'appelant l'a déjà appelée juste avant via `getMyProfile`.

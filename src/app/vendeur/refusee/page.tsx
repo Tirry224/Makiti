@@ -54,7 +54,7 @@ export default async function RejectedShopPage() {
         </Section>
       </ScreenBody>
 
-      <BottomNav active="account" accountHref="/vendeur/boutique" />
+      <BottomNav active="shop" space="merchant" />
     </Screen>
   );
 }
