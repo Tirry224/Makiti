@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/Card";
 import { Screen, ScreenBody, Section } from "@/components/ui/Screen";
 import { SectionLabel } from "@/components/ui/SectionLabel";
 import { TopBar, Wordmark } from "@/components/ui/TopBar";
+import { createClient } from "@/lib/supabase/server";
 
 /**
  * Index des écrans — page de TRAVAIL, pas de produit.
@@ -18,67 +19,101 @@ import { TopBar, Wordmark } from "@/components/ui/TopBar";
  * de retirer finit toujours par être trouvée par un utilisateur.
  */
 
-const GROUPS: { title: string; screens: [string, string, string?][] }[] = [
-  {
-    title: "Client",
-    screens: [
-      ["1", "Fil d'accueil", "/"],
-      ["2", "Fil — ville sans produit", "/?ville=Boké"],
-      ["3", "Fil — chargement", undefined],
-      ["4", "Fil — hors ligne", undefined],
-      ["5", "Recherche", "/recherche?q=telephone"],
-      ["6", "Recherche — aucun résultat", "/recherche?q=frigo"],
-      ["7", "Fiche produit", "/produit/p-riz"],
-      ["8", "Fiche produit — vendu", "/produit/p-huile"],
-      ["9", "Galerie photo", "/produit/p-riz/photos"],
-      ["10", "Signaler un produit", "/produit/p-riz/signaler"],
-      ["11", "Boutique publique", "/boutique/m-aissatou"],
-    ],
-  },
-  {
-    title: "Compte & accès",
-    screens: [
-      ["12", "Inscription — choix du rôle", "/inscription"],
-      ["13", "Inscription — ma boutique", "/inscription/boutique"],
-      ["14", "Connexion", "/connexion"],
-      ["15", "Mot de passe oublié", "/mot-de-passe-oublie"],
-      ["16", "Compte requis", "/produit/p-riz/contacter"],
-      ["17", "Mon compte", "/compte"],
-      ["18", "Mes informations", "/compte/informations"],
-      ["19", "Compte suspendu", "/compte/suspendu"],
-    ],
-  },
-  {
-    title: "Commerçant",
-    screens: [
-      ["20", "Boutique en attente", "/vendeur/attente"],
-      ["21", "Boutique refusée", "/vendeur/refusee"],
-      ["22", "Mes produits", "/vendeur"],
-      ["23", "Mes produits — vide", "/vendeur?etat=vide"],
-      ["24", "Ajouter un produit", "/vendeur/produits/nouveau"],
-      ["25", "Actions produit", "/vendeur/produits/p-riz/actions"],
-      ["26", "Modifier ma boutique", "/vendeur/boutique"],
-    ],
-  },
-  {
-    title: "Messagerie",
-    screens: [
-      ["27", "Messages — commerçant", "/messages"],
-      ["28", "Messages — client", "/messages?vue=client"],
-      ["29", "Messages — vide", "/messages?vue=vide"],
-      ["30", "Fil de discussion", "/messages/t-mariama"],
-      ["31", "Citer un produit", "/messages/t-mariama/citer"],
-      ["32", "Actions conversation", "/messages/t-mariama/actions"],
-    ],
-  },
-  {
-    title: "Transverse",
-    screens: [
-      ["33", "Page introuvable", "/adresse-qui-nexiste-pas"],
-      ["—", "Design system", "/styleguide"],
-    ],
-  },
-];
+/**
+ * Identifiants RÉELS lus en base, jamais codés en dur.
+ *
+ * Neuf liens de cette page pointaient sur `p-riz`, `p-huile`,
+ * `m-aissatou`, `t-mariama` — les identifiants de l'ancien `src/lib/mock.ts`.
+ * Ils étaient donc morts depuis que l'application lit la vraie base : le
+ * jeu de démonstration créait des UUID (`c0000000-…`), pas ces noms. Un
+ * index d'écrans dont un tiers des liens mène à « Cette page n'existe
+ * pas » ne sert pas à relire les écrans, il fait croire que
+ * l'application est cassée.
+ *
+ * Quand un enregistrement manque (base vide, aucun fil de discussion
+ * encore créé), la ligne dit QUOI faire pour l'obtenir au lieu d'offrir
+ * un lien qui échoue. C'est l'état normal d'une base neuve, pas une
+ * erreur.
+ */
+type ScreenIds = {
+  produit?: string;
+  produitVendu?: string;
+  boutique?: string;
+  conversation?: string;
+};
+
+function screenGroups(ids: ScreenIds): {
+  title: string;
+  /* [numéro, intitulé, lien?, ce qui manque pour l'obtenir?] */
+  screens: [string, string, string?, string?][];
+}[] {
+  const MANQUE_PRODUIT = "publiez un produit";
+  const MANQUE_VENDU = "marquez un produit vendu";
+  const MANQUE_BOUTIQUE = "créez une boutique validée";
+  const MANQUE_FIL = "écrivez à un vendeur";
+
+  return [
+    {
+      title: "Client",
+      screens: [
+        ["1", "Fil d'accueil", "/"],
+        ["2", "Fil — ville sans produit", "/?ville=Boké"],
+        ["3", "Fil — chargement", undefined],
+        ["4", "Fil — hors ligne", undefined],
+        ["5", "Recherche", "/recherche?q=telephone"],
+        ["6", "Recherche — aucun résultat", "/recherche?q=frigo"],
+        ["7", "Fiche produit", ids.produit && `/produit/${ids.produit}`, MANQUE_PRODUIT],
+        ["8", "Fiche produit — vendu", ids.produitVendu && `/produit/${ids.produitVendu}`, MANQUE_VENDU],
+        ["9", "Galerie photo", ids.produit && `/produit/${ids.produit}/photos`, MANQUE_PRODUIT],
+        ["10", "Signaler un produit", ids.produit && `/produit/${ids.produit}/signaler`, MANQUE_PRODUIT],
+        ["11", "Boutique publique", ids.boutique && `/boutique/${ids.boutique}`, MANQUE_BOUTIQUE],
+      ],
+    },
+    {
+      title: "Compte & accès",
+      screens: [
+        ["12", "Inscription — choix du rôle", "/inscription"],
+        ["13", "Inscription — ma boutique", "/inscription/boutique"],
+        ["14", "Connexion", "/connexion"],
+        ["15", "Mot de passe oublié", "/mot-de-passe-oublie"],
+        ["16", "Compte requis", ids.produit && `/produit/${ids.produit}/contacter`, MANQUE_PRODUIT],
+        ["17", "Mon compte", "/compte"],
+        ["18", "Mes informations", "/compte/informations"],
+        ["19", "Compte suspendu", "/compte/suspendu"],
+      ],
+    },
+    {
+      title: "Commerçant",
+      screens: [
+        ["20", "Boutique en attente", "/vendeur/attente"],
+        ["21", "Boutique refusée", "/vendeur/refusee"],
+        ["22", "Mes produits", "/vendeur"],
+        ["23", "Mes produits — vide", "/vendeur?etat=vide"],
+        ["24", "Ajouter un produit", "/vendeur/produits/nouveau"],
+        ["25", "Actions produit", ids.produit && `/vendeur/produits/${ids.produit}/actions`, MANQUE_PRODUIT],
+        ["26", "Modifier ma boutique", "/vendeur/boutique"],
+      ],
+    },
+    {
+      title: "Messagerie",
+      screens: [
+        ["27", "Messages — commerçant", "/messages"],
+        ["28", "Messages — client", "/messages?vue=client"],
+        ["29", "Messages — vide", "/messages?vue=vide"],
+        ["30", "Fil de discussion", ids.conversation && `/messages/${ids.conversation}`, MANQUE_FIL],
+        ["31", "Citer un produit", ids.conversation && `/messages/${ids.conversation}/citer`, MANQUE_FIL],
+        ["32", "Actions conversation", ids.conversation && `/messages/${ids.conversation}/actions`, MANQUE_FIL],
+      ],
+    },
+    {
+      title: "Transverse",
+      screens: [
+        ["33", "Page introuvable", "/adresse-qui-nexiste-pas"],
+        ["—", "Design system", "/styleguide"],
+      ],
+    },
+  ];
+}
 
 /* Rendu à la requête, pas au build : sans ça, le résultat de `notFound()`
    était figé dans une page statique mise en cache, et la garde
@@ -126,8 +161,30 @@ export const dynamic = "force-dynamic";
  *
  * À supprimer pour de bon quand l'étape 1 sera terminée.
  */
-export default function ScreensIndexPage() {
+export default async function ScreensIndexPage() {
   if (process.env.NODE_ENV === "production") notFound();
+
+  /* Quatre lectures indépendantes, lancées ensemble : aucune n'attend le
+     résultat d'une autre. Les conversations ne remonteront que pour une
+     session qui en a (le RLS s'en charge) — normal, pas une erreur. */
+  const supabase = await createClient();
+  const [produit, produitVendu, boutique, conversation] = await Promise.all([
+    supabase.from("products").select("id").eq("status", "active").limit(1).maybeSingle(),
+    supabase.from("products").select("id").eq("status", "sold").limit(1).maybeSingle(),
+    supabase.from("merchants").select("id").eq("status", "approved").limit(1).maybeSingle(),
+    supabase.from("conversations").select("id").limit(1).maybeSingle(),
+  ]);
+
+  const groups = screenGroups({
+    produit: produit.data?.id,
+    produitVendu: produitVendu.data?.id,
+    boutique: boutique.data?.id,
+    conversation: conversation.data?.id,
+  });
+
+  const liensManquants = groups
+    .flatMap((g) => g.screens)
+    .filter(([, , href, manque]) => !href && manque).length;
 
   return (
     <Screen>
@@ -136,17 +193,27 @@ export default function ScreensIndexPage() {
       <ScreenBody>
         <Section className="gap-2 pb-0">
           <p className="rounded-lg bg-warn-soft px-3.5 py-3 text-xs leading-normal text-warn-ink">
-            Page de travail, à supprimer quand l&apos;authentification existera. Les écrans 3 et 4
-            n&apos;ont pas de lien : ils s&apos;affichent tout seuls, l&apos;un pendant le
-            chargement des données, l&apos;autre quand celui-ci échoue.
+            Page de travail, à supprimer avant le lancement. Les écrans 3 et 4 n&apos;ont pas de
+            lien : ils s&apos;affichent tout seuls, l&apos;un pendant le chargement des données,
+            l&apos;autre quand celui-ci échoue.
+            {liensManquants > 0 ? (
+              <>
+                {" "}
+                <strong className="font-semibold">
+                  {liensManquants} écran{liensManquants > 1 ? "s" : ""} sans lien
+                </strong>{" "}
+                : ils ont besoin d&apos;un enregistrement réel en base, et chaque ligne dit lequel.
+                La base est neuve — créez une boutique et un produit, les liens apparaîtront.
+              </>
+            ) : null}
           </p>
         </Section>
 
-        {GROUPS.map((group) => (
+        {groups.map((group) => (
           <Section key={group.title} className="gap-2">
             <SectionLabel>{group.title}</SectionLabel>
             <Card className="px-3.5">
-              {group.screens.map(([number, label, href]) => {
+              {group.screens.map(([number, label, href, manque]) => {
                 const inner = (
                   <>
                     <span className="w-6 shrink-0 text-sm text-ink-soft tabular-nums">{number}</span>
@@ -154,7 +221,11 @@ export default function ScreensIndexPage() {
                     {href ? (
                       <ChevronRight size={18} strokeWidth={2} className="shrink-0 text-ink-soft" aria-hidden />
                     ) : (
-                      <span className="text-2xs text-ink-soft">automatique</span>
+                      /* Trois états, pas deux : un écran qui s'affiche tout
+                         seul (« automatique ») et un écran qui attend une
+                         vraie donnée ne se ressemblent pas. Dire lequel
+                         manque évite de chercher un bug qui n'existe pas. */
+                      <span className="shrink-0 text-2xs text-ink-soft">{manque ?? "automatique"}</span>
                     )}
                   </>
                 );

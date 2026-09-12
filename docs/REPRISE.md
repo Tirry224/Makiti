@@ -532,6 +532,57 @@ bloquant, les deux premiers sont visibles par un utilisateur :
 - **Aucun test automatisé côté front.** C'est le déséquilibre de fond
   rappelé en tête de section, et il n'est pas corrigé ici.
 
+### Étape 4 ter — Jeu de démonstration supprimé — FAIT le 2026-09-12
+
+Fait à la demande du porteur du projet, pour tester avec de vraies
+données. `delete from auth.users where email like '%@demo.makiti.local';`
+exécutée sur le projet Supabase `Makiti`.
+
+Inventorié AVANT de supprimer, pas après : 2 comptes de démonstration
+(`kaloum@`, `aissatou@` — 2 boutiques, 6 produits, 7 photos) et **2 vrais
+comptes** (`boubatirry224@`, `bouliwelltirry@`, profils `client`, aucune
+boutique, aucun produit). La commande ne visait que le domaine
+`.demo.makiti.local` : les deux vrais comptes sont intacts, vérifié après
+coup.
+
+État de la base maintenant : 2 utilisateurs, 2 profils client, **0
+boutique, 0 produit, 0 conversation, 0 message, 0 signalement, 0
+fichier**. Les 12 villes et 10 catégories restent — ce sont des données de
+RÉFÉRENCE, pas de la démonstration : les supprimer casserait
+l'inscription d'une boutique.
+
+Pour remettre un jeu de démonstration : ré-exécuter
+`supabase/seed_demo.sql`. Le fichier reste dans le dépôt exprès.
+
+**Trouvé en faisant ce ménage — `/ecrans` avait neuf liens morts depuis
+longtemps.** Ils pointaient sur `p-riz`, `p-huile`, `m-aissatou`,
+`t-mariama` : les identifiants de l'ancien `src/lib/mock.ts`. Or le jeu de
+démonstration créait des UUID (`c0000000-…`), et les routes attendent
+`products.id` / `merchants.id` / `conversations.id`. **Ces liens étaient
+donc déjà cassés avant cette suppression**, depuis le branchement sur la
+vraie base — et personne ne l'avait vu, puisque personne n'avait encore
+ouvert la page. Exactement ce que l'étape 1 est censée révéler.
+
+Corrigé : `/ecrans` lit maintenant de vrais identifiants en base (un
+produit actif, un produit vendu, une boutique approuvée, une
+conversation), et quand l'enregistrement manque la ligne affiche **ce
+qu'il faut créer** pour l'obtenir (« publiez un produit », « écrivez à un
+vendeur »…) au lieu d'un lien qui échoue. Trois états par ligne, pas
+deux : un écran qui s'affiche tout seul et un écran qui attend une donnée
+ne se ressemblent pas. Vérifié contre la base vide : 10 lignes sans lien,
+2 « automatique », zéro lien mort.
+
+**Ce qui n'est PAS de la donnée fictive et reste en place, volontairement :**
+
+- `src/lib/mock.ts` sert encore deux choses légitimes : la galerie
+  `/styleguide` (page de travail, hors production) et `reportReasons`, la
+  liste des motifs de signalement — une vraie liste de configuration, pas
+  une donnée inventée. Elle est mal RANGÉE (son nom de fichier la fait
+  passer pour fausse), pas fausse. À déplacer un jour hors de `mock.ts`.
+- Les `placeholder` des formulaires (« mariama@exemple.com »,
+  « Mariama Diallo ») sont des indications de saisie, jamais envoyées ni
+  enregistrées. Les retirer dégraderait l'interface sans rien nettoyer.
+
 ### Étape 5 — Emails
 Deux besoins distincts, un seul fournisseur (Resend) :
 
