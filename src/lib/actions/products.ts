@@ -112,6 +112,30 @@ export async function updateProductAction(_prevState: ActionState | null, formDa
 
   const supabase = await createClient();
 
+  /* Un produit PUBLIÉ doit garder au moins une photo. Sans ce garde-fou,
+     le remplacement des photos plus bas (`delete` de toutes les lignes
+     puis `insert` de la liste finale) sortait le produit du catalogue
+     public en le laissant `active` — une vignette vide dans le fil.
+     Vérifié en base, puis fermé par un trigger
+     (0011_active_product_keeps_an_image.sql).
+
+     Pourquoi refuser ICI alors que la base protège déjà l'invariant : le
+     trigger repasse le produit en brouillon, ce qui est le bon état mais
+     une mauvaise surprise. Le commerçant a cliqué « Enregistrer », pas
+     « Dépublier » — il verrait son annonce disparaître du catalogue sans
+     jamais l'avoir demandé. La base garantit l'invariant ; ce message
+     explique. Les deux ont leur rôle, aucun ne remplace l'autre. */
+  if (fields.imagePaths.length === 0) {
+    const { data: current } = await supabase
+      .from("products")
+      .select("status")
+      .eq("id", productId)
+      .maybeSingle();
+    if (current?.status === "active") {
+      return { error: "Gardez au moins une photo : sans photo, votre produit ne peut pas rester publié." };
+    }
+  }
+
   const { error: updateError } = await supabase
     .from("products")
     .update({
@@ -141,12 +165,54 @@ export async function updateProductAction(_prevState: ActionState | null, formDa
   redirect("/vendeur");
 }
 
+/**
+ * Retour vers « Mes produits », en portant un message d'erreur dans l'URL
+ * quand il y en a un. Les lignes de la feuille d'actions sont de vraies
+ * `<form>` de composants serveur (pas de `useActionState`), pour continuer
+ * à fonctionner sans JavaScript : l'URL est donc le seul canal qui
+ * survive à la redirection. `/vendeur` affiche le message avec `Notice`.
+ */
+function backToSeller(errorMessage?: string): never {
+  redirect(errorMessage ? `/vendeur?erreur=${encodeURIComponent(errorMessage)}` : "/vendeur");
+}
+
+/**
+ * Changement de statut : vendu, masqué, republié.
+ *
+ * Deux façons distinctes d'échouer, et une seule était traitée
+ * jusqu'ici — aucune des deux, en réalité, puisque le résultat n'était
+ * pas lu du tout :
+ *
+ * 1. **Une erreur remontée** (`error`) : c'est le cas de « Republier »
+ *    quand la boutique n'est plus approuvée — le trigger
+ *    `products_check_publishable` lève une exception, avec un message
+ *    déjà écrit en français.
+ * 2. **Aucune erreur, mais aucune ligne touchée** : quand le RLS filtre
+ *    la ligne, PostgREST ne renvoie PAS d'erreur, il renvoie un succès
+ *    portant zéro ligne. « Pas d'erreur » ne veut donc jamais dire
+ *    « c'est fait ». D'où le `.select("id")` : c'est la seule façon de
+ *    savoir ce qui a réellement changé.
+ *
+ * Sans ces deux vérifications, un commerçant cliquait « Republier »,
+ * revenait sur « Mes produits », voyait son produit toujours masqué, et
+ * concluait que l'application était cassée. Il n'avait pas tort.
+ */
 async function setProductStatus(formData: FormData, status: "active" | "sold" | "hidden") {
   const productId = String(formData.get("productId") ?? "");
-  if (!productId) return;
+  if (!productId) backToSeller("Formulaire invalide, rechargez la page.");
+
   const supabase = await createClient();
-  await supabase.from("products").update({ status }).eq("id", productId);
-  redirect("/vendeur");
+  const { data, error } = await supabase
+    .from("products")
+    .update({ status })
+    .eq("id", productId)
+    .select("id");
+
+  if (error) backToSeller(error.message);
+  if (!data || data.length === 0) {
+    backToSeller("Action impossible : ce produit n'existe plus, ou il n'est pas le vôtre.");
+  }
+  backToSeller();
 }
 
 /** Marquer vendu — le produit reste visible, barré (écran 25). */
@@ -171,8 +237,18 @@ export async function republishProductAction(formData: FormData) {
  * disparaît mais pas les messages qui le citaient. */
 export async function deleteProductAction(formData: FormData) {
   const productId = String(formData.get("productId") ?? "");
-  if (!productId) return;
+  if (!productId) backToSeller("Formulaire invalide, rechargez la page.");
+
   const supabase = await createClient();
-  await supabase.from("products").delete().eq("id", productId);
-  redirect("/vendeur");
+  const { data, error } = await supabase.from("products").delete().eq("id", productId).select("id");
+
+  if (error) backToSeller(error.message);
+  // Même raison que `setProductStatus` : une suppression filtrée par le
+  // RLS ne lève aucune erreur, elle supprime simplement zéro ligne. Se
+  // taire ici, sur une action irréversible, serait le pire endroit du
+  // projet pour le faire.
+  if (!data || data.length === 0) {
+    backToSeller("Suppression impossible : ce produit n'existe plus, ou il n'est pas le vôtre.");
+  }
+  backToSeller();
 }

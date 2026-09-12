@@ -5,7 +5,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { Screen, ScreenBody, Section } from "@/components/ui/Screen";
 import { TopBar, Wordmark } from "@/components/ui/TopBar";
 import { createClient } from "@/lib/supabase/server";
-import { getMyProfile } from "@/lib/data/session";
+import { clientSpaceFallback, getMyProfile } from "@/lib/data/session";
 
 /**
  * Écran 19 — compte suspendu.
@@ -22,7 +22,7 @@ import { getMyProfile } from "@/lib/data/session";
 export default async function SuspendedPage() {
   const supabase = await createClient();
   const profile = await getMyProfile(supabase, "client");
-  if (!profile) redirect("/connexion");
+  if (!profile) redirect(await clientSpaceFallback(supabase));
   if (!profile.isSuspended) redirect("/compte");
 
   return (

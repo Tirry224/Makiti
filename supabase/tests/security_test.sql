@@ -648,5 +648,53 @@ select pg_temp.check('un visiteur non connecté ne voit pas un brouillon précis
   (select count(*) from public.products where id = 'cccccccc-0000-0000-0000-000000000004') = 0);
 reset role;
 
+-- =====================================================================
+-- 21. Un produit publié garde au moins une photo
+-- =====================================================================
+-- `products_check_publishable` (0002) refuse la publication d'un produit
+-- sans photo, mais il est posé sur `products` : il ne voit pas les photos
+-- partir par l'autre table. Le code applicatif passe justement par là —
+-- `updateProductAction` remplace la liste des photos par un `delete` de
+-- toutes les lignes suivi d'un `insert`. Un produit actif pouvait donc se
+-- retrouver dans le catalogue public sans aucune vignette.
+--
+-- Ces trois vérifications sont ce qui empêche 0011 de redevenir
+-- décoratif : elles testent l'invariant (« publié ⇒ au moins une
+-- photo »), pas l'implémentation du trigger.
+insert into public.products (id, merchant_id, category_id, title, price_gnf)
+values ('cccccccc-0000-0000-0000-000000000005', 'aaaaaaaa-0000-0000-0000-000000000001', 3, 'Produit deux photos', 90000);
+
+insert into public.product_images (product_id, storage_path, position) values
+  ('cccccccc-0000-0000-0000-000000000005', 'p5/a.webp', 0),
+  ('cccccccc-0000-0000-0000-000000000005', 'p5/b.webp', 1);
+
+update public.products set status = 'active' where id = 'cccccccc-0000-0000-0000-000000000005';
+
+-- Retirer UNE photo sur deux ne dépublie rien : il en reste une.
+delete from public.product_images
+ where product_id = 'cccccccc-0000-0000-0000-000000000005' and storage_path = 'p5/b.webp';
+
+select pg_temp.check('retirer une photo sur deux laisse le produit publié',
+  (select status from public.products where id = 'cccccccc-0000-0000-0000-000000000005') = 'active');
+
+-- Retirer la DERNIÈRE le dépublie. Un brouillon est récupérable par son
+-- commerçant ; une vignette vide dans le fil public, non.
+delete from public.product_images where product_id = 'cccccccc-0000-0000-0000-000000000005';
+
+select pg_temp.check('retirer la derniere photo repasse le produit en brouillon',
+  (select status from public.products where id = 'cccccccc-0000-0000-0000-000000000005') = 'draft');
+
+-- Et la suppression d'un produit ne doit pas échouer à cause de ce
+-- trigger : ses photos partent en cascade, donc il se déclenche là aussi,
+-- sur une ligne `products` en cours de suppression.
+insert into public.product_images (product_id, storage_path, position)
+values ('cccccccc-0000-0000-0000-000000000005', 'p5/c.webp', 0);
+update public.products set status = 'active' where id = 'cccccccc-0000-0000-0000-000000000005';
+delete from public.products where id = 'cccccccc-0000-0000-0000-000000000005';
+
+select pg_temp.check('supprimer un produit publie reste possible (cascade des photos)',
+  (select count(*) from public.products where id = 'cccccccc-0000-0000-0000-000000000005') = 0);
+
+
 \echo ''
 \echo '===== TOUS LES TESTS SONT PASSES ====='

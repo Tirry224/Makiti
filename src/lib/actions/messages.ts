@@ -9,6 +9,21 @@ import type { ActionState } from "@/lib/actions/auth";
 import type { Database } from "@/lib/database.types";
 
 /**
+ * Retour vers un fil, en portant un message dans l'URL. Les lignes de la
+ * feuille d'actions (écran 32) sont de vraies `<form>` de composants
+ * serveur, sans `useActionState` : elles fonctionnent donc sans
+ * JavaScript, et l'URL est le seul canal qui survive à la redirection.
+ * `/messages/[id]` affiche le message avec `Notice`.
+ */
+function backToThread(conversationId: string, errorMessage?: string, successMessage?: string): never {
+  const params = new URLSearchParams();
+  if (errorMessage) params.set("erreur", errorMessage);
+  if (successMessage) params.set("info", successMessage);
+  const query = params.toString();
+  redirect(`/messages/${conversationId}${query ? `?${query}` : ""}`);
+}
+
+/**
  * Ouvrir (ou retrouver) le fil avec une boutique — depuis « Contacter le
  * vendeur » (écran 16/30). Appelée directement depuis le composant serveur
  * de la page, pas depuis un formulaire : il n'y a pas de geste
@@ -76,14 +91,26 @@ export async function sendMessageAction(_prevState: ActionState | null, formData
  * silence dans l'absolu ». */
 export async function blockPeerAction(formData: FormData) {
   const conversationId = String(formData.get("conversationId") ?? "");
-  if (!conversationId) return;
+  if (!conversationId) redirect("/messages");
 
   const supabase = await createClient();
   const context = await getThreadContext(supabase, conversationId);
-  if (!context) return;
+  if (!context) backToThread(conversationId, "Conversation introuvable.");
 
-  await supabase.from("conversations").update({ blocked_by: context.myParticipantId }).eq("id", conversationId);
-  redirect(`/messages/${conversationId}`);
+  const { data, error } = await supabase
+    .from("conversations")
+    .update({ blocked_by: context.myParticipantId })
+    .eq("id", conversationId)
+    .select("id");
+
+  // Même raison que les actions produit : le RLS ne renvoie pas d'erreur
+  // quand il écarte une ligne, il renvoie un succès portant zéro ligne.
+  // « Bloquer » est exactement le genre d'action qu'il ne faut pas croire
+  // faite sans preuve — quelqu'un compte dessus pour ne plus être
+  // contacté.
+  if (error) backToThread(conversationId, error.message);
+  if (!data || data.length === 0) backToThread(conversationId, "Blocage impossible. Réessayez.");
+  backToThread(conversationId);
 }
 
 /**
@@ -95,19 +122,23 @@ export async function blockPeerAction(formData: FormData) {
 export async function reportConversationAction(formData: FormData) {
   const conversationId = String(formData.get("conversationId") ?? "");
   const reason = String(formData.get("reason") ?? "Signalement depuis une conversation");
-  if (!conversationId) return;
+  if (!conversationId) redirect("/messages");
 
   const supabase = await createClient();
   const context = await getThreadContext(supabase, conversationId);
-  if (!context) return;
+  if (!context) backToThread(conversationId, "Conversation introuvable.");
 
-  await supabase.from("reports").insert({
+  const { error } = await supabase.from("reports").insert({
     reporter_id: context.myParticipantId,
     target_type: "conversation",
     target_id: conversationId,
     reason,
   });
-  redirect(`/messages/${conversationId}`);
+
+  // Un signalement avalé en silence est pire qu'un bouton absent : la
+  // personne croit l'équipe prévenue et n'en reparle jamais.
+  if (error) backToThread(conversationId, error.message);
+  backToThread(conversationId, undefined, "Signalement envoyé. Notre équipe va lire cette conversation.");
 }
 
 /** Signaler un produit — écran 10. N'importe lequel de mes profils actifs

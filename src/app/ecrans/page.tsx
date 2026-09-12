@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { Card } from "@/components/ui/Card";
@@ -79,7 +80,55 @@ const GROUPS: { title: string; screens: [string, string, string?][] }[] = [
   },
 ];
 
+/* Rendu à la requête, pas au build : sans ça, le résultat de `notFound()`
+   était figé dans une page statique mise en cache, et la garde
+   `NODE_ENV` n'était plus qu'un souvenir du build.
+
+   Ce que ce réglage ne corrige PAS, vérifié au `curl` et non supposé : la
+   réponse reste un **200** portant le contenu « Cette page n'existe
+   pas », pas un vrai 404. C'est documenté et attendu en Next 16
+   (`node_modules/next/dist/docs/01-app/03-api-reference/04-functions/not-found.md`,
+   section « Calling notFound() after streaming has started ») : le
+   `loading.tsx` de la racine ouvre une frontière `<Suspense>` sur chaque
+   route, donc la réponse a commencé à partir avant que la garde ne soit
+   évaluée — et un statut ne se change plus une fois le flux ouvert.
+
+   Ce que Next fait à la place, et qui suffit ici : il injecte
+   `<meta name="robots" content="noindex">`, vérifié présent sur cette
+   adresse et absent des pages légitimes. Le risque réel — une page de
+   travail interne trouvée par un moteur de recherche — est donc fermé.
+
+   Pour un vrai 404, il faudrait déplacer la garde dans `proxy` (le
+   remplaçant de `middleware`, cf. l'avertissement de dépréciation au
+   build), qui s'exécute AVANT le flux. À faire avec cette migration, pas
+   au milieu d'une correction de bugs. */
+export const dynamic = "force-dynamic";
+
+/**
+ * Page de TRAVAIL : accessible en développement, introuvable en
+ * production.
+ *
+ * `README` et `docs/REPRISE.md` prévoyaient de la supprimer « quand
+ * l'authentification existera » — c'est chose faite depuis le
+ * 2026-09-11, et pourtant le build la prérendait toujours (`○ /ecrans`),
+ * donc elle partait en ligne, ouverte à tous.
+ *
+ * La supprimer maintenant serait quand même une erreur : l'étape 1 de
+ * `docs/REPRISE.md` — ouvrir les 33 écrans dans un navigateur, la
+ * première chose qui reste à faire sur ce projet — se fait précisément
+ * depuis ici. On ne jette pas l'outil la veille de s'en servir.
+ *
+ * D'où ce `notFound()` conditionnel plutôt qu'un `rm` : l'outil reste
+ * entier en local, et l'adresse renvoie la page « Cette page n'existe
+ * pas » en production, comme n'importe quelle URL inventée. Le test
+ * s'évalue au build (`NODE_ENV` vaut alors `production`), donc rien n'est
+ * décidé à chaud à chaque visite.
+ *
+ * À supprimer pour de bon quand l'étape 1 sera terminée.
+ */
 export default function ScreensIndexPage() {
+  if (process.env.NODE_ENV === "production") notFound();
+
   return (
     <Screen>
       <TopBar title={<Wordmark />} right={<span className="text-sm text-ink-soft">33 écrans</span>} />

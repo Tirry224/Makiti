@@ -5,6 +5,7 @@ import { BottomNav } from "@/components/ui/BottomNav";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Notice } from "@/components/ui/Notice";
 import { Screen, ScreenBody, ScreenFooter, Section } from "@/components/ui/Screen";
 import { SectionLabel } from "@/components/ui/SectionLabel";
 import { TopBar } from "@/components/ui/TopBar";
@@ -20,7 +21,15 @@ import { getMyMerchant, getMerchantProducts } from "@/lib/data/merchants";
  * l'écran qui explique pourquoi — voir `/vendeur/attente` et
  * `/vendeur/refusee`. Seule une boutique approuvée voit son catalogue.
  */
-export default async function SellerPage() {
+export default async function SellerPage({
+  searchParams,
+}: {
+  /* `erreur` est posé par les actions de `src/lib/actions/products.ts`
+     quand l'une d'elles échoue : elles redirigent ici plutôt que de se
+     taire. Voir `Notice` pour pourquoi le message passe par l'URL. */
+  searchParams: Promise<{ erreur?: string }>;
+}) {
+  const { erreur } = await searchParams;
   const supabase = await createClient();
   const merchant = await getMyMerchant(supabase);
   if (!merchant) redirect("/inscription/boutique");
@@ -50,6 +59,8 @@ export default async function SellerPage() {
       />
 
       <ScreenBody>
+        {erreur ? <Notice>{erreur}</Notice> : null}
+
         {catalogue.length === 0 ? (
           <EmptyState
             icon={Plus}

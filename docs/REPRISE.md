@@ -151,7 +151,7 @@ supposé (`supabase/tests/README.md` donne la commande). C'est la seule
 propriété qui compte pour une suite de migrations, et c'est celle qui
 casse le plus discrètement.
 
-`supabase/tests/` — 46 tests de sécurité, rejouables sur un PostgreSQL
+`supabase/tests/` — 49 tests de sécurité, rejouables sur un PostgreSQL
 local. Ils vérifient que les actions **interdites** échouent. Ils ont déjà
 trouvé **trois** vraies failles (voir section 7).
 
@@ -377,6 +377,139 @@ ne bouge pas.** Aucune valeur de l'énumération (`pending`/`approved`/
 produits suffit à vider le catalogue public de cette boutique (la policy
 "products: catalogue public" exige déjà `status = 'active'`).
 
+### Étape 4 bis — Quatre bugs trouvés en relisant le projet — FAIT le 2026-09-12
+
+Relecture complète du projet, avec exécution réelle de tout ce qui est
+vérifiable : `typecheck`, `build`, `classes`, `poids`, et les migrations
+plus les tests de sécurité rejoués sur un PostgreSQL 16 local recréé de
+zéro. Les quatre défauts ci-dessous sont tous dans la couche
+APPLICATIVE — la base, elle, est ressortie intacte (49/49).
+
+Ce n'est pas un hasard : la discipline de test du projet s'arrêtait à la
+frontière du SQL. **Aucun de ces quatre bugs ne produisait d'erreur au
+build, et aucun n'aurait survécu à un test.** Le projet a 49 tests sur sa
+partie la plus solide et zéro sur celle qui casse.
+
+**1. Un produit publié pouvait se retrouver sans aucune photo.**
+`products_check_publishable` (0002) est posé sur `products` : il ne voit
+pas les photos partir par `product_images`. Or `updateProductAction`
+remplace la liste des photos par un `delete` de toutes les lignes suivi
+d'un `insert` — si la liste finale arrive vide, le produit restait
+`active` dans le catalogue public sans vignette. Reproduit en base avant
+de corriger :
+
+```
+produit actif avec 1 photo → delete from product_images
+→ photos restantes = 0, statut = active
+```
+
+Fermé par `0011_active_product_keeps_an_image.sql` : un trigger
+`after delete on product_images` (au niveau instruction, avec table de
+transition) repasse en `draft` tout produit `active` qui n'a plus de
+photo. Il repasse en brouillon plutôt que de refuser la suppression : la
+suppression est légitime, c'est l'état « publié sans photo » qui ne l'est
+pas. `updateProductAction` refuse en plus l'enregistrement avec un
+message lisible — la base garantit l'invariant, le message explique.
+Trois vérifications ajoutées à `security_test.sql` (tests 47 à 49).
+
+**2. Six actions échouaient en silence.** `markSold`, `hide`,
+`republish`, `delete`, `blockPeer` et `reportConversation` ne lisaient
+pas le résultat de leur écriture et redirigeaient comme si tout allait
+bien. Le cas le plus probable était le pire : « Republier » est refusé par
+le trigger quand la boutique n'est plus approuvée — c'était écrit dans ce
+document, et l'utilisateur n'en voyait rien.
+
+**Deux façons distinctes d'échouer, et une seule est une erreur** :
+
+- une exception remontée dans `error` (le trigger de republication) ;
+- **aucune erreur, mais zéro ligne touchée** : quand le RLS écarte une
+  ligne, PostgREST renvoie un SUCCÈS portant zéro ligne. « Pas d'erreur »
+  ne veut donc jamais dire « c'est fait ». D'où le `.select("id")` ajouté
+  partout : c'est la seule façon de savoir ce qui a réellement changé.
+
+Les messages voyagent dans l'URL (`?erreur=`, `?info=`) et s'affichent via
+le nouveau composant `Notice`, sur `/vendeur` et `/messages/[id]`. Ce
+choix préserve la propriété « fonctionne sans JavaScript » des feuilles
+d'actions : `useActionState` aurait imposé de les rendre clientes.
+
+**3. L'onglet « Compte » renvoyait un commerçant connecté vers l'écran de
+connexion.** `BottomNav` a bien un `accountHref`, mais les écrans publics
+(`/`, `/recherche`, `/boutique/[id]`, `loading.tsx` qui est synchrone) ne
+le passaient pas. Un commerçant sans compte client lié qui parcourt
+l'accueil et touche « Compte » atterrissait sur `/connexion` alors qu'il
+était déjà connecté — et `signInAction` renvoyant vers `/`, il pouvait
+tourner en rond.
+
+Corrigé à la DESTINATION, pas chez chaque appelant : `clientSpaceFallback`
+(`src/lib/data/session.ts`) distingue « personne n'est connecté » →
+`/connexion` de « connexion sans compte client » → `/vendeur/boutique`.
+Rendre `accountHref` obligatoire aurait forcé les pages les plus
+consultées à résoudre la session pour rien, et `loading.tsx` ne peut pas
+le faire du tout. Corriger la destination couvre en plus les URL mises en
+favori, qui ne passent par aucun `BottomNav`.
+
+**4. `/ecrans` et `/styleguide` partaient en production.** Le build les
+prérendait (`○`), donc elles étaient en ligne, ouvertes à tous, alors que
+le README prévoyait de les supprimer « quand l'authentification
+existera » — chose faite depuis le 2026-09-11.
+
+**Elles ne sont pas supprimées pour autant**, et c'est volontaire :
+l'étape 1 ci-dessus — ouvrir les 33 écrans dans un navigateur — se fait
+précisément depuis `/ecrans`. On ne jette pas l'outil la veille de s'en
+servir. Elles sont donc gardées en développement et rendues introuvables
+en production (`notFound()` sous `NODE_ENV`, `force-dynamic` pour que la
+garde s'évalue à la requête). **À supprimer pour de bon quand l'étape 1
+sera terminée.**
+
+**Limite connue, vérifiée au `curl` et non supposée** : la réponse est un
+**200** portant le contenu « Cette page n'existe pas », pas un vrai 404.
+C'est le comportement documenté de Next 16 (`node_modules/next/dist/docs/`
+`01-app/03-api-reference/04-functions/not-found.md`) : le `loading.tsx` de
+la racine ouvre une frontière `<Suspense>` sur chaque route, donc la
+réponse a commencé à partir avant l'évaluation de la garde, et un statut
+ne se change plus une fois le flux ouvert. Next injecte à la place
+`<meta name="robots" content="noindex">` — présent sur ces deux adresses,
+absent des pages légitimes, vérifié. Le risque réel (une page de travail
+trouvée par un moteur de recherche) est donc fermé. Pour un vrai 404, la
+garde doit vivre dans `proxy` : à faire avec la migration
+`middleware` → `proxy` que le build réclame déjà, pas au milieu d'une
+correction de bugs.
+
+### Ce qui reste ouvert, trouvé en même temps mais NON corrigé
+
+Signalé ici pour ne pas le redécouvrir dans six mois. Aucun n'est
+bloquant, les deux premiers sont visibles par un utilisateur :
+
+- **« Conditions d'utilisation » est une ligne morte** (`compte/page.tsx`,
+  `vendeur/boutique/page.tsx`) : un `MenuItem` sans `href` ni `action`.
+  Non corrigé parce qu'il manque le TEXTE, pas le lien — et ce texte est
+  une décision du porteur du projet (Makiti est un intermédiaire
+  technique, non une partie à la vente). Voir étape 7.
+- **Après connexion, un commerçant arrive sur `/`**, le fil client, jamais
+  sur `/vendeur`. Défendable (le catalogue est public) mais probablement
+  pas voulu. Décision produit, pas bug.
+- **Budget des polices : 60 Ko pour 40 Ko.** Deux familles Google
+  (`Bricolage_Grotesque` + `Figtree`), toutes deux préchargées. La police
+  d'affichage ne sert que les titres : `preload: false` dessus suffirait
+  peut-être. À mesurer, pas à supposer.
+- **`middleware` est déprécié en Next 16**, le build le dit à chaque
+  fois : `npx @next/codemod@canary middleware-to-proxy .`
+- **`postcss` n'est pas déclaré dans `package.json`** alors que
+  `scripts/verifier-classes.mjs` l'importe. Ça marche aujourd'hui par
+  dépendance transitive de `@tailwindcss/postcss` : le jour où Tailwind
+  change sa chaîne, `npm run classes` casse sans rapport avec le code.
+- **`requestPasswordResetAction` construit son URL de retour depuis
+  l'en-tête `Host`**, contrôlé par le client. Non exploitable
+  aujourd'hui — Supabase filtre `redirectTo` contre sa liste d'URL
+  autorisées — mais la protection vit alors dans un réglage de tableau de
+  bord, pas dans le dépôt. Un `NEXT_PUBLIC_SITE_URL` la remettrait sous
+  contrôle de version.
+- **Un refus de boutique sans motif reste accepté** par la base :
+  `check (status <> 'rejected' or rejection_reason is not null)` manque
+  toujours (voir section 4). Confirmé en base pendant cette relecture.
+- **Aucun test automatisé côté front.** C'est le déséquilibre de fond
+  rappelé en tête de section, et il n'est pas corrigé ici.
+
 ### Étape 5 — Emails
 Deux besoins distincts, un seul fournisseur (Resend) :
 
@@ -423,7 +556,7 @@ catégories, et compléter les formulaires sans JavaScript (`PhotoPicker`,
 `Toggle`) commencés à l'étape 2.
 
 ### Sécurité — un réflexe, pas une étape
-Ne rien casser du RLS ni des 46 tests de `supabase/tests/` en avançant.
+Ne rien casser du RLS ni des 49 tests de `supabase/tests/` en avançant.
 `npm run` les tests après **toute** modification de policy : c'est ainsi
 que trois failles ont été trouvées, et aucune ne produisait d'erreur.
 

@@ -58,6 +58,39 @@ export const getMyProfiles = cache(async (supabase: SupabaseClient<Database>): P
   }));
 });
 
+/**
+ * Où envoyer quelqu'un qui demande un écran de l'espace CLIENT sans avoir
+ * de compte client.
+ *
+ * Deux situations que le code confondait, et qui n'ont rien à voir :
+ *
+ * - **personne n'est connecté** → `/connexion`, évidemment ;
+ * - **une connexion existe, mais elle n'a qu'un compte commerçant** →
+ *   `/vendeur/boutique`, son propre espace.
+ *
+ * Le second cas produisait un bug bien réel : un commerçant sans compte
+ * client lié qui parcourt l'accueil (le catalogue est public, il y a donc
+ * toute raison d'y être) et touche l'onglet « Compte » se retrouvait sur
+ * l'écran de CONNEXION alors qu'il était déjà connecté. Et `signInAction`
+ * renvoyant vers `/`, il pouvait tourner en rond.
+ *
+ * La décision d'aiguillage vit ici, pas dans `BottomNav` : l'onglet a bien
+ * un `accountHref`, mais les écrans PUBLICS (`/`, `/recherche`,
+ * `/boutique/[id]`, et `loading.tsx` qui est synchrone) ne peuvent pas le
+ * calculer sans résoudre la session — un aller-retour réseau ajouté aux
+ * pages les plus consultées, et justement celles qui n'ont aucun besoin
+ * de savoir qui regarde. Corriger la DESTINATION plutôt que chaque
+ * appelant règle aussi le cas d'une URL mise en favori ou d'un lien
+ * partagé, qui ne passent par aucun `BottomNav`.
+ *
+ * Gratuit : `getMyProfiles` est mis en cache pour la durée de la requête,
+ * et l'appelant l'a déjà appelée juste avant via `getMyProfile`.
+ */
+export async function clientSpaceFallback(supabase: SupabaseClient<Database>): Promise<string> {
+  const profiles = await getMyProfiles(supabase);
+  return profiles.some((p) => p.role === "merchant") ? "/vendeur/boutique" : "/connexion";
+}
+
 /** Le profil (client OU commerçant) de la connexion active pour ce rôle,
  * ou `null` si elle n'a pas encore ce compte-là. */
 export async function getMyProfile(

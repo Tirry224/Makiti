@@ -7,7 +7,7 @@ import { TopBar } from "@/components/ui/TopBar";
 import { ProfileForm } from "@/components/auth/ProfileForm";
 import { UpdatePasswordForm } from "@/components/auth/UpdatePasswordForm";
 import { createClient } from "@/lib/supabase/server";
-import { getMyProfile, getSessionUser } from "@/lib/data/session";
+import { clientSpaceFallback, getMyProfile, getSessionUser } from "@/lib/data/session";
 import { getCities } from "@/lib/data/reference";
 
 /**
@@ -27,7 +27,7 @@ export default async function ProfilePage() {
     getSessionUser(supabase),
     getCities(supabase),
   ]);
-  if (!profile || !user) redirect("/connexion");
+  if (!profile || !user) redirect(await clientSpaceFallback(supabase));
 
   return (
     <Screen>

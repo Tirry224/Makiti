@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { Flag } from "lucide-react";
 import Link from "next/link";
 import { Avatar } from "@/components/ui/Avatar";
+import { Notice } from "@/components/ui/Notice";
 import { Screen, ScreenBody, ScreenFooter } from "@/components/ui/Screen";
 import { TopBar } from "@/components/ui/TopBar";
 import { MessageBubble } from "@/components/chat/MessageBubble";
@@ -17,10 +18,10 @@ export default async function ThreadPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ produit?: string }>;
+  searchParams: Promise<{ produit?: string; erreur?: string; info?: string }>;
 }) {
   const { id } = await params;
-  const { produit } = await searchParams;
+  const { produit, erreur, info } = await searchParams;
   const supabase = await createClient();
 
   const context = await getThreadContext(supabase, id);
@@ -69,6 +70,12 @@ export default async function ThreadPage({
           est courte : sinon les premiers messages flottent en haut, loin
           du champ de saisie, et l'écran paraît vide. */}
       <ScreenBody className="justify-end">
+        {/* Résultat de la feuille d'actions (bloquer, signaler) : ces
+            actions redirigent ici en portant leur message dans l'URL,
+            faute de pouvoir l'afficher sur une feuille qui se ferme. */}
+        {erreur ? <Notice>{erreur}</Notice> : null}
+        {info ? <Notice tone="success">{info}</Notice> : null}
+
         <div className="flex flex-col gap-2.5 p-4">
           {messages.map((message) => (
             <div key={message.id} className="contents">

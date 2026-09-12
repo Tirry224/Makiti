@@ -7,7 +7,7 @@ import { Screen, ScreenBody, Section } from "@/components/ui/Screen";
 import { SwitchSpaceCard } from "@/components/ui/SwitchSpaceCard";
 import { TopBar } from "@/components/ui/TopBar";
 import { createClient } from "@/lib/supabase/server";
-import { getMyProfile, getSessionUser } from "@/lib/data/session";
+import { clientSpaceFallback, getMyProfile, getSessionUser } from "@/lib/data/session";
 import { getMyMerchant } from "@/lib/data/merchants";
 import { signOutAction } from "@/lib/actions/auth";
 
@@ -19,7 +19,7 @@ import { signOutAction } from "@/lib/actions/auth";
 export default async function AccountPage() {
   const supabase = await createClient();
   const [profile, user] = await Promise.all([getMyProfile(supabase, "client"), getSessionUser(supabase)]);
-  if (!profile) redirect("/connexion");
+  if (!profile) redirect(await clientSpaceFallback(supabase));
   if (profile.isSuspended) redirect("/compte/suspendu");
 
   const merchant = await getMyMerchant(supabase);
