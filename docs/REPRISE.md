@@ -120,7 +120,7 @@ Marché : Guinée · Devise : franc guinéen (GNF), en entiers · Langue : fran�
 
 ### Base de données — écrite, testée, ET DÉPLOYÉE
 Projet Supabase `Makiti` (région eu-west-3) créé et migré le 2026-09-11.
-`supabase/migrations/` — 9 fichiers SQL, à exécuter dans l'ordre sur un
+`supabase/migrations/` — 12 fichiers SQL, à exécuter dans l'ordre sur un
 projet neuf :
 
 - `0001_schema.sql` — 9 tables : profiles, merchants, cities, categories,
@@ -132,9 +132,19 @@ projet neuf :
 - `0003_search_and_seed.sql` — fonction `search_products`, 10 catégories,
   12 villes
 - `0004_storage.sql` — stockage des photos
-- `0005_advisor_fixes.sql` à `0009_profile_suspension_date.sql` — corrections
+- `0005_advisor_fixes.sql` à `0010_client_profile_city.sql` — corrections
   postérieures (advisors Supabase, performance, produits vendus visibles,
-  date de suspension). Voir le fichier de chaque migration pour le détail.
+  date de suspension, ville de résidence du client).
+- `0011_active_product_keeps_an_image.sql` — un produit publié ne peut pas
+  perdre toutes ses photos : `products_check_publishable` était posé sur
+  `products` et ne voyait pas les photos partir par `product_images`.
+- `0012_approve_a_merchant_in_one_gesture.sql` — changer la seule cellule
+  `merchants.status` suffit désormais à valider ou refuser une boutique :
+  la date se pose seule, un refus sans motif est refusé, un motif périmé
+  s'effrace.
+
+Voir le fichier de chaque migration pour le raisonnement complet : ils sont
+écrits pour être lus.
 
 **Piège vécu, à ne pas reproduire** : ces 5 dernières migrations, et la
 décision des comptes liés dans 0001/0002, avaient été appliquées
@@ -144,9 +154,11 @@ n'existait plus. Reconstitué depuis `supabase_migrations.schema_migrations`
 et revérifié migration par migration contre le SQL réellement en base —
 voir section 7. **Règle à partir de maintenant : toute migration appliquée
 au tableau de bord Supabase est commitée dans la même session, jamais
-après.**
+après.** Et l'inverse est vrai aussi, vécu le 2026-09-12 avec `0011` :
+une migration commitée sans être appliquée laisse le dépôt décrire une
+base qui n'existe pas encore. Les deux sens produisent le même écart.
 
-**Les 9 migrations rejouent depuis une base vierge** — vérifié, pas
+**Les 12 migrations rejouent depuis une base vierge** — vérifié, pas
 supposé (`supabase/tests/README.md` donne la commande). C'est la seule
 propriété qui compte pour une suite de migrations, et c'est celle qui
 casse le plus discrètement.
@@ -187,20 +199,20 @@ Next.js 16, React 19, TypeScript, Tailwind 4. 27 routes, ~33 composants.
 **Authentification : faite.** Inscription client et commerçant, connexion,
 déconnexion, mot de passe oublié, réinitialisation, comptes liés.
 
-**Toute l'application est branchée sur la vraie base** : catalogue public,
-espace vendeur (étape 2), messagerie (étape 3), compte et suppression de
-compte (étape 4). Il ne reste plus d'écran qui affiche des données
-inventées — voir « Ce qui n'a JAMAIS été vérifié » ci-dessous : jamais vu
-dans un navigateur ne veut pas dire jamais vérifié.
+**Toute l'application est branchée sur la vraie base** : catalogue
+public, espace vendeur, messagerie, compte et suppression de compte.
+Aucun écran n'affiche de données inventées.
 
 Deux adresses de travail : **`/ecrans`** liste les écrans avec un lien vers
 chacun ; **`/styleguide`** affiche tous les composants et tous les tokens.
 
-**Base vide au départ** : `supabase/seed_demo.sql` crée deux boutiques et
-six produits pour avoir quelque chose à regarder. À supprimer avant le
-lancement (commande en fin de fichier). Les lignes de photos qu'il crée ne
-désignent aucun fichier réel : les vignettes s'afficheront cassées jusqu'à
-ce qu'un vrai commerçant en dépose.
+**Base vide, et c'est l'état réel.** Le jeu de démonstration a été
+**supprimé le 2026-09-12** à la demande du porteur du projet, pour tester
+avec de vraies données : 0 boutique de démo, 0 produit de démo, 0
+conversation. `supabase/seed_demo.sql` reste dans le dépôt pour pouvoir
+le rejouer — il crée deux boutiques et six produits, dont les lignes de
+photos ne désignent aucun fichier réel (vignettes cassées jusqu'à ce
+qu'un vrai commerçant en dépose).
 
 ```bash
 npm install && npm run dev     # nécessite .env.local — voir README
@@ -209,617 +221,147 @@ npm run classes                # classes Tailwind fantômes
 npm run poids                  # budgets de poids (docs/PERFORMANCE.md)
 ```
 
-**Ce qui n'a JAMAIS été vérifié** : le rendu dans un navigateur. Les
-environnements de travail successifs n'ont pas pu joindre `*.supabase.co`
-(politique réseau : « host not in allowlist »). Tout a été vérifié
-autrement — requêtes rejouées en base **en tant qu'anonyme réel**
+**Déployé sur Vercel** (une adresse de la forme
+`<hash>-tiirry.vercel.app` ; l'URL exacte est dans le tableau de bord
+Vercel, la connexion de travail ne voit pas les projets personnels).
+`main` est la branche de production : **ce qu'on y pousse part en ligne.**
+
+**Premier vrai passage dans un navigateur : le 2026-09-12**, sur
+téléphone. Ce paragraphe disait auparavant que le rendu n'avait JAMAIS
+été vérifié — les environnements de travail successifs ne pouvant pas
+joindre `*.supabase.co` (« host not in allowlist »), tout avait été
+vérifié autrement : requêtes rejouées **en tant qu'anonyme réel**
 (`set role anon`, pas via un outil qui contourne le RLS), migrations
-rejouées sur un PostgreSQL vierge, 46/46 tests, build de production. Mais
-personne n'a encore regardé un seul écran chargé avec de vraies données.
-C'est la première chose à faire.
+rejouées sur un PostgreSQL vierge, tests, build de production.
+
+**Ce premier passage a trouvé en quelques minutes quatre défauts que rien
+de tout cela n'avait signalés** : neuf liens morts sur `/ecrans`, la barre
+d'onglets du client servie au commerçant, le fil client comme écran
+d'ouverture d'un commerçant, et une cellule Supabase qui échouait en
+silence. **C'est la leçon la plus rentable de ce projet** : la vérification
+automatique et le fait de regarder ne trouvent pas les mêmes défauts, et
+aucune des deux ne remplace l'autre. Le parcours complet des écrans reste
+à finir — voir l'étape 1.
 
 ---
 
 ## 3. Ce qui reste à faire, dans l'ordre
 
-*Cette section a été entièrement réécrite le 2026-09-11. Elle disait
-auparavant que « Supabase réel passe en tout dernier » et rangeait
-l'authentification parmi les tâches à venir — deux affirmations devenues
-fausses : la base est déployée, le catalogue public la lit, et
-l'authentification est écrite. Un plan qui décrit un projet qu'on n'a plus
-est pire qu'une absence de plan.*
-
-### Étape 1 — Regarder l'application dans un navigateur
-**Avant tout le reste, et ce n'est pas une formalité.** Rien n'a jamais
-été vu à l'écran avec de vraies données (voir la note de la section 2).
-`npm run dev`, parcourir `/ecrans`, ouvrir chaque écran. Les vérifications
-passées avaient trouvé une classe CSS inexistante, un prix illisible et un
-badge étiré — aucun de ces défauts ne produit d'erreur au build.
-
-Inutile de soigner une fonctionnalité sur un écran visuellement cassé.
-
-### Étape 2 — Espace vendeur : les actions produit — FAIT le 2026-09-11
-
-Branché : créer un produit (photos, publication immédiate ou brouillon),
-le modifier, marquer vendu, masquer, republier, supprimer, modifier la
-boutique, afficher le motif de refus (`merchants.rejection_reason`).
-`/vendeur`, `/vendeur/attente`, `/vendeur/refusee` aiguillent maintenant
-vers le bon écran selon `merchants.status` réel, plutôt que d'être trois
-écrans isolés qu'il fallait deviner. Photos réellement affichées dans
-« Mes produits » (`ProductRow` ne recevait jamais de `src` — corrigé).
-
-**Compression et envoi des photos — décision 15 appliquée :**
-
-- Librairie [`browser-image-compression`](https://www.npmjs.com/package/browser-image-compression),
-  dans un web worker. Sortie forcée en **webp** (`fileType`), pas JPEG :
-  plus léger à qualité égale, et c'est déjà l'extension que
-  `0004_storage.sql` donnait en exemple dans son propre commentaire.
-  Cible 0,5 Mo / 1280 px de côté max, à ajuster sur de vraies photos.
-- **L'envoi vers Storage se fait depuis le navigateur**, pas via une
-  action serveur qui n'aurait fait que relayer un fichier déjà prêt
-  (`PhotoPicker`, client Supabase navigateur déjà présent mais inutilisé
-  jusqu'ici). Seul le CHEMIN obtenu voyage dans le formulaire.
-- `productId` est généré **côté navigateur** (`crypto.randomUUID()`) avant
-  le premier envoi de photo, pour respecter la convention de chemin
-  `product-images/{merchant_id}/{product_id}/{fichier}` sans attendre que
-  la ligne `products` existe. Le insert se fait ensuite en deux temps —
-  `draft` puis `update status = 'active'` — jamais en un seul : le trigger
-  `products_check_publishable` refuse la publication tant qu'aucune ligne
-  `product_images` ne référence le produit, ce qui est impossible à
-  satisfaire dans l'insert qui le crée.
-
-**Deux choses trouvées en cours de route, non résolues :**
-
-1. **La promesse de « nouvelle vérification » de l'écran boutique était
-   fausse.** Rien dans la base ne la mettait en œuvre. L'ajouter
-   ferait disparaître du catalogue public les produits déjà en ligne
-   (`products: catalogue public` exige `merchants.status = 'approved'`),
-   ce qui contredit la seconde phrase du même écran (« vos produits
-   restent en ligne pendant ce temps »). Le texte a été retiré plutôt que
-   laissé à mentir ; `updateMerchantAction` ne touche jamais `status`. À
-   trancher avec le porteur du projet avant de réintroduire un
-   comportement ici.
-2. **« Formulaires fonctionnant sans JavaScript »** (liste `kind-thompson`
-   ci-dessus) n'est fait qu'À MOITIÉ. Les champs texte et les boutons
-   d'action (marquer vendu, masquer, supprimer…) fonctionnent sans JS —
-   ce sont de vraies `<form action={...}>` Next.js. Mais `PhotoPicker`
-   (compression + envoi Storage) et le bouton « Prix négociable »
-   (`Toggle`) exigent du JavaScript : aucun des deux n'a d'équivalent
-   fonctionnel sans script pour l'instant.
-
-### Étape 3 — Messagerie — FAIT le 2026-09-11
-
-Branché : liste des fils (client ET commerçant, `?vue=` seulement quand les
-deux comptes liés existent), fil de discussion, citer un produit, marquer
-comme lu, bloquer, signaler (conversation et produit — ce dernier était
-resté un bouton mort depuis le début, corrigé au passage). « Contacter le
-vendeur » ouvre directement le fil pour une connexion déjà cliente
-(trouvé ou créé), au lieu de toujours proposer un compte.
-
-**Pas de temps réel.** Le fil se recharge à la navigation, pas à
-l'arrivée d'un message pendant qu'on le lit. Supabase Realtime reste à
-brancher — non fait faute de pouvoir le tester (voir la note sur
-`*.supabase.co`, section 2).
-
-**Un seul aller-retour pour toute la liste des fils**, jamais un par fil :
-`getMyThreadsAsClient`/`AsMerchant` lisent tous les messages de tous les
-fils d'un coup et agrègent en mémoire — même réflexe que la correction de
-`auth.getUser()` de l'étape 2 (section 7).
-
-**Le formulaire d'envoi exige du JavaScript**, contrairement aux actions
-produit de l'étape 2 : sans `useActionState`, un message refusé (quota
-dépassé, blocage) échouerait en silence — la page se rafraîchirait sans
-rien dire. Le compromis choisi : le composant `Composer` seul est client,
-tout le reste du fil reste serveur.
-
-Rappel des règles que la base fait déjà respecter, pas redupliquées dans
-l'interface : un seul fil par couple (client, boutique), le premier
-message cite obligatoirement un produit, le produit cité appartient à la
-boutique destinataire, quotas de 20 boutiques contactées et 100 messages
-par jour — les messages d'erreur de ces triggers sont déjà en français,
-écrits pour être affichés tels quels.
-
-### Étape 4 — « Mon compte » et la suppression de compte — FAIT le 2026-09-11
-
-Branché : nom, téléphone et ville de résidence modifiables, mot de passe,
-suppression de compte (feuille de confirmation ajoutée, absente de la
-maquette), bascule vers l'espace commerçant seulement si ce compte lié
-existe.
-
-**Ville de résidence ajoutée le 2026-09-11** (`profiles.city_id`,
-0010_client_profile_city.sql) : un client peut désormais la choisir ou la
-laisser vide depuis « Mes informations », indépendamment de la ville de
-navigation du fil (`/recherche/ville`, un simple paramètre d'URL) —
-résider quelque part n'empêche pas de chercher ailleurs, décision
-explicite plutôt qu'un oubli.
-
-Cette ville de résidence sert de **point de départ**, pas de filtre
-permanent : sans `?ville=` dans l'URL, `src/app/page.tsx` l'utilise comme
-défaut à la place de "Conakry" en dur (client non connecté, compte sans
-profil client, ou ville non renseignée → "Conakry" reste le repli). Dès
-que `ville` est explicite dans l'URL, il gagne toujours.
-
-**Reste non harmonisé, signalé mais pas traité** : `/recherche` a son
-propre défaut "Conakry" en dur, indépendant de celui du fil d'accueil, et
-s'en sert pour calculer le badge « filtre actif » et le lien « Effacer
-les filtres ». Un client qui arrive directement sur `/recherche` (pas
-depuis le fil d'accueil) ne profite donc pas encore du même défaut. Choix
-à trancher séparément : l'harmoniser casserait net le sens actuel
-d'`activeFilterCount`.
-
-**Un champ de la maquette retiré, pas simulé** : le mot de passe affiché
-en clair (Supabase ne le rend jamais lisible). Le motif de suspension
-affiché sur `/compte/suspendu`
-(« à la suite de signalements ») a été retiré pour la même raison :
-`profiles` n'a que `suspended_at`, pas de colonne de motif.
-
-**Pas d'Edge Function : une action serveur Next.js avec un client
-`service_role`** (`src/lib/supabase/admin.ts`, `src/lib/actions/account.ts`).
-Le code ne quitte pas plus le serveur qu'avec une Edge Function séparée,
-avec un aller-retour réseau de moins et un seul système à déployer.
-
-**Piège évité en écrivant cette fonction** : le plan initial parlait de
-« couper l'accès à `auth.users` », lu d'abord comme « supprimer la ligne ».
-Or `profiles.auth_user_id` référence `auth.users(id) on delete cascade`
-(0001_schema.sql) : supprimer `auth.users` aurait tenté de supprimer aussi
-`profiles`, que `messages.sender_id` référence SANS cascade — la
-suppression aurait échoué sur une contrainte de clé étrangère, au moment
-précis où quelqu'un clique sur « Supprimer mon compte ». La bonne
-opération est un **bannissement** (`admin.auth.admin.updateUserById` avec
-`ban_duration`) : la connexion devient inutilisable, la ligne survit,
-`profiles` aussi. Trouvé en lisant les contraintes avant d'écrire la
-fonction, pas en la cassant d'abord.
-
-Décision prise sur le point resté ouvert (merchants.status au moment de
-la suppression) : **les produits passent à `hidden`, `merchants.status`
-ne bouge pas.** Aucune valeur de l'énumération (`pending`/`approved`/
-`rejected`) ne veut dire « fermée par son propriétaire », et masquer les
-produits suffit à vider le catalogue public de cette boutique (la policy
-"products: catalogue public" exige déjà `status = 'active'`).
-
-### Étape 4 bis — Quatre bugs trouvés en relisant le projet — FAIT le 2026-09-12
-
-Relecture complète du projet, avec exécution réelle de tout ce qui est
-vérifiable : `typecheck`, `build`, `classes`, `poids`, et les migrations
-plus les tests de sécurité rejoués sur un PostgreSQL 16 local recréé de
-zéro. Les quatre défauts ci-dessous sont tous dans la couche
-APPLICATIVE — la base, elle, est ressortie intacte (49/49).
-
-Ce n'est pas un hasard : la discipline de test du projet s'arrêtait à la
-frontière du SQL. **Aucun de ces quatre bugs ne produisait d'erreur au
-build, et aucun n'aurait survécu à un test.** Le projet a 49 tests sur sa
-partie la plus solide et zéro sur celle qui casse.
-
-**1. Un produit publié pouvait se retrouver sans aucune photo.**
-`products_check_publishable` (0002) est posé sur `products` : il ne voit
-pas les photos partir par `product_images`. Or `updateProductAction`
-remplace la liste des photos par un `delete` de toutes les lignes suivi
-d'un `insert` — si la liste finale arrive vide, le produit restait
-`active` dans le catalogue public sans vignette. Reproduit en base avant
-de corriger :
-
-```
-produit actif avec 1 photo → delete from product_images
-→ photos restantes = 0, statut = active
-```
-
-Fermé par `0011_active_product_keeps_an_image.sql`, **appliquée sur le
-projet Supabase `Makiti` le 2026-09-12** (via MCP, `apply_migration`) — la
-règle de la section 2 vaut dans les DEUX sens : une migration commitée
-sans être appliquée laisse le dépôt décrire une base qui n'existe pas,
-exactement comme l'inverse. Vérifié après coup sur la vraie base : trigger
-posé, `security definer` actif, et le comportement testé dans une
-transaction annulée (une photo sur deux retirée → reste `active` ; la
-dernière retirée → `draft`), sans laisser aucune donnée. Aucun des 4
-produits actifs n'était dans l'état cassé.
-
-Détail : un trigger
-`after delete on product_images` (au niveau instruction, avec table de
-transition) repasse en `draft` tout produit `active` qui n'a plus de
-photo. Il repasse en brouillon plutôt que de refuser la suppression : la
-suppression est légitime, c'est l'état « publié sans photo » qui ne l'est
-pas. `updateProductAction` refuse en plus l'enregistrement avec un
-message lisible — la base garantit l'invariant, le message explique.
-Trois vérifications ajoutées à `security_test.sql` (tests 47 à 49).
-
-L'audit de sécurité Supabase signale la nouvelle fonction parmi douze
-`security definer` « appelables en RPC par un inconnu ». Faux positif,
-vérifié et non cru (section 7) : appelée en `set role anon` hors
-trigger, PostgreSQL la refuse avec `SQLSTATE 0A000 — trigger functions
-can only be called as triggers`.
-
-**Trouvé au passage, non traité** : `auth_leaked_password_protection`
-est désactivé sur le projet. Supabase peut refuser les mots de passe
-connus comme compromis (comparaison avec HaveIBeenPwned) ; c'est une
-case à cocher dans Authentication, gratuite, et l'email est ici à la
-fois identifiant de connexion et canal de notification.
-
-**2. Six actions échouaient en silence.** `markSold`, `hide`,
-`republish`, `delete`, `blockPeer` et `reportConversation` ne lisaient
-pas le résultat de leur écriture et redirigeaient comme si tout allait
-bien. Le cas le plus probable était le pire : « Republier » est refusé par
-le trigger quand la boutique n'est plus approuvée — c'était écrit dans ce
-document, et l'utilisateur n'en voyait rien.
-
-**Deux façons distinctes d'échouer, et une seule est une erreur** :
-
-- une exception remontée dans `error` (le trigger de republication) ;
-- **aucune erreur, mais zéro ligne touchée** : quand le RLS écarte une
-  ligne, PostgREST renvoie un SUCCÈS portant zéro ligne. « Pas d'erreur »
-  ne veut donc jamais dire « c'est fait ». D'où le `.select("id")` ajouté
-  partout : c'est la seule façon de savoir ce qui a réellement changé.
-
-Les messages voyagent dans l'URL (`?erreur=`, `?info=`) et s'affichent via
-le nouveau composant `Notice`, sur `/vendeur` et `/messages/[id]`. Ce
-choix préserve la propriété « fonctionne sans JavaScript » des feuilles
-d'actions : `useActionState` aurait imposé de les rendre clientes.
-
-**3. L'onglet « Compte » renvoyait un commerçant connecté vers l'écran de
-connexion.** `BottomNav` a bien un `accountHref`, mais les écrans publics
-(`/`, `/recherche`, `/boutique/[id]`, `loading.tsx` qui est synchrone) ne
-le passaient pas. Un commerçant sans compte client lié qui parcourt
-l'accueil et touche « Compte » atterrissait sur `/connexion` alors qu'il
-était déjà connecté — et `signInAction` renvoyant vers `/`, il pouvait
-tourner en rond.
-
-Corrigé à la DESTINATION, pas chez chaque appelant : `clientSpaceFallback`
-(`src/lib/data/session.ts`) distingue « personne n'est connecté » →
-`/connexion` de « connexion sans compte client » → `/vendeur/boutique`.
-Rendre `accountHref` obligatoire aurait forcé les pages les plus
-consultées à résoudre la session pour rien, et `loading.tsx` ne peut pas
-le faire du tout. Corriger la destination couvre en plus les URL mises en
-favori, qui ne passent par aucun `BottomNav`.
-
-**4. `/ecrans` et `/styleguide` partaient en production.** Le build les
-prérendait (`○`), donc elles étaient en ligne, ouvertes à tous, alors que
-le README prévoyait de les supprimer « quand l'authentification
-existera » — chose faite depuis le 2026-09-11.
-
-**Elles ne sont pas supprimées pour autant**, et c'est volontaire :
-l'étape 1 ci-dessus — ouvrir les 33 écrans dans un navigateur — se fait
-précisément depuis `/ecrans`. On ne jette pas l'outil la veille de s'en
-servir. Elles sont donc gardées en développement et rendues introuvables
-en production (`notFound()` sous `NODE_ENV`, `force-dynamic` pour que la
-garde s'évalue à la requête). **À supprimer pour de bon quand l'étape 1
-sera terminée.**
-
-**Limite connue, vérifiée au `curl` et non supposée** : la réponse est un
-**200** portant le contenu « Cette page n'existe pas », pas un vrai 404.
-C'est le comportement documenté de Next 16 (`node_modules/next/dist/docs/`
-`01-app/03-api-reference/04-functions/not-found.md`) : le `loading.tsx` de
-la racine ouvre une frontière `<Suspense>` sur chaque route, donc la
-réponse a commencé à partir avant l'évaluation de la garde, et un statut
-ne se change plus une fois le flux ouvert. Next injecte à la place
-`<meta name="robots" content="noindex">` — présent sur ces deux adresses,
-absent des pages légitimes, vérifié. Le risque réel (une page de travail
-trouvée par un moteur de recherche) est donc fermé. Pour un vrai 404, la
-garde doit vivre dans `proxy` : à faire avec la migration
-`middleware` → `proxy` que le build réclame déjà, pas au milieu d'une
-correction de bugs.
-
-### Ce qui reste ouvert, trouvé en même temps mais NON corrigé
-
-Signalé ici pour ne pas le redécouvrir dans six mois. Aucun n'est
-bloquant, les deux premiers sont visibles par un utilisateur :
-
-- **« Conditions d'utilisation » est une ligne morte** (`compte/page.tsx`,
-  `vendeur/boutique/page.tsx`) : un `MenuItem` sans `href` ni `action`.
-  Non corrigé parce qu'il manque le TEXTE, pas le lien — et ce texte est
-  une décision du porteur du projet (Makiti est un intermédiaire
-  technique, non une partie à la vente). Voir étape 7.
-- ~~**Après connexion, un commerçant arrive sur `/`**~~ **Corrigé le
-  2026-09-12** : ce n'était pas une décision produit ouverte, c'était un
-  bug contre une décision déjà écrite (voir l'étape 4 quinquies).
-- **Budget des polices : 60 Ko pour 40 Ko.** Deux familles Google
-  (`Bricolage_Grotesque` + `Figtree`), toutes deux préchargées. La police
-  d'affichage ne sert que les titres : `preload: false` dessus suffirait
-  peut-être. À mesurer, pas à supposer.
-- **`middleware` est déprécié en Next 16**, le build le dit à chaque
-  fois : `npx @next/codemod@canary middleware-to-proxy .`
-- **`postcss` n'est pas déclaré dans `package.json`** alors que
-  `scripts/verifier-classes.mjs` l'importe. Ça marche aujourd'hui par
-  dépendance transitive de `@tailwindcss/postcss` : le jour où Tailwind
-  change sa chaîne, `npm run classes` casse sans rapport avec le code.
-- **`requestPasswordResetAction` construit son URL de retour depuis
-  l'en-tête `Host`**, contrôlé par le client. Non exploitable
-  aujourd'hui — Supabase filtre `redirectTo` contre sa liste d'URL
-  autorisées — mais la protection vit alors dans un réglage de tableau de
-  bord, pas dans le dépôt. Un `NEXT_PUBLIC_SITE_URL` la remettrait sous
-  contrôle de version.
-- **Un refus de boutique sans motif reste accepté** par la base :
-  `check (status <> 'rejected' or rejection_reason is not null)` manque
-  toujours (voir section 4). Confirmé en base pendant cette relecture.
-- **Aucun test automatisé côté front.** C'est le déséquilibre de fond
-  rappelé en tête de section, et il n'est pas corrigé ici.
-
-### Étape 4 ter — Jeu de démonstration supprimé — FAIT le 2026-09-12
-
-Fait à la demande du porteur du projet, pour tester avec de vraies
-données. `delete from auth.users where email like '%@demo.makiti.local';`
-exécutée sur le projet Supabase `Makiti`.
-
-Inventorié AVANT de supprimer, pas après : 2 comptes de démonstration
-(`kaloum@`, `aissatou@` — 2 boutiques, 6 produits, 7 photos) et **2 vrais
-comptes** (`boubatirry224@`, `bouliwelltirry@`, profils `client`, aucune
-boutique, aucun produit). La commande ne visait que le domaine
-`.demo.makiti.local` : les deux vrais comptes sont intacts, vérifié après
-coup.
-
-État de la base maintenant : 2 utilisateurs, 2 profils client, **0
-boutique, 0 produit, 0 conversation, 0 message, 0 signalement, 0
-fichier**. Les 12 villes et 10 catégories restent — ce sont des données de
-RÉFÉRENCE, pas de la démonstration : les supprimer casserait
-l'inscription d'une boutique.
-
-Pour remettre un jeu de démonstration : ré-exécuter
-`supabase/seed_demo.sql`. Le fichier reste dans le dépôt exprès.
-
-**Trouvé en faisant ce ménage — `/ecrans` avait neuf liens morts depuis
-longtemps.** Ils pointaient sur `p-riz`, `p-huile`, `m-aissatou`,
-`t-mariama` : les identifiants de l'ancien `src/lib/mock.ts`. Or le jeu de
-démonstration créait des UUID (`c0000000-…`), et les routes attendent
-`products.id` / `merchants.id` / `conversations.id`. **Ces liens étaient
-donc déjà cassés avant cette suppression**, depuis le branchement sur la
-vraie base — et personne ne l'avait vu, puisque personne n'avait encore
-ouvert la page. Exactement ce que l'étape 1 est censée révéler.
-
-Corrigé : `/ecrans` lit maintenant de vrais identifiants en base (un
-produit actif, un produit vendu, une boutique approuvée, une
-conversation), et quand l'enregistrement manque la ligne affiche **ce
-qu'il faut créer** pour l'obtenir (« publiez un produit », « écrivez à un
-vendeur »…) au lieu d'un lien qui échoue. Trois états par ligne, pas
-deux : un écran qui s'affiche tout seul et un écran qui attend une donnée
-ne se ressemblent pas. Vérifié contre la base vide : 10 lignes sans lien,
-2 « automatique », zéro lien mort.
-
-**Ce qui n'est PAS de la donnée fictive et reste en place, volontairement :**
-
-- `src/lib/mock.ts` sert encore deux choses légitimes : la galerie
-  `/styleguide` (page de travail, hors production) et `reportReasons`, la
-  liste des motifs de signalement — une vraie liste de configuration, pas
-  une donnée inventée. Elle est mal RANGÉE (son nom de fichier la fait
-  passer pour fausse), pas fausse. À déplacer un jour hors de `mock.ts`.
-- Les `placeholder` des formulaires (« mariama@exemple.com »,
-  « Mariama Diallo ») sont des indications de saisie, jamais envoyées ni
-  enregistrées. Les retirer dégraderait l'interface sans rien nettoyer.
-
-### Étape 4 quater — Valider une boutique en un seul geste — FAIT le 2026-09-12
-
-Demande du porteur du projet : « une colonne sur la table des commerçants
-qui permet d'approuver ou désapprouver un compte ».
-
-**Cette colonne existait déjà — `merchants.status` — et en ajouter une
-seconde aurait été un piège.** `status = 'approved'` est lu à NEUF
-endroits (policy « products : catalogue public », trigger
-`products_check_publishable`, `search_products`, policy de visibilité de
-la boutique, policies de messagerie…) ; un booléen `is_approved` neuf
-aurait été lu à zéro. On l'aurait coché, et rien n'aurait changé dans
-l'application. Deux colonnes qui prétendent dire la même vérité, c'est
-une source de vérité de MOINS, pas une de plus.
-
-Le vrai manque était ailleurs : changer `status` ne SUFFISAIT pas. Trois
-oublis possibles, aucun signalé — `approved_at` qu'aucun trigger ne
-remplissait, un refus sans motif accepté, et un motif de refus qui
-survivait à une revalidation (prêt à réapparaître sur `/vendeur/refusee`
-au refus suivant). `0012` les ferme tous les trois : **approuver, c'est
-maintenant changer une seule cellule dans le Table Editor.**
-
-Deux fonctions accompagnent (`approve_merchant(nom)`,
-`reject_merchant(nom, motif)`) pour l'éditeur SQL. Elles refusent un nom
-qui ne désigne aucune boutique plutôt que de faire un `update` silencieux
-sur zéro ligne — `shop_name` n'est pas unique.
-
-**Le piège de sécurité de cette migration, traité explicitement.** Rendre
-la validation confortable est le moment exact où l'on rouvre la faille que
-les tests avaient trouvée : un commerçant qui s'auto-valide. Les deux
-fonctions sont donc en `security invoker` — écrit en clair dans le
-fichier pour que ce soit un CHOIX visible, pas un défaut subi. En
-`security definer` elles auraient été appelables en RPC
-(`/rest/v1/rpc/approve_merchant`) par n'importe quel visiteur. Et
-`revoke execute ... from anon, authenticated, public` retire le droit que
-Supabase accorde par défaut à toute fonction nouvelle. Vérifié en se
-mettant dans la peau du commerçant propriétaire :
-
-```
-écriture directe de status  → permission denied for table merchants
-approve_merchant()          → permission denied for function
-statut final                → pending
-```
-
-Deux verrous indépendants, parce qu'un seul se retire par accident.
-
-**Décision prise au passage** : `approved_at` n'est JAMAIS effacé quand une
-boutique quitte `approved`. « Cette boutique a été validée le 12
-septembre » reste vrai après un refus — une date d'événement passé n'est
-pas un état courant.
-
-Vérifié : 12 migrations rejouées depuis une base vierge, **55 tests de
-sécurité** (6 ajoutés, section 22), les cinq scénarios de validation
-testés un par un, puis appliquée sur le projet Supabase `Makiti` et
-revérifiée sur place (trigger et contrainte posés, `has_function_privilege`
-à `false` pour `anon` et `authenticated`).
-
-**Reste ouvert, et c'est une question produit, pas technique** : sur quel
-critère concret une boutique est-elle validée ? (section 5). La mécanique
-est maintenant confortable ; sans critère écrit, elle restera décorative
-tout en coûtant du temps.
-
-### Étape 4 quinquies — Les deux espaces ne se mélangent plus — FAIT le 2026-09-12
-
-Trouvé par le porteur du projet en testant sur son téléphone, sur le
-déploiement Vercel : connecté avec son compte COMMERÇANT, il voyait le fil
-CLIENT (« Aucun produit à Conakry »), avec la barre d'onglets du client
-— Accueil · Rechercher · Messages · Compte — alors que celle du
-commerçant en compte trois : Ma boutique · Messages · Compte. Son
-diagnostic (« les écrans se sont emmêlés ») était juste.
-
-**Ce n'était pas une question ouverte, c'était un bug contre une décision
-déjà écrite.** `design/README.md` la formule depuis la maquette :
-
-> Le commerçant et le client n'ont pas la même barre d'onglets, ni le même
-> écran d'ouverture, ni le même écran « Mon compte ». C'est ce qui rendait
-> la maquette confuse : les deux rôles y voyaient exactement la même
-> application.
-
-`signInAction` renvoyait pourtant `redirect("/")` sans condition, et `/`
-ne regardait jamais le rôle de la session. Ce document le listait le matin
-même parmi les points « non corrigés » avec la mention « défendable,
-probablement pas voulu, décision produit » : **c'était une erreur de
-lecture de ma part.** Une décision figée dans `design/README.md` n'est pas
-une question ouverte, et un écart avec elle est un bug, pas un arbitrage
-à rendre.
-
-Corrigé par `landingForSession` (`src/lib/data/session.ts`) : `/vendeur`
-pour une connexion qui n'a QUE le compte commerçant, `/` sinon.
-
-- **`signInAction` et `updatePasswordAction`** l'utilisent au lieu de `/`
-  en dur. Changer son mot de passe n'est pas une raison d'atterrir dans
-  l'espace de quelqu'un d'autre.
-- **`/` lui-même** aiguille aussi, et pas seulement la connexion :
-  l'adresse est atteinte par un favori, un lien partagé ou un simple
-  rechargement, et l'aiguillage ne doit pas dépendre du chemin parcouru
-  pour y arriver. C'est la même leçon que le correctif d'`accountHref` de
-  l'étape 4 bis — la décision vit à la DESTINATION, pas chez chaque
-  appelant.
-- **Ni un visiteur non connecté, ni une personne qui possède les deux
-  comptes liés** ne sont concernés : celle-là a un espace client
-  légitime et bascule quand elle le décide (`SwitchSpaceCard`). Seule une
-  connexion sans compte client n'a rien à faire sur le fil client.
-
-Pas de boucle de redirection possible, vérifié : l'espace vendeur ne
-renvoie jamais vers `/` (`/vendeur` aiguille vers `/inscription/boutique`,
-`/vendeur/attente` ou `/vendeur/refusee` selon `merchants.status`).
-
-**Ce que ce test a aussi révélé, et qui n'est pas un bug** : le porteur du
-projet avait créé DEUX CONNEXIONS distinctes (`boubatirry224@` en client,
-`jshdjdkdkkdjdd@` en commerçant) au lieu d'un second profil lié sur la même
-connexion. Du point de vue du système, ce sont deux personnes sans rapport,
-donc « Basculer vers mon espace » ne pouvait pas apparaître. Ce n'est pas un
-défaut du code — mais le fait que le parcours naturel mène là plutôt qu'au
-compte lié mérite d'être regardé : l'écran d'inscription ne propose le
-compte lié qu'à une personne DÉJÀ connectée, ce qui n'est pas le réflexe de
-quelqu'un qui veut « aussi vendre ».
-
-### Étape 4 sexies — Les DEUX barres d'onglets — FAIT le 2026-09-12
-
-Question du porteur du projet juste après le correctif précédent : « as-tu
-réglé le problème de la barre de navigation qui est différente ? »
-**Réponse honnête : non.** L'étape précédente avait réglé l'écran
-d'OUVERTURE, pas la barre. La décision de `design/README.md` en compte
-trois — pas la même barre, pas le même écran d'ouverture, pas le même
-« Mon compte » — et une seule des trois était traitée.
-
-Mesuré plutôt que supposé, code contre maquette :
-
-| | maquette | code (avant) |
-|---|---|---|
-| client | Accueil · Rechercher · Messages · Compte | idem ✓ |
-| commerçant | **Ma boutique · Messages · Compte** | la même barre à 4 onglets ✗ |
-
-`BottomNav` portait UNE liste de quatre onglets et un `accountHref` pour
-rattraper la différence sur le dernier. Ça ne rattrapait rien : un
-commerçant voyait « Accueil » et « Rechercher », deux onglets qui
-n'existent pas dans son espace. Et depuis `landingForSession`, « Accueil »
-était devenu un onglet **mort** — on le touchait, `/` renvoyait vers
-`/vendeur`, on revenait au même écran. **Le correctif précédent avait donc
-aggravé ce point-là**, et il fallait le dire.
-
-Deux défauts de plus trouvés au même endroit :
-
-- **`/vendeur` (« Mes produits ») marquait « Compte » comme onglet actif**,
-  alors que la maquette y marque « Ma boutique ». Aucun onglet ne
-  représentait l'écran où l'on se trouvait.
-- **`src/app/loading.tsx` est le squelette du fil CLIENT** (logo, chip
-  « Conakry », barre à quatre onglets) et, posé à la racine, il
-  s'affichait devant TOUTE l'application — donc devant l'espace vendeur.
-  Un commerçant voyait « Conakry » et les onglets du client le temps du
-  chargement de sa propre boutique.
-
-Corrigé : `BottomNav` porte deux listes explicites (`space="client"` par
-défaut, `space="merchant"`), `accountHref` disparaît — un paramètre qui
-rattrape une différence de structure est le signe qu'il en faut deux —
-`/vendeur`, `/vendeur/attente` et `/vendeur/refusee` marquent `shop`,
-`/vendeur/boutique` marque `account`, et l'espace vendeur a son propre
-squelette (`src/app/vendeur/loading.tsx`). Un `loading.tsx` placé dans un
-dossier prend le pas sur celui du parent : c'est tout ce qu'il fallait.
-
-**Et un quatrième défaut, conséquence d'un correctif ancien** : le
-squelette de l'accueil affichait encore la barre de recherche retirée de
-`/` (commit `fc320bd`). La page SAUTAIT donc à l'arrivée des données —
-exactement ce que le commentaire de ce fichier prétend éviter. Retirée.
-
-Vérifié par requêtes HTTP sur le serveur réel, les deux barres côte à
-côte :
-
-```
-/                 Accueil · Rechercher · Messages · Compte
-/recherche        Accueil · Rechercher · Messages · Compte
-/vendeur          Ma boutique · Messages · Compte
-/vendeur/attente  Ma boutique · Messages · Compte
-```
-
-**Reste, mineur et non traité** : `/inscription/boutique` (étape 2 de
-l'inscription commerçant) hérite du squelette de la racine, donc affiche
-brièvement « Conakry » et la barre du client. C'est le parcours
-d'inscription, où la personne n'a encore aucun espace — signalé plutôt
-qu'élargi.
-
-**Ce que cette séquence apprend** : j'avais annoncé « les deux espaces ne
-se mélangent plus » alors qu'un tiers de la décision était traité. La
-décision écrite comptait trois clauses ; j'en avais lu une. Quand une
-règle est formulée en plusieurs points, chacun se vérifie séparément — et
-« corrigé » ne veut rien dire tant qu'on n'a pas montré la mesure, ici
-deux barres côte à côte.
-
-### Étape 5 — Emails
-Deux besoins distincts, un seul fournisseur (Resend) :
-
-1. **Notification de nouveau message** — badge de non-lus dans l'app +
-   email. **Sans cette étape, la messagerie est une boîte aux lettres que
-   personne ne relève.**
+*Cette section ne contient QUE ce qui reste. Tout ce qui est fait est
+daté dans le journal de la section 8 — un plan dont les quatre
+cinquièmes racontent le passé ne se lit plus, et c'est ce qui lui était
+arrivé le 2026-09-12 (six sous-étapes « 4 bis » à « 4 sexies » empilées
+en une journée).*
+
+### Étape 1 — Finir de regarder l'application dans un navigateur
+**Commencée le 2026-09-12, pas finie.** Le premier vrai passage sur
+téléphone, via le déploiement Vercel, a trouvé en quelques minutes
+quatre défauts que ni le build, ni le typecheck, ni 55 tests de sécurité
+n'avaient signalés : neuf liens morts sur `/ecrans`, la barre d'onglets
+du client servie au commerçant, le fil client comme écran d'ouverture
+d'un commerçant, et une cellule Supabase qui échouait en silence.
+
+Il reste à parcourir les écrans un par un — `/ecrans` en développement
+les liste et allume chaque lien dès que l'enregistrement correspondant
+existe. **Noter les défauts au fil de l'eau plutôt que les corriger un
+par un** : ils se traitent mieux en lot.
+
+Ce qui n'a encore JAMAIS été vu à l'écran : la messagerie entre deux
+comptes réels, l'envoi d'une photo depuis un téléphone, et le parcours
+de refus d'une boutique.
+
+### Étape 2 — Emails (Resend)
+**Le seul point bloquant pour un lancement.** Deux besoins distincts, un
+seul fournisseur :
+
+1. **Notification de nouveau message** — compteur de non-lus dans l'app
+   + email. Sans ça, la messagerie est une boîte aux lettres que
+   personne ne relève, et un commerçant qui n'est jamais prévenu ne
+   revient pas.
 2. **Emails d'authentification** — réinitialisation de mot de passe, et
-   confirmation d'inscription si elle est réactivée. L'écran
-   `/mot-de-passe-oublie` promet noir sur blanc « vous recevrez un lien » :
-   aujourd'hui cette promesse dépend du serveur mail intégré de Supabase,
-   que leur propre documentation déclare « non destiné à un usage en
-   production » (quelques envois par heure, au mieux). Un SMTP externe est
-   donc nécessaire **avant** le lancement, pas après.
+   confirmation d'inscription si elle est réactivée. `/mot-de-passe-oublie`
+   promet noir sur blanc « vous recevrez un lien » : cette promesse
+   dépend aujourd'hui du serveur mail intégré de Supabase, que leur
+   propre documentation déclare non destiné à la production (quelques
+   envois par heure, au mieux). **Un écran qui promet ce que le système
+   ne tient pas est un bug, pas une approximation.**
 
-### Étape 6 — Déploiement en production
-`main` est la branche de production. Voir le README pour les variables
-d'environnement Vercel. Le `.env` versionné ne porte que des valeurs
-`NEXT_PUBLIC_`, publiques par construction — tout secret va dans le
-tableau de bord, jamais dans un fichier suivi.
+### Étape 3 — Temps réel de la messagerie
+Le fil se recharge à la navigation, pas à l'arrivée d'un message pendant
+qu'on le lit. Supabase Realtime reste à brancher. Non bloquant : une
+marketplace de mise en relation n'est pas une messagerie instantanée.
 
-### Étape 7 — Avant d'ouvrir à de vrais commerçants
-- Supprimer le jeu de démonstration :
-  `delete from auth.users where email like '%@demo.makiti.local';`
-- Rédiger des conditions d'utilisation — Makiti est un intermédiaire
-  technique, non une partie à la vente. À écrire avant le premier litige.
-- Décider si la confirmation d'email est réactivée. Argument pour :
-  l'email est à la fois l'identifiant de connexion **et** le canal des
-  notifications ; sans confirmation, quelqu'un peut s'inscrire avec
-  l'adresse d'un tiers, qui recevra les messages d'un inconnu. Argument
-  contre : une friction de plus à l'inscription, sur un marché où il faut
-  déjà arracher les vingt premiers commerçants. **Aucun écran de type
-  « vérifiez votre boîte mail » n'existe dans la maquette** : le
-  réactiver demande d'en dessiner un.
-- Supprimer la page `/ecrans`, page de travail.
-- Fermer le dernier trou de schéma connu : `check (status <> 'rejected' or
-  rejection_reason is not null)` — voir section 4.
-- Corriger le dépassement de budget signalé par `npm run poids` :
-  **polices 60 Ko pour 40 Ko**.
+### Étape 4 — Avant d'ouvrir à de vrais commerçants
+- **Rédiger les conditions d'utilisation.** La ligne existe dans deux
+  écrans (`/compte`, `/vendeur/boutique`) mais ne fait rien : il manque
+  le TEXTE, pas le code. Makiti est un intermédiaire technique, non une
+  partie à la vente — à écrire avant le premier litige.
+- **Trancher le critère de validation d'une boutique** (voir section 5).
+  La mécanique est prête depuis `0012` ; sans critère écrit, tu
+  approuveras tout en y passant du temps.
+- **Décider de la confirmation d'email.** Pour : l'email est à la fois
+  identifiant de connexion ET canal de notification, donc sans
+  confirmation quelqu'un peut s'inscrire avec l'adresse d'un tiers, qui
+  recevra les messages d'un inconnu. Contre : une friction de plus, sur
+  un marché où il faut déjà arracher les vingt premiers commerçants.
+  **Aucun écran « vérifiez votre boîte mail » n'existe dans la
+  maquette** : le réactiver demande d'en dessiner un.
+- **Supprimer `/ecrans` et `/styleguide`** pour de bon, une fois
+  l'étape 1 terminée. Elles sont déjà introuvables en production, mais
+  une page de travail qu'on oublie de retirer finit par être trouvée.
+- **Regarder le projet Supabase « Fillo »** du 2026-08-25, qui tourne
+  encore à côté de `Makiti` sans qu'on sache s'il sert.
 
-### En parallèle — récupérer ce qui reste de `kind-thompson`
+### Étape 5 — Regarder le parcours vers le compte lié
+Pas un bug, une observation de terrain : le porteur du projet lui-même,
+en testant, a créé DEUX CONNEXIONS distinctes au lieu d'un second profil
+lié sur la même connexion. L'écran d'inscription ne propose le compte lié
+qu'à une personne DÉJÀ connectée — ce qui n'est pas le réflexe de
+quelqu'un qui veut « aussi vendre ». À arbitrer : c'est une décision de
+parcours, pas une correction technique.
+
+### En parallèle — ce qui reste de `kind-thompson`
 Voir la liste en tête de document. La compression des photos est faite ;
-restent la recherche v2, le bandeau réseau dégradé, le catalogue à 8
-catégories, et compléter les formulaires sans JavaScript (`PhotoPicker`,
-`Toggle`) commencés à l'étape 2.
+restent la recherche v2, le bandeau de réseau dégradé, le catalogue à 8
+catégories (décision produit à trancher d'abord), et compléter les
+formulaires sans JavaScript (`PhotoPicker`, `Toggle`) commencés le
+2026-09-11.
+
+### Dettes techniques connues, aucune bloquante
+- **Aucun test automatisé côté front.** 55 tests couvrent le SQL, zéro
+  couvre la couche applicative — où se trouvaient les quatre bugs du
+  2026-09-12. C'est le déséquilibre de fond du projet.
+- **Polices : 60 Ko pour un budget de 40** (`npm run poids`). Deux
+  familles Google, toutes deux préchargées ; `preload: false` sur celle
+  des titres suffirait peut-être. À mesurer, pas à supposer.
+- **`middleware` est déprécié en Next 16** : `npx @next/codemod@canary
+  middleware-to-proxy .`. Le faire débloquerait aussi un vrai 404 sur
+  `/ecrans` (aujourd'hui un 200 portant la page « n'existe pas », voir
+  le fichier).
+- **`postcss` n'est pas déclaré dans `package.json`** alors que
+  `scripts/verifier-classes.mjs` l'importe : ça marche par dépendance
+  transitive de `@tailwindcss/postcss`, donc par accident.
+- **L'en-tête `Host` n'est pas validé** dans
+  `requestPasswordResetAction`. Non exploitable — Supabase filtre
+  `redirectTo` — mais la protection vit dans un réglage de tableau de
+  bord plutôt que dans le dépôt ; un `NEXT_PUBLIC_SITE_URL` la
+  ramènerait sous contrôle de version.
+- **`/recherche` a son propre défaut « Conakry » en dur**, indépendant
+  de celui du fil d'accueil, et s'en sert pour calculer le badge
+  « filtre actif ». L'harmoniser casserait le sens actuel
+  d'`activeFilterCount` : à trancher séparément.
+- **`/inscription/boutique` hérite du squelette de chargement client**
+  et affiche donc brièvement « Conakry » pendant l'inscription
+  commerçant.
+- **Trois branches à nettoyer** : `claude/fillo-project-review-0ky4ei`
+  et `claude/profile-city-edit-5cxvjb` n'ont plus rien d'unique (vérifié
+  par `git diff`), **`claude/kind-thompson-khl111` doit être gardée**
+  (10 commits absents de `main`).
 
 ### Sécurité — un réflexe, pas une étape
 Ne rien casser du RLS ni des 55 tests de `supabase/tests/` en avançant.
-`npm run` les tests après **toute** modification de policy : c'est ainsi
-que trois failles ont été trouvées, et aucune ne produisait d'erreur.
+Les relancer après **toute** modification de policy : c'est ainsi que
+trois failles ont été trouvées, et aucune ne produisait d'erreur.
 
 ---
 
@@ -850,12 +392,20 @@ prises le 2026-09-11, à la demande du porteur du projet.
    navigateur ne peut pas les écrire directement. Raison précise, pas
    seulement « par cohérence avec le reste » : « supprimer mon compte »
    doit AUSSI couper l'accès à `auth.users`, que RLS ne gère jamais — les
-   deux doivent arriver ensemble via une Edge Function (`service_role`),
-   sinon un profil pourrait se retrouver marqué supprimé avec la connexion
-   encore active. Cette fonction reste à écrire à l'étape 9 ; elle devra
-   aussi décider si `merchants.status` doit sortir de `'approved'` quand
-   son commerçant supprime son compte (sinon la boutique resterait visible
-   dans le catalogue public) — pas tranché ici, à faire à ce moment-là.
+   deux doivent arriver ensemble, avec `service_role`, sinon un profil
+   pourrait se retrouver marqué supprimé avec la connexion encore active.
+
+   **Écrit le 2026-09-11** : pas une Edge Function mais une action serveur
+   Next.js (`src/lib/actions/account.ts`, client `service_role` dans
+   `src/lib/supabase/admin.ts`) — même isolation, un aller-retour réseau
+   de moins, un seul système à déployer. Et un BANNISSEMENT plutôt qu'un
+   `deleteUser` : `profiles.auth_user_id` référence `auth.users` en
+   cascade, et `messages.sender_id` référence `profiles` SANS cascade, donc
+   supprimer la ligne `auth.users` aurait échoué sur une contrainte au
+   moment précis du clic. La question laissée ouverte ici est tranchée :
+   **les produits passent à `hidden`, `merchants.status` ne bouge pas** —
+   aucune valeur de l'énumération ne veut dire « fermée par son
+   propriétaire », et masquer les produits vide déjà le catalogue public.
 4. ~~**Le lien entre les deux comptes d'une même personne.**~~ **Résolu.**
    `profiles.id` ne partage plus la clé de `auth.users` : `auth_user_id`
    fait le lien, `unique (auth_user_id, role)` limite à un profil par rôle
@@ -975,7 +525,125 @@ prises le 2026-09-11, à la demande du porteur du projet.
 
 ---
 
-## 8. Le vrai risque
+- **« Pas d'erreur » ne veut jamais dire « c'est fait ».** Quand le RLS
+  écarte une ligne, PostgREST ne renvoie pas d'erreur : il renvoie un
+  SUCCÈS portant zéro ligne. Six actions du projet (`markSold`, `hide`,
+  `republish`, `delete`, `blockPeer`, `reportConversation`) ne lisaient
+  pas leur résultat et redirigeaient comme si tout allait bien — le cas
+  d'échec le plus probable, « Republier » refusé par le trigger quand la
+  boutique n'est plus validée, était donc le plus silencieux. La seule
+  façon de savoir ce qui a changé est un `.select("id")` sur l'écriture.
+- **Une règle métier posée sur la table A ne voit pas les écritures sur
+  la table B.** `products_check_publishable` interdit de publier un
+  produit sans photo, mais il est posé sur `products` : rien ne se
+  déclenchait quand les photos partaient par `product_images`, et c'est
+  exactement le chemin que le code emprunte (remplacement en `delete`
+  puis `insert`). Une protection se vérifie sur le chemin réel du code,
+  pas sur celui qu'on avait en tête en l'écrivant.
+- **Un paramètre qui rattrape une différence de structure est le signe
+  qu'il en faut deux.** `BottomNav` servait les deux espaces avec une
+  liste unique de quatre onglets plus un `accountHref` pour corriger le
+  dernier. Le commerçant voyait donc deux onglets qui n'existent pas chez
+  lui. Le correctif n'était pas un meilleur paramètre, c'était deux
+  listes.
+- **Une décision écrite en plusieurs clauses se vérifie clause par
+  clause.** `design/README.md` dit que les deux rôles n'ont ni la même
+  barre d'onglets, ni le même écran d'ouverture, ni le même « Mon
+  compte ». Une seule clause a été traitée, et le travail a été annoncé
+  comme « les deux espaces ne se mélangent plus ». C'est le porteur du
+  projet qui a dû demander « et la barre ? ».
+- **Un correctif peut créer un défaut ailleurs.** Router un commerçant
+  vers `/vendeur` a rendu l'onglet « Accueil » MORT dans son espace : on
+  le touchait, on revenait au même écran. Un onglet qui ne fait rien est
+  pire qu'un onglet absent — on réessaie, on croit l'application bloquée.
+- **Un squelette de chargement qui ne ressemble pas à la vraie page fait
+  sauter la page.** `loading.tsx` montrait encore la barre de recherche
+  retirée de l'accueil, et affichait le squelette du fil CLIENT devant
+  tout, espace commerçant compris. Un `loading.tsx` placé dans un dossier
+  prend le pas sur celui du parent : c'est la réponse.
+- **Une action dont on ne peut pas savoir si elle a réussi est une action
+  cassée, même quand elle fonctionne.** Vécu dans les deux sens le
+  2026-09-12 : le Table Editor de Supabase changeait un statut sans rien
+  confirmer (le porteur du projet a cru l'écriture refusée), et les six
+  actions ci-dessus faisaient l'inverse. Une commande qui renvoie la
+  ligne modifiée vaut mieux qu'une grille qu'on édite à l'aveugle.
+- **Un confort administratif est le moment exact où l'on rouvre une
+  faille.** En rendant la validation d'une boutique plus simple
+  (`0012`), mettre les fonctions en `security definer` les aurait rendues
+  appelables en RPC par n'importe quel visiteur — c'est-à-dire
+  l'auto-validation d'un commerçant, la première faille trouvée par les
+  tests. `security invoker` est écrit en clair dans le fichier pour que
+  ce soit un choix visible, pas un défaut subi.
+- **Un identifiant de démonstration survit à la donnée de
+  démonstration.** Neuf liens de `/ecrans` pointaient sur `p-riz`,
+  `m-aissatou`, `t-mariama` — les identifiants de l'ancien `mock.ts` —
+  alors que la base crée des UUID. Ils étaient morts depuis le
+  branchement sur la vraie base, et invisibles parce que personne n'avait
+  ouvert la page. Un index d'écrans dont un tiers des liens échoue ne
+  sert pas à relire les écrans : il fait croire que l'application est
+  cassée.
+
+
+## 8. Journal — ce qui a été fait, et quand
+
+Le détail du raisonnement de chaque décision vit dans les fichiers
+eux-mêmes (migrations et commentaires de code, écrits pour être lus) et
+les leçons durables dans la section 7. Ce journal ne sert qu'à répondre
+à « quand, et pourquoi maintenant ? ».
+
+### 2026-09-11 — la base, l'authentification, les actions
+- Projet Supabase créé et migré ; les 5 migrations appliquées au tableau
+  de bord sans être commitées sont reconstituées depuis la base.
+- Consolidation de cinq lignes de travail divergentes dans `main`, et
+  correction du réglage « branche par défaut » de GitHub qui pointait
+  encore sur un arrêt sur image.
+- Authentification complète (inscription, connexion, mot de passe oublié,
+  comptes liés) et décision des comptes liés portée dans le schéma.
+- Espace vendeur, messagerie, « Mon compte » et suppression de compte
+  branchés sur la vraie base ; compression des photos dans le navigateur.
+- Quatre manques de schéma tranchés : blocage, motif de refus,
+  suppression de compte par anonymisation, lien entre les deux comptes.
+
+### 2026-09-12 — la première confrontation à la réalité
+Relecture complète du projet avec exécution de tout ce qui est
+vérifiable, puis premier vrai passage dans un navigateur. **Six commits,
+deux migrations, et 9 vérifications de sécurité de plus.**
+
+- **Quatre bugs de la couche applicative** (`1bc7f89`) : un produit
+  publié pouvait perdre toutes ses photos (fermé par `0011`), six actions
+  échouaient en silence, l'onglet « Compte » renvoyait un commerçant
+  connecté vers l'écran de connexion, et `/ecrans`/`/styleguide`
+  partaient en production.
+- **`0011` appliquée sur le projet Supabase** (`2110db5`) — elle était
+  commitée sans être appliquée, l'écart inverse de celui de la veille.
+- **Jeu de démonstration supprimé** (`20b7f81`), et neuf liens morts de
+  `/ecrans` réparés : ils portaient les identifiants de l'ancien
+  `mock.ts` et ne fonctionnaient plus depuis le branchement sur la vraie
+  base.
+- **`0012` — valider une boutique en un seul geste** (`d82019b`) : la
+  demande était « une colonne pour approuver », la colonne existait déjà
+  (`status`, lue à neuf endroits) ; ce qui manquait c'était que la
+  changer SUFFISE. Ferme au passage le dernier trou de schéma connu.
+- **Routage par rôle** (`dfe3a11`) : un commerçant atterrissait sur le
+  fil client après connexion, contre une décision écrite depuis la
+  maquette.
+- **Deux barres d'onglets** (`3db6ee2`) : le commerçant voyait celle du
+  client, `/vendeur` marquait le mauvais onglet actif, et le squelette de
+  chargement client s'affichait devant tout.
+- **Maquette republiée à l'état réel** : 36 écrans, 5 corrigés (la
+  maquette promettait des choses que l'application ne fait pas), 3
+  ajoutés (l'application les fait, la maquette ne les montrait pas).
+
+**Trois erreurs d'analyse commises et corrigées en route**, notées parce
+qu'elles se reproduiront : avoir affirmé qu'aucun déploiement Vercel
+n'existait (il existait) ; avoir classé le routage par rôle comme
+« décision produit ouverte » alors qu'une décision écrite en faisait un
+bug ; avoir annoncé un travail terminé alors qu'un tiers seulement de la
+règle était traité.
+
+---
+
+## 9. Le vrai risque
 
 Le code est presque fait ; ce n'est pas là que le projet se joue.
 

@@ -17,13 +17,15 @@ conclut hors de l'application.
 - [x] Budgets de performance mesurés (`npm run poids`, voir `docs/PERFORMANCE.md`)
 - [x] Projet Supabase créé et migrations exécutées
 - [x] Design system et bibliothèque de composants (`src/styles/`, `src/components/`)
-- [x] Les 33 écrans (33 faits) — sans actions branchées
-- [x] Branchement des données en LECTURE : fil, recherche, fiche produit,
-      galerie et boutique publique lisent la vraie base
-- [x] Authentification (inscription, connexion, session)
-- [ ] Branchement des ACTIONS (publier, envoyer un message, signaler)
-- [ ] Notification par email des nouveaux messages
-- [ ] Déploiement Vercel
+- [x] Les 33 écrans
+- [x] Branchement sur la vraie base, en lecture ET en écriture : catalogue
+      public, espace vendeur, messagerie, compte et suppression de compte
+- [x] Authentification (inscription, connexion, comptes liés)
+- [x] Déploiement Vercel — `main` est la branche de production
+- [ ] Parcours complet des écrans dans un navigateur (commencé le 12/09)
+- [ ] Notification par email des nouveaux messages (le seul point
+      bloquant pour un lancement)
+- [ ] Conditions d'utilisation — la ligne existe, le texte manque
 
 ## Tests
 
@@ -38,9 +40,13 @@ npm install
 npm run dev
 ```
 
-**`/ecrans`** liste les 33 écrans avec un lien vers chacun. C'est le point
-d'entrée pour tout relire. Page de travail, à supprimer quand
-l'authentification existera.
+**`/ecrans`** liste les 33 écrans avec un lien vers chacun, et dit ce
+qu'il faut créer en base quand un lien a besoin d'un enregistrement qui
+n'existe pas encore. C'est le point d'entrée pour tout relire.
+
+Page de travail : **accessible en développement seulement**, introuvable
+en production. À supprimer pour de bon quand le parcours complet des
+écrans sera terminé.
 
 Toute autre adresse affiche la page « Cette page n'existe pas ».
 - **`/styleguide`** : tous les composants et tous les tokens sur une page.
@@ -49,15 +55,20 @@ Toute autre adresse affiche la page « Cette page n'existe pas ».
 l'application s'arrête tout de suite avec un message explicite plutôt que
 de laisser une erreur réseau incompréhensible apparaître plus tard.
 
-Le fil, la recherche, la fiche produit, la galerie et la boutique publique
-lisent la **vraie base**. Les écrans de messagerie et d'espace vendeur
-utilisent encore des données de démonstration (`src/lib/mock.ts`) : ils
-demandent une session, qui n'existe pas encore. Aucun bouton n'agit
-toujours — c'est l'étape suivante.
+**Toute l'application lit et écrit la vraie base** : catalogue public,
+espace vendeur, messagerie, compte et suppression de compte. `mock.ts` ne
+sert plus que la galerie `/styleguide` et la liste des motifs de
+signalement.
 
-Base vide au départ : `supabase/seed_demo.sql` remplit deux boutiques et
-six produits pour avoir quelque chose à regarder. **À supprimer avant le
-lancement**, la commande est à la fin du fichier.
+**La base est vide** : le jeu de démonstration a été supprimé le
+2026-09-12 pour tester avec de vraies données. Pour le remettre,
+rejouer `supabase/seed_demo.sql` (deux boutiques, six produits) ; la
+commande pour l'enlever à nouveau est à la fin du fichier.
+
+Une boutique créée depuis l'application arrive en `pending` : la
+validation est **manuelle**, depuis Supabase, et il n'y a pas de page
+d'administration en v1. Changer la seule cellule `merchants.status`
+suffit — voir `supabase/migrations/0012_...sql`.
 
 Pour changer l'apparence de l'application, voir
 [`src/styles/README.md`](src/styles/README.md).
