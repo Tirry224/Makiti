@@ -403,7 +403,17 @@ produit actif avec 1 photo → delete from product_images
 → photos restantes = 0, statut = active
 ```
 
-Fermé par `0011_active_product_keeps_an_image.sql` : un trigger
+Fermé par `0011_active_product_keeps_an_image.sql`, **appliquée sur le
+projet Supabase `Makiti` le 2026-09-12** (via MCP, `apply_migration`) — la
+règle de la section 2 vaut dans les DEUX sens : une migration commitée
+sans être appliquée laisse le dépôt décrire une base qui n'existe pas,
+exactement comme l'inverse. Vérifié après coup sur la vraie base : trigger
+posé, `security definer` actif, et le comportement testé dans une
+transaction annulée (une photo sur deux retirée → reste `active` ; la
+dernière retirée → `draft`), sans laisser aucune donnée. Aucun des 4
+produits actifs n'était dans l'état cassé.
+
+Détail : un trigger
 `after delete on product_images` (au niveau instruction, avec table de
 transition) repasse en `draft` tout produit `active` qui n'a plus de
 photo. Il repasse en brouillon plutôt que de refuser la suppression : la
@@ -411,6 +421,18 @@ suppression est légitime, c'est l'état « publié sans photo » qui ne l'est
 pas. `updateProductAction` refuse en plus l'enregistrement avec un
 message lisible — la base garantit l'invariant, le message explique.
 Trois vérifications ajoutées à `security_test.sql` (tests 47 à 49).
+
+L'audit de sécurité Supabase signale la nouvelle fonction parmi douze
+`security definer` « appelables en RPC par un inconnu ». Faux positif,
+vérifié et non cru (section 7) : appelée en `set role anon` hors
+trigger, PostgreSQL la refuse avec `SQLSTATE 0A000 — trigger functions
+can only be called as triggers`.
+
+**Trouvé au passage, non traité** : `auth_leaked_password_protection`
+est désactivé sur le projet. Supabase peut refuser les mots de passe
+connus comme compromis (comparaison avec HaveIBeenPwned) ; c'est une
+case à cocher dans Authentication, gratuite, et l'email est ici à la
+fois identifiant de connexion et canal de notification.
 
 **2. Six actions échouaient en silence.** `markSold`, `hide`,
 `republish`, `delete`, `blockPeer` et `reportConversation` ne lisaient
