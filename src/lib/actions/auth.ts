@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
-import { getSessionUser } from "@/lib/data/session";
+import { getSessionUser, landingForSession } from "@/lib/data/session";
 
 export type ActionState = { error?: string; needsConfirmation?: boolean; sent?: boolean };
 
@@ -99,7 +99,11 @@ export async function signInAction(_prevState: ActionState | null, formData: For
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return { error: translateAuthError(error.message) };
 
-  redirect("/");
+  // Jamais `/` en dur : une connexion qui n'a qu'un compte commerçant
+  // atterrissait sur le fil client, avec la barre d'onglets du client —
+  // ce que `design/README.md` interdit explicitement. Voir
+  // `landingForSession`.
+  redirect(await landingForSession(supabase));
 }
 
 /** Déconnexion. Utilisée depuis /compte et /vendeur/boutique. */
@@ -139,5 +143,7 @@ export async function updatePasswordAction(_prevState: ActionState | null, formD
   const { error } = await supabase.auth.updateUser({ password });
   if (error) return { error: translateAuthError(error.message) };
 
-  redirect("/");
+  // Même aiguillage qu'après une connexion : changer son mot de passe
+  // n'est pas une raison d'atterrir dans l'espace de quelqu'un d'autre.
+  redirect(await landingForSession(supabase));
 }

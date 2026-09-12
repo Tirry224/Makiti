@@ -507,9 +507,9 @@ bloquant, les deux premiers sont visibles par un utilisateur :
   Non corrigé parce qu'il manque le TEXTE, pas le lien — et ce texte est
   une décision du porteur du projet (Makiti est un intermédiaire
   technique, non une partie à la vente). Voir étape 7.
-- **Après connexion, un commerçant arrive sur `/`**, le fil client, jamais
-  sur `/vendeur`. Défendable (le catalogue est public) mais probablement
-  pas voulu. Décision produit, pas bug.
+- ~~**Après connexion, un commerçant arrive sur `/`**~~ **Corrigé le
+  2026-09-12** : ce n'était pas une décision produit ouverte, c'était un
+  bug contre une décision déjà écrite (voir l'étape 4 quinquies).
 - **Budget des polices : 60 Ko pour 40 Ko.** Deux familles Google
   (`Bricolage_Grotesque` + `Figtree`), toutes deux préchargées. La police
   d'affichage ne sert que les titres : `preload: false` dessus suffirait
@@ -643,6 +643,62 @@ revérifiée sur place (trigger et contrainte posés, `has_function_privilege`
 critère concret une boutique est-elle validée ? (section 5). La mécanique
 est maintenant confortable ; sans critère écrit, elle restera décorative
 tout en coûtant du temps.
+
+### Étape 4 quinquies — Les deux espaces ne se mélangent plus — FAIT le 2026-09-12
+
+Trouvé par le porteur du projet en testant sur son téléphone, sur le
+déploiement Vercel : connecté avec son compte COMMERÇANT, il voyait le fil
+CLIENT (« Aucun produit à Conakry »), avec la barre d'onglets du client
+— Accueil · Rechercher · Messages · Compte — alors que celle du
+commerçant en compte trois : Ma boutique · Messages · Compte. Son
+diagnostic (« les écrans se sont emmêlés ») était juste.
+
+**Ce n'était pas une question ouverte, c'était un bug contre une décision
+déjà écrite.** `design/README.md` la formule depuis la maquette :
+
+> Le commerçant et le client n'ont pas la même barre d'onglets, ni le même
+> écran d'ouverture, ni le même écran « Mon compte ». C'est ce qui rendait
+> la maquette confuse : les deux rôles y voyaient exactement la même
+> application.
+
+`signInAction` renvoyait pourtant `redirect("/")` sans condition, et `/`
+ne regardait jamais le rôle de la session. Ce document le listait le matin
+même parmi les points « non corrigés » avec la mention « défendable,
+probablement pas voulu, décision produit » : **c'était une erreur de
+lecture de ma part.** Une décision figée dans `design/README.md` n'est pas
+une question ouverte, et un écart avec elle est un bug, pas un arbitrage
+à rendre.
+
+Corrigé par `landingForSession` (`src/lib/data/session.ts`) : `/vendeur`
+pour une connexion qui n'a QUE le compte commerçant, `/` sinon.
+
+- **`signInAction` et `updatePasswordAction`** l'utilisent au lieu de `/`
+  en dur. Changer son mot de passe n'est pas une raison d'atterrir dans
+  l'espace de quelqu'un d'autre.
+- **`/` lui-même** aiguille aussi, et pas seulement la connexion :
+  l'adresse est atteinte par un favori, un lien partagé ou un simple
+  rechargement, et l'aiguillage ne doit pas dépendre du chemin parcouru
+  pour y arriver. C'est la même leçon que le correctif d'`accountHref` de
+  l'étape 4 bis — la décision vit à la DESTINATION, pas chez chaque
+  appelant.
+- **Ni un visiteur non connecté, ni une personne qui possède les deux
+  comptes liés** ne sont concernés : celle-là a un espace client
+  légitime et bascule quand elle le décide (`SwitchSpaceCard`). Seule une
+  connexion sans compte client n'a rien à faire sur le fil client.
+
+Pas de boucle de redirection possible, vérifié : l'espace vendeur ne
+renvoie jamais vers `/` (`/vendeur` aiguille vers `/inscription/boutique`,
+`/vendeur/attente` ou `/vendeur/refusee` selon `merchants.status`).
+
+**Ce que ce test a aussi révélé, et qui n'est pas un bug** : le porteur du
+projet avait créé DEUX CONNEXIONS distinctes (`boubatirry224@` en client,
+`jshdjdkdkkdjdd@` en commerçant) au lieu d'un second profil lié sur la même
+connexion. Du point de vue du système, ce sont deux personnes sans rapport,
+donc « Basculer vers mon espace » ne pouvait pas apparaître. Ce n'est pas un
+défaut du code — mais le fait que le parcours naturel mène là plutôt qu'au
+compte lié mérite d'être regardé : l'écran d'inscription ne propose le
+compte lié qu'à une personne DÉJÀ connectée, ce qui n'est pas le réflexe de
+quelqu'un qui veut « aussi vendre ».
 
 ### Étape 5 — Emails
 Deux besoins distincts, un seul fournisseur (Resend) :

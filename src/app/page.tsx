@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { MapPin } from "lucide-react";
 import { BottomNav } from "@/components/ui/BottomNav";
 import { Chip } from "@/components/ui/Chip";
@@ -15,7 +16,7 @@ import { Package } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCategories, getCities } from "@/lib/data/reference";
-import { getMyProfile } from "@/lib/data/session";
+import { getMyProfile, landingForSession } from "@/lib/data/session";
 import { searchProducts } from "@/lib/data/products";
 
 /**
@@ -50,6 +51,22 @@ export default async function HomePage({
 }) {
   const { ville: villeParam, categorie = "Tout" } = await searchParams;
   const supabase = await createClient();
+
+  /* Le fil client n'est pas l'écran d'ouverture d'un commerçant — décision
+     écrite (`design/README.md`, `docs/SPEC.md` décision 8) : les deux rôles
+     n'ont ni la même barre d'onglets, ni le même écran d'ouverture. Une
+     connexion sans compte client repart donc chez elle.
+
+     Corrigé ici EN PLUS de `signInAction` : cette adresse est atteinte
+     autrement que par une connexion — un favori, un lien partagé, un simple
+     rechargement — et l'aiguillage ne doit pas dépendre du chemin parcouru
+     pour y arriver.
+
+     Un visiteur non connecté et une personne qui possède les deux comptes
+     liés ne sont pas concernés : `landingForSession` ne renvoie `/vendeur`
+     que pour une connexion QUI N'A QUE le compte commerçant. */
+  const landing = await landingForSession(supabase);
+  if (landing !== "/") redirect(landing);
 
   const [cities, categories, profile] = await Promise.all([
     getCities(supabase),

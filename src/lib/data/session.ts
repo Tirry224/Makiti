@@ -91,6 +91,40 @@ export async function clientSpaceFallback(supabase: SupabaseClient<Database>): P
   return profiles.some((p) => p.role === "merchant") ? "/vendeur/boutique" : "/connexion";
 }
 
+/**
+ * L'écran d'OUVERTURE de la connexion active : `/vendeur` pour une
+ * connexion qui n'a qu'un compte commerçant, `/` sinon.
+ *
+ * Ce n'est pas un détail de confort, c'est une décision écrite du projet
+ * (`design/README.md`, et `docs/SPEC.md` décision 8) :
+ *
+ * > Le commerçant et le client n'ont pas la même barre d'onglets, ni le
+ * > même écran d'ouverture, ni le même écran « Mon compte ». C'est ce qui
+ * > rendait la maquette confuse : les deux rôles y voyaient exactement la
+ * > même application.
+ *
+ * L'application la violait : `signInAction` renvoyait TOUJOURS vers `/`,
+ * donc un commerçant se connectait et atterrissait sur le fil client, avec
+ * la barre d'onglets du client (Accueil · Rechercher · Messages · Compte)
+ * — alors que sa barre à lui en compte trois (Ma boutique · Messages ·
+ * Compte). Il voyait « Aucun produit à Conakry » au lieu de sa boutique,
+ * et concluait, à juste titre, que les deux espaces étaient mélangés.
+ *
+ * Pourquoi « n'a QUE » un compte commerçant : une personne qui possède les
+ * deux comptes liés a un espace client légitime, et `/` est son écran
+ * d'ouverture normal — elle bascule vers sa boutique quand elle le décide
+ * (`SwitchSpaceCard`). Seule une connexion sans compte client n'a rien à
+ * faire sur le fil client.
+ *
+ * Gratuit : `getMyProfiles` est mis en cache pour la durée de la requête.
+ */
+export async function landingForSession(supabase: SupabaseClient<Database>): Promise<string> {
+  const profiles = await getMyProfiles(supabase);
+  const onlyMerchant =
+    profiles.some((p) => p.role === "merchant") && !profiles.some((p) => p.role === "client");
+  return onlyMerchant ? "/vendeur" : "/";
+}
+
 /** Le profil (client OU commerçant) de la connexion active pour ce rôle,
  * ou `null` si elle n'a pas encore ce compte-là. */
 export async function getMyProfile(
