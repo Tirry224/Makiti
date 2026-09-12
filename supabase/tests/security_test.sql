@@ -696,5 +696,75 @@ select pg_temp.check('supprimer un produit publie reste possible (cascade des ph
   (select count(*) from public.products where id = 'cccccccc-0000-0000-0000-000000000005') = 0);
 
 
+-- =====================================================================
+-- 22. Valider une boutique : un seul geste, et réservé à l'administrateur
+-- =====================================================================
+-- 0012 rend `merchants.status` suffisant à lui seul (la date de
+-- validation se pose, un motif périmé s'effrace, un refus sans motif est
+-- refusé). Le risque de ce genre de confort, c'est d'ouvrir un chemin
+-- d'auto-validation : c'est la faille que la partie 4 de 0002 avait
+-- fermée, et ces tests sont ce qui l'empêche de se rouvrir.
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('77777777-7777-7777-7777-777777777777', 'g@test.gn',
+   '{"role":"merchant","full_name":"Boutique G","phone":"620000007"}');
+
+insert into public.merchants (profile_id, shop_name, city_id)
+  select id, 'Boutique G', 1 from public.profiles where full_name = 'Boutique G';
+
+-- Approuver en écrivant la SEULE colonne `status` remplit la date.
+update public.merchants set status = 'approved' where shop_name = 'Boutique G';
+
+select pg_temp.check('approuver pose la date de validation toute seule',
+  (select approved_at is not null from public.merchants where shop_name = 'Boutique G'));
+
+-- Un refus sans motif est refusé par la base, pas rattrapé en silence.
+do $$
+begin
+  update public.merchants set status = 'rejected' where shop_name = 'Boutique G';
+  raise exception 'ECHEC un refus sans motif a été accepté';
+exception when check_violation then
+  raise notice 'OK    un refus sans motif est refuse';
+end $$;
+
+-- Un motif de refus ne survit pas à une nouvelle validation : il
+-- réapparaîtrait sur /vendeur/refusee comme s'il venait d'être écrit.
+update public.merchants
+   set status = 'rejected', rejection_reason = 'Motif temporaire de test.'
+ where shop_name = 'Boutique G';
+update public.merchants set status = 'approved' where shop_name = 'Boutique G';
+
+select pg_temp.check('revalider effrace le motif de refus perime',
+  (select rejection_reason is null from public.merchants where shop_name = 'Boutique G'));
+
+-- Et le point qui compte : le commerçant PROPRIÉTAIRE ne peut pas
+-- s'auto-valider, ni en écrivant la colonne, ni par la fonction.
+update public.merchants set status = 'pending' where shop_name = 'Boutique G';
+
+select pg_temp.login('77777777-7777-7777-7777-777777777777');
+set role authenticated;
+
+do $$
+begin
+  update public.merchants set status = 'approved' where shop_name = 'Boutique G';
+  raise exception 'ECHEC un commerçant a écrit son propre status';
+exception when insufficient_privilege then
+  raise notice 'OK    un commercant ne peut pas ecrire son propre status';
+end $$;
+
+do $$
+begin
+  perform public.approve_merchant('Boutique G');
+  raise exception 'ECHEC un commerçant a pu appeler approve_merchant()';
+exception when insufficient_privilege then
+  raise notice 'OK    approve_merchant() n''est pas appelable par un commercant';
+end $$;
+
+reset role;
+
+select pg_temp.check('la boutique est restee en attente malgre les deux tentatives',
+  (select status from public.merchants where shop_name = 'Boutique G') = 'pending');
+
+
 \echo ''
 \echo '===== TOUS LES TESTS SONT PASSES ====='

@@ -151,7 +151,7 @@ supposé (`supabase/tests/README.md` donne la commande). C'est la seule
 propriété qui compte pour une suite de migrations, et c'est celle qui
 casse le plus discrètement.
 
-`supabase/tests/` — 49 tests de sécurité, rejouables sur un PostgreSQL
+`supabase/tests/` — 55 tests de sécurité, rejouables sur un PostgreSQL
 local. Ils vérifient que les actions **interdites** échouent. Ils ont déjà
 trouvé **trois** vraies failles (voir section 7).
 
@@ -583,6 +583,67 @@ ne se ressemblent pas. Vérifié contre la base vide : 10 lignes sans lien,
   « Mariama Diallo ») sont des indications de saisie, jamais envoyées ni
   enregistrées. Les retirer dégraderait l'interface sans rien nettoyer.
 
+### Étape 4 quater — Valider une boutique en un seul geste — FAIT le 2026-09-12
+
+Demande du porteur du projet : « une colonne sur la table des commerçants
+qui permet d'approuver ou désapprouver un compte ».
+
+**Cette colonne existait déjà — `merchants.status` — et en ajouter une
+seconde aurait été un piège.** `status = 'approved'` est lu à NEUF
+endroits (policy « products : catalogue public », trigger
+`products_check_publishable`, `search_products`, policy de visibilité de
+la boutique, policies de messagerie…) ; un booléen `is_approved` neuf
+aurait été lu à zéro. On l'aurait coché, et rien n'aurait changé dans
+l'application. Deux colonnes qui prétendent dire la même vérité, c'est
+une source de vérité de MOINS, pas une de plus.
+
+Le vrai manque était ailleurs : changer `status` ne SUFFISAIT pas. Trois
+oublis possibles, aucun signalé — `approved_at` qu'aucun trigger ne
+remplissait, un refus sans motif accepté, et un motif de refus qui
+survivait à une revalidation (prêt à réapparaître sur `/vendeur/refusee`
+au refus suivant). `0012` les ferme tous les trois : **approuver, c'est
+maintenant changer une seule cellule dans le Table Editor.**
+
+Deux fonctions accompagnent (`approve_merchant(nom)`,
+`reject_merchant(nom, motif)`) pour l'éditeur SQL. Elles refusent un nom
+qui ne désigne aucune boutique plutôt que de faire un `update` silencieux
+sur zéro ligne — `shop_name` n'est pas unique.
+
+**Le piège de sécurité de cette migration, traité explicitement.** Rendre
+la validation confortable est le moment exact où l'on rouvre la faille que
+les tests avaient trouvée : un commerçant qui s'auto-valide. Les deux
+fonctions sont donc en `security invoker` — écrit en clair dans le
+fichier pour que ce soit un CHOIX visible, pas un défaut subi. En
+`security definer` elles auraient été appelables en RPC
+(`/rest/v1/rpc/approve_merchant`) par n'importe quel visiteur. Et
+`revoke execute ... from anon, authenticated, public` retire le droit que
+Supabase accorde par défaut à toute fonction nouvelle. Vérifié en se
+mettant dans la peau du commerçant propriétaire :
+
+```
+écriture directe de status  → permission denied for table merchants
+approve_merchant()          → permission denied for function
+statut final                → pending
+```
+
+Deux verrous indépendants, parce qu'un seul se retire par accident.
+
+**Décision prise au passage** : `approved_at` n'est JAMAIS effacé quand une
+boutique quitte `approved`. « Cette boutique a été validée le 12
+septembre » reste vrai après un refus — une date d'événement passé n'est
+pas un état courant.
+
+Vérifié : 12 migrations rejouées depuis une base vierge, **55 tests de
+sécurité** (6 ajoutés, section 22), les cinq scénarios de validation
+testés un par un, puis appliquée sur le projet Supabase `Makiti` et
+revérifiée sur place (trigger et contrainte posés, `has_function_privilege`
+à `false` pour `anon` et `authenticated`).
+
+**Reste ouvert, et c'est une question produit, pas technique** : sur quel
+critère concret une boutique est-elle validée ? (section 5). La mécanique
+est maintenant confortable ; sans critère écrit, elle restera décorative
+tout en coûtant du temps.
+
 ### Étape 5 — Emails
 Deux besoins distincts, un seul fournisseur (Resend) :
 
@@ -629,7 +690,7 @@ catégories, et compléter les formulaires sans JavaScript (`PhotoPicker`,
 `Toggle`) commencés à l'étape 2.
 
 ### Sécurité — un réflexe, pas une étape
-Ne rien casser du RLS ni des 49 tests de `supabase/tests/` en avançant.
+Ne rien casser du RLS ni des 55 tests de `supabase/tests/` en avançant.
 `npm run` les tests après **toute** modification de policy : c'est ainsi
 que trois failles ont été trouvées, et aucune ne produisait d'erreur.
 
@@ -683,7 +744,7 @@ prises le 2026-09-11, à la demande du porteur du projet.
    bout en bout (46 tests, RLS activé, sur un PostgreSQL local recréé de
    zéro) plutôt que déduit par lecture du code.
 
-**Un reste, mineur mais réel, sur le point 2** : aucune contrainte n'empêche de passer `status = 'rejected'` en laissant `rejection_reason` vide. La base accepte donc un refus sans motif — exactement ce que la colonne devait éviter. Un `check (status <> 'rejected' or rejection_reason is not null)` le fermerait ; pas fait faute d'un vrai parcours de refus à tester dessus.
+~~**Un reste, mineur mais réel, sur le point 2**~~ **Fermé le 2026-09-12** (`0012_approve_a_merchant_in_one_gesture.sql`) : la contrainte `merchants_rejection_needs_reason` refuse désormais `status = 'rejected'` avec un motif vide. Posée en CHECK et non en trigger — une CHECK est vérifiée APRÈS les triggers `before`, donc rien ne peut la contourner en inventant un motif par défaut.
 
 ---
 
